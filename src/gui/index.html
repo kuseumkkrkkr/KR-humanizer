@@ -22,25 +22,30 @@
         <div><span class="step">01</span><h2>글 준비</h2></div>
         <span id="char-count">0자</span>
       </div>
-      <div class="brief-panel">
-        <div class="field-head"><label for="brief">글쓰기 프롬프트 <small>선택</small></label><span id="brief-count">0/4,000자</span></div>
-        <textarea id="brief" maxlength="4000" placeholder="무엇을 누구에게 설명할지 적으세요. 프롬프트가 있으면 Plan 모드를 사용할 수 있습니다."></textarea>
-        <div class="plan-controls">
-          <label class="plan-toggle"><input id="plan-mode" type="checkbox" disabled><span>Plan 모드</span></label>
-          <span id="plan-help">프롬프트를 입력하면 노드를 먼저 설계할 수 있습니다.</span>
-          <button id="plan" class="secondary" disabled>계획 노드 만들기</button>
+      <details class="brief-panel">
+        <summary><span>프롬프트로 계획하기 <small>선택</small></span><span id="brief-count">0/4,000자</span></summary>
+        <div class="brief-content">
+          <label class="sr-only" for="brief">글쓰기 프롬프트</label>
+          <textarea id="brief" maxlength="4000" placeholder="무엇을 누구에게 설명할지 적으세요."></textarea>
+          <div class="plan-controls">
+            <label class="plan-toggle"><input id="plan-mode" type="checkbox" disabled><span>Plan 모드</span></label>
+            <span id="plan-help">프롬프트를 입력하면 노드를 먼저 설계할 수 있습니다.</span>
+            <button id="plan" class="secondary" disabled>계획 노드 만들기</button>
+          </div>
         </div>
-      </div>
+      </details>
       <div class="field-head"><label for="source">초안 또는 원문</label><span>직접 쓰거나 그래프에서 생성</span></div>
-      <textarea id="source" maxlength="200000" placeholder="점검할 한국어 글을 붙여 넣으세요."></textarea>
-      <div class="autocomplete-bar">
-        <label class="autocomplete-toggle"><input id="autocomplete-enabled" type="checkbox" disabled><span>Tab 문장 자동완성</span></label>
-        <span id="autocomplete-capability" class="capability" role="status">Codex EXEC 확인 중…</span>
-        <span class="fixed-model">고정 모델 · gpt-5.3-codex-spark</span>
-      </div>
-      <div id="completion-panel" class="completion-panel hidden" aria-live="polite">
-        <div><strong>이어쓰기 제안</strong><p id="completion-text"></p></div>
-        <div class="completion-actions"><button id="accept-completion" class="primary" type="button">적용 <kbd>Tab</kbd></button><button id="dismiss-completion" type="button">닫기 <kbd>Esc</kbd></button></div>
+      <div class="writing-editor">
+        <textarea id="source" maxlength="200000" placeholder="여기에 글을 쓰거나 붙여 넣으세요."></textarea>
+        <div id="completion-panel" class="completion-panel hidden" aria-live="polite">
+          <span class="completion-label">다음 문장</span><p id="completion-text"></p>
+          <div class="completion-actions"><button id="accept-completion" type="button">Tab으로 넣기</button><button id="dismiss-completion" type="button" aria-label="제안 닫기">Esc</button></div>
+        </div>
+        <div class="autocomplete-bar">
+          <label class="autocomplete-toggle"><input id="autocomplete-enabled" type="checkbox" disabled><span class="switch" aria-hidden="true"><i></i></span><span>다음 문장 제안</span></label>
+          <span id="autocomplete-capability" class="capability" role="status">Codex 확인 중…</span>
+          <span class="fixed-model" title="gpt-5.3-codex-spark">Spark 고정<span class="sr-only"> · gpt-5.3-codex-spark</span></span>
+        </div>
       </div>
       <div class="controls">
         <button id="analyze" class="secondary">문단·오탈자 점검</button>
@@ -49,17 +54,19 @@
         <select id="tone" aria-label="목표 문체"><option>편안하고 자연스러운 한국어</option><option>간결한 업무 문체</option><option>따뜻한 대화체</option><option>차분한 설명체</option></select>
         <button id="rewrite" class="primary">윤문 제안 만들기</button>
       </div>
-      <div class="writing-settings">
-        <label class="mode-control" for="edit-mode"><span>윤문 방식</span>
+      <details class="writing-settings">
+        <summary><span>문체 설정</span><span id="settings-summary">균형 편집 · 원문 유지 · 설명 중간</span></summary>
+        <div class="settings-grid">
+          <label class="mode-control" for="edit-mode"><span>윤문 방식</span>
           <select id="edit-mode"><option value="fluent">최소 수정</option><option value="balanced" selected>균형 편집</option><option value="strict">엄격 검토</option><option value="concise">간결화</option></select>
-        </label>
-        <div class="honorific-control">
+          </label>
+          <div class="honorific-control">
           <div class="honorific-head"><label for="honorific">말투 높임 정도</label><output id="honorific-value" for="honorific">중립 · 원문 유지</output></div>
           <input id="honorific" type="range" min="0" max="100" step="25" value="50" aria-describedby="honorific-help">
           <div class="range-ends" aria-hidden="true"><span>평어체</span><span>경어체</span></div>
           <p id="honorific-help">청자를 향한 종결 어미만 조절하며 인물·직함의 높임 관계는 보존합니다.</p>
-        </div>
-        <fieldset class="explanation-control">
+          </div>
+          <fieldset class="explanation-control">
           <legend>설명률</legend>
           <div class="segmented" role="radiogroup" aria-describedby="explanation-help">
             <label><input type="radio" name="explanation" value="minimal"><span>최저</span></label>
@@ -67,8 +74,9 @@
             <label><input type="radio" name="explanation" value="maximal"><span>최대</span></label>
           </div>
           <p id="explanation-help">설명의 깊이만 바꾸며, 최대에서도 새 사실을 만들지 않습니다.</p>
-        </fieldset>
-      </div>
+          </fieldset>
+        </div>
+      </details>
       <p class="notice">AI 판별 회피를 보장하지 않습니다. 비가시 문자는 확인 가능한 텍스트 이상만 정리합니다.</p>
     </section>
 

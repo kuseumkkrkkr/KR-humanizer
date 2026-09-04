@@ -10,7 +10,7 @@ import { getEditModeInstruction, normalizeHonorificLevel } from './core/style.js
 import { searchVault } from './knowledge/vault.js';
 import { getExplanationProfile } from './core/context-graph.js';
 
-const help = `KR-humanizer 0.8.0
+const help = `KR-humanizer 0.8.1
 
 사용법:
   kr-humanizer analyze <file|-> [--json]

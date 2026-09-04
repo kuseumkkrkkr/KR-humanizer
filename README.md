@@ -46,9 +46,9 @@ kr-humanizer gui
 npm install -g github:kuseumkkrkkr/KR-humanizer
 ```
 
-GitHub Release의 `kr-humanizer-0.8.0.tgz` 파일도 동일한 npm 설치물입니다. npm registry에는 아직 게시하지 않았습니다.
+GitHub Release의 `kr-humanizer-0.8.1.tgz` 파일도 동일한 npm 설치물입니다. npm registry에는 아직 게시하지 않았습니다.
 
-GUI 자동완성은 기본적으로 꺼져 있습니다. GUI가 Codex EXEC를 확인한 뒤 토글을 켜고 글 끝에서 1.2초 멈추면 다음 문장 하나를 표시합니다. Tab 또는 `적용`으로 넣고 Escape로 닫습니다. 일반 윤문 엔진 선택과 달리 자동완성은 Claude Code로 전환하거나 모델을 바꿀 수 없습니다.
+GUI 자동완성은 기본적으로 꺼져 있습니다. GUI가 Codex EXEC를 확인한 뒤 토글을 켜고 글 끝에서 1.2초 멈추면 에디터 안에 다음 문장 하나를 표시합니다. Tab 또는 `Tab으로 넣기`로 반영하고 Escape로 닫습니다. 프롬프트와 문체 설정은 필요할 때만 펼칩니다. 일반 윤문 엔진 선택과 달리 자동완성은 Claude Code로 전환하거나 모델을 바꿀 수 없습니다.
 
 Claude Code가 설치되어 있으면 `--engine claude`를 사용할 수 있습니다. 외부 모델 API를 직접 호출하지 않으며, 사용자가 로그인한 CLI 프로세스만 실행합니다.
 
@@ -198,7 +198,7 @@ sequenceDiagram
   S->>R: 한 문장 전용 프롬프트와 JSON Schema
   R->>C: codex exec --model gpt-5.3-codex-spark
   C-->>G: 최대 300자의 다음 문장 미리보기
-  alt 작성자가 Tab 또는 적용 선택
+  alt 작성자가 Tab 또는 Tab으로 넣기 선택
     G->>G: 원문 끝에 제안 삽입
   else Escape 또는 계속 입력
     G->>G: 제안 폐기

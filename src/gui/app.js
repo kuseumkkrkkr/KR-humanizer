@@ -31,6 +31,13 @@ function updateHonorific() {
   const level = Number($('#honorific').value);
   $('#honorific-value').textContent = honorificLabels[level];
   $('#honorific').setAttribute('aria-valuetext', `${honorificLabels[level]} ${level}`);
+  updateSettingsSummary();
+}
+function updateSettingsSummary() {
+  const mode = $('#edit-mode')?.selectedOptions[0]?.textContent ?? '균형 편집';
+  const speech = honorificLabels[Number($('#honorific')?.value ?? 50)].replace(/^중립 · /, '');
+  const explanation = document.querySelector('input[name="explanation"]:checked')?.nextElementSibling?.textContent ?? '중간';
+  if ($('#settings-summary')) $('#settings-summary').textContent = `${mode} · ${speech} · 설명 ${explanation}`;
 }
 function notify(message, error = false) {
   status.textContent = message;
@@ -322,7 +329,8 @@ function updateBriefState() {
 
 $('#brief').addEventListener('input', updateBriefState);
 $('#plan-mode').addEventListener('change', updateBriefState);
-document.querySelectorAll('input[name="explanation"]').forEach((item) => item.addEventListener('change', updateGraphControls));
+document.querySelectorAll('input[name="explanation"]').forEach((item) => item.addEventListener('change', () => { updateGraphControls(); updateSettingsSummary(); }));
+$('#edit-mode').addEventListener('change', updateSettingsSummary);
 updateBriefState();
 
 source.addEventListener('input', () => { $('#char-count').textContent = `${source.value.length.toLocaleString()}자`; scheduleCompletion(); });
