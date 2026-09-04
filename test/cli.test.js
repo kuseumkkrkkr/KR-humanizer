@@ -39,3 +39,11 @@ test('CLI rejects an unsupported editing mode before launching an engine', async
   assert.equal(result.code, 1);
   assert.match(result.stderr, /지원하지 않는 윤문 방식/);
 });
+
+test('CLI searches the bundled Obsidian vault without a model', async () => {
+  const result = await invoke(['knowledge', '-', '--mode', 'strict'], '이 역할로써 할수 있다.');
+  assert.equal(result.code, 0);
+  const matches = JSON.parse(result.stdout);
+  assert.ok(matches.some((match) => match.id === 'nikl-particle-roseo-rosseo'));
+  assert.ok(matches.some((match) => match.id === 'nikl-spacing-particle-dependent-noun'));
+});

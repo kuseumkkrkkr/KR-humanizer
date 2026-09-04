@@ -10,6 +10,8 @@
 - Codex CLI 또는 Claude Code CLI를 통한 API 키 없는 윤문 제안
 - 문장/단어 단위 전후 비교, 어순 변경 표식, 선택 수락
 - 평어체부터 경어체까지 5단계 말투 높임 슬라이더와 4가지 윤문 방식
+- 국립국어원 규범과 공개 윤문 Skill 관찰을 정리한 Obsidian Markdown 지식 저장소
+- 입력·윤문 방식·높임 단계에 맞는 지식 카드를 로컬 검색해 프롬프트에 자동 주입
 - 글의 의미 흐름 그래프
 - 로컬 결정 메모리와 선택적 self-hosted mem0 연동
 - npm CLI와 로컬 브라우저 GUI
@@ -24,6 +26,7 @@ npm install
 npm test
 npm link
 kr-humanizer analyze draft.txt
+kr-humanizer knowledge draft.txt --mode strict --honorific 75
 kr-humanizer rewrite draft.txt --engine codex --mode balanced --honorific 75 --out proposal.json
 kr-humanizer cv --samples 3 --folds 3
 kr-humanizer gui
@@ -35,7 +38,7 @@ kr-humanizer gui
 npm install -g github:kuseumkkrkkr/KR-humanizer
 ```
 
-GitHub Release의 `kr-humanizer-0.4.0.tgz` 파일도 동일한 npm 설치물입니다. npm registry에는 아직 게시하지 않았습니다.
+GitHub Release의 `kr-humanizer-0.5.0.tgz` 파일도 동일한 npm 설치물입니다. npm registry에는 아직 게시하지 않았습니다.
 
 Claude Code가 설치되어 있으면 `--engine claude`를 사용할 수 있습니다. 외부 모델 API를 직접 호출하지 않으며, 사용자가 로그인한 CLI 프로세스만 실행합니다.
 
@@ -98,6 +101,8 @@ flowchart LR
   CLI --> Runner
   Runner -->|spawn, shell false| Codex[Codex CLI]
   Runner -->|spawn, plan mode| Claude[Claude Code CLI]
+  Vault[Obsidian Markdown 지식 저장소] --> Retriever[결정적 로컬 검색]
+  Retriever --> Runner
   Codex --> Schema[JSON Schema 응답]
   Claude --> Schema
   Schema --> Diff
@@ -116,6 +121,7 @@ flowchart LR
 | 변경 계산 | `src/core/diff.js` | 문장 정렬, 단어 단위 LCS, 어순 변경 표식, 선택 변경 적용 |
 | 문체 제어 | `src/core/style.js` | 5단계 상대 높임 프로필과 4가지 윤문 방식 검증 |
 | 프롬프트 | `src/core/prompt.js` | 의미 보존 규칙, 목표 문체, 높임·윤문 방식, 이전 수락 성향, 원문 결합 |
+| 지식 검색 | `src/knowledge/vault.js`, `obsidian-vault/` | Markdown 카드 파싱, 입력별 점수화, 출처가 포함된 상위 지침 선택 |
 | 실행기 | `src/engines/runner.js` | Codex·Claude 자식 프로세스 실행, 시간·출력 제한, 구조화 JSON 파싱 |
 | GUI | `src/gui/index.html`, `app.js`, `styles.css`, `server.js` | 로컬 편집·검토 UI와 토큰 보호 HTTP API |
 | 메모리 | `src/memory/` | 기본 로컬 JSON 또는 localhost 전용 mem0 검색·기록 |
@@ -128,6 +134,7 @@ flowchart LR
 |---|---|---|
 | `analyze` | 파일 또는 표준입력 | 통계, 규칙 후보, 의미 흐름 JSON |
 | `sanitize` | 파일 또는 표준입력 | 확인된 비가시 문자를 제거한 UTF-8 텍스트; `--out`을 줬을 때만 파일 작성 |
+| `knowledge` | 원문, `--mode`, `--honorific`, 선택적 `--vault` | 모델 실행 없이 관련 지식 카드와 출처를 JSON으로 반환 |
 | `rewrite` | 원문, 엔진, 문체, `--mode`, `--honorific` | 구조화 윤문 응답을 문장별 proposal JSON으로 변환 |
 | `review` | 원문 파일 + 별도 윤문 파일 | 모델 실행 없이 두 글의 Diff proposal 생성 |
 | `accept` | proposal JSON + 문장 ID | 선택한 변경만 반영한 텍스트 생성 |
@@ -160,6 +167,7 @@ sequenceDiagram
   participant UI as GUI 또는 CLI
   participant A as analyze.js
   participant M as local memory / mem0
+  participant K as Obsidian vault search
   participant P as prompt.js
   participant R as runner.js
   participant E as Codex 또는 Claude CLI
@@ -171,7 +179,9 @@ sequenceDiagram
   U->>UI: 윤문 제안 요청
   UI->>M: 원문 앞 500자로 최대 6개 검색
   M-->>P: 이전 수락 성향
-  P->>R: 보존 규칙 + 윤문 방식 + 높임 정도 + 메모리 + 원문
+  UI->>K: 원문 + 윤문 방식 + 높임 단계
+  K-->>P: 관련 카드 최대 6개 + 출처
+  P->>R: 보존 규칙 + 윤문 방식 + 높임 정도 + 지식 + 메모리 + 원문
   R->>E: 셸 문자열이 아닌 인자 배열로 실행
   E-->>R: rewrite.schema.json 구조의 JSON
   R->>D: 원문과 rewrittenText 비교
@@ -191,10 +201,47 @@ sequenceDiagram
 4. 0~100 높임 정도와 이에 대응하는 상대 높임 등급
 5. 과장된 접속어와 상투 표현을 줄이고 구체적인 동사와 짧은 문장을 우선하는 편집 규칙
 6. AI 판별기 회피와 출처 위장을 하지 않는다는 경계
-7. 로컬 메모리에서 검색한 이전 수락 성향
-8. 구분선 안의 원문 전체
+7. Obsidian 저장소에서 검색한 규범·편집 지침과 출처
+8. 로컬 메모리에서 검색한 이전 수락 성향
+9. 구분선 안의 원문 전체
 
 응답은 `schemas/rewrite.schema.json`으로 제한합니다. 필수 필드는 윤문 본문 `rewrittenText`, 요약 `summary`, 의미 흐름 노드 `flow`, 관계 `edges`입니다. 스키마에 맞지 않거나 필드가 빠지면 결과를 적용하지 않고 오류로 처리합니다.
+
+## Obsidian 윤문 지식 저장소
+
+`obsidian-vault/`는 Obsidian에서 그대로 열 수 있는 Markdown 폴더이며, Obsidian 자체는 실행 필수 조건이 아닙니다. 검색기는 플러그인 API나 임베딩 서버 없이 `.md` 파일을 직접 읽습니다. 기본 카드 14개는 국립국어원 규범·글쓰기 자료 9개와 공개 한국어 윤문 Skill의 작업 방식 관찰 5개로 나뉩니다.
+
+```mermaid
+flowchart LR
+  Text[입력 글] --> Query[원문 토큰 + 윤문 방식 + 높임 단계]
+  Query --> Scan[Markdown frontmatter 및 프롬프트 지침 읽기]
+  Scan --> Filter{retrieval true와 필수 필드}
+  Filter --> Score[제목·태그·검색어·정확 구문 점수]
+  Score --> Top[상위 6개 / 최대 6000자]
+  Top --> Prompt[Codex·Claude 윤문 프롬프트]
+  Prompt --> Proposal[검색 후보 ID가 첨부된 변경 제안]
+```
+
+각 카드는 `id`, `kind`, `authority`, `source_url`, `source_section`, `tags`, `retrieval_terms`와 `프롬프트 지침`을 가집니다. 이 필드가 하나라도 없으면 검색에서 제외합니다. `규범/` 카드는 국립국어원의 해당 조항이나 자료를 짧게 재구성했고, `skills/` 카드는 공개 Skill의 단계·검증 방식만 요약했습니다. 원문 전체나 외부 프롬프트를 복제하지 않습니다. 출처가 명시되지 않았거나 적용 조건이 불분명한 노트는 검색 카드로 쓰지 않습니다.
+
+- 제목·출처 절 일치: 토큰당 5점
+- 태그 일치: 토큰당 4점
+- 검색어 일치: 토큰당 7점
+- 입력에 정확 구문 포함: 12점
+- 지침 본문 일치: 토큰당 1점
+
+점수는 관련도 정렬에만 사용합니다. 규범의 권위 점수가 아니며, 프롬프트에서는 국립국어원 규범을 공개 Skill 관찰보다 우선합니다. 같은 입력과 저장소에는 같은 결과가 나오도록 경로와 ID를 안정적으로 정렬합니다.
+
+검색된 카드는 모델에 제공된 후보이며, 모델이 특정 변경에 실제 적용했다는 뜻은 아닙니다. 사용자 Vault는 `--vault`를 지정한 사람이 신뢰한 로컬 입력으로 취급합니다. 동기화·공유받은 미검토 폴더를 지정하지 마세요. 카드 내용은 참고 자료 구획으로 감싸며 규칙 무시나 외부 행동을 요구하는 문장은 따르지 않도록 프롬프트에 명시합니다. 파일당 128 KiB, Markdown 1,000개, 합계 8 MiB, 폴더 깊이 8단계로 순회를 제한합니다.
+
+사용자가 추가한 Obsidian 저장소도 같은 카드 형식으로 검색할 수 있습니다.
+
+```bash
+kr-humanizer knowledge draft.txt --vault D:\\my-writing-vault --limit 6
+kr-humanizer rewrite draft.txt --engine codex --vault D:\\my-writing-vault --out proposal.json
+```
+
+내장 카드 목록과 연결 관계는 [윤문 지식 지도](obsidian-vault/00-윤문-지식-지도.md), 새 카드 형식은 [지식 카드 템플릿](obsidian-vault/templates/지식-카드.md)에서 확인할 수 있습니다. 기준 자료는 [국립국어원 한국어 어문 규범](https://www.korean.go.kr/kornorms/m/m_regltn.do), [상대 높임 설명](https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=27&pageIndex=1&qna_seq=332328), 국립국어원 공공언어·글쓰기 연구 자료입니다.
 
 ### 엔진별 실행 차이
 
@@ -263,10 +310,12 @@ flowchart TB
   Marketplace[Codex·Claude marketplace] --> Manifest[플러그인 manifest]
   Manifest --> SharedSkill[skills/humanize/SKILL.md]
   SharedSkill --> AnalyzeCmd[kr-humanizer analyze]
+  SharedSkill --> KnowledgeCmd[kr-humanizer knowledge]
   SharedSkill --> RewriteCmd[kr-humanizer rewrite]
   SharedSkill --> GuiCmd[kr-humanizer gui]
   SharedSkill --> CvCmd[kr-humanizer cv]
   AnalyzeCmd --> ReviewRule[진단을 먼저 제시]
+  KnowledgeCmd --> VaultRule[출처 있는 관련 카드 검색]
   RewriteCmd --> ReviewRule
   GuiCmd --> Approval[변경별 사용자 수락]
   CvCmd --> Synthetic[합성 평가 경계 표시]

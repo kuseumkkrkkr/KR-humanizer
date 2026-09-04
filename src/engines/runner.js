@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { buildRewritePrompt } from '../core/prompt.js';
+import { searchVault } from '../knowledge/vault.js';
 
 const rewriteSchemaPath = fileURLToPath(new URL('../../schemas/rewrite.schema.json', import.meta.url));
 const MAX_OUTPUT = 2 * 1024 * 1024;
@@ -54,15 +55,16 @@ function parseClaude(stdout) {
   return assertResult(outer);
 }
 
-export async function rewriteWithEngine({ engine = 'codex', text, tone, editMode = 'balanced', honorificLevel = 50, memories = [], timeoutMs, isolated = false }) {
-  const prompt = buildRewritePrompt({ text, tone, editMode, honorificLevel, memories });
+export async function rewriteWithEngine({ engine = 'codex', text, tone, editMode = 'balanced', honorificLevel = 50, memories = [], vaultPath, timeoutMs, isolated = false }) {
+  const knowledge = await searchVault({ text, editMode, honorificLevel, vaultPath });
+  const prompt = buildRewritePrompt({ text, tone, editMode, honorificLevel, memories, knowledge });
   if (engine === 'codex') {
-    return assertResult(await runCodexStructured({ prompt, schemaPath: rewriteSchemaPath, timeoutMs, isolated }));
+    return { ...assertResult(await runCodexStructured({ prompt, schemaPath: rewriteSchemaPath, timeoutMs, isolated })), knowledge };
   }
   if (engine === 'claude') {
     const schema = await readFile(rewriteSchemaPath, 'utf8');
     const { stdout } = await run('claude', ['-p', '--output-format', 'json', '--json-schema', schema, '--permission-mode', 'plan', '--no-session-persistence'], prompt, timeoutMs);
-    return parseClaude(stdout);
+    return { ...parseClaude(stdout), knowledge };
   }
   throw new Error(`지원하지 않는 엔진: ${engine}`);
 }
