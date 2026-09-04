@@ -3,7 +3,9 @@
 <p align="center"><strong>고친 문장을 먼저 보여줍니다.</strong><br>뜻은 지키고, 읽는 부담만 덜어내는 로컬 우선 한국어 윤문 도구</p>
 <p align="center"><a href="https://kuseumkkrkkr.github.io/KR-humanizer/">웹사이트</a> · <a href="https://kuseumkkrkkr.github.io/KR-humanizer/guide/">설치 가이드</a> · <a href="https://kuseumkkrkkr.github.io/KR-humanizer/knowledge/">윤문 지식 저장소</a> · <a href="https://github.com/kuseumkkrkkr/KR-humanizer/releases/latest">최신 릴리스</a></p>
 
-한국어 글을 더 자연스럽고 편하게 읽히도록 점검하고, 모든 변경을 사용자가 확인·수락하게 하는 로컬 우선 윤문 도구입니다. npm CLI, 로컬 GUI, Codex·Claude Code 플러그인으로 실행할 수 있습니다.
+KR-humanizer는 한국어 글을 더 자연스럽고 편안하게 읽도록 돕는 로컬 우선 윤문 도구입니다. 문단 구성과 오탈자를 먼저 점검하고 국립국어원의 근거 자료를 검색해, 글의 의미와 수치를 보존하면서 어색한 표현을 다듬습니다. 사용자는 바뀐 단어와 어순을 문장별로 비교한 뒤 원하는 수정만 수락할 수 있습니다. 별도의 모델 API 대신 로그인된 Codex 또는 Claude Code를 실행하며, npm CLI와 로컬 GUI, 각 도구에 맞는 플러그인으로 사용할 수 있습니다.
+
+> 이 설명문은 순수 AI로 작성 후 해당 툴로 윤문한 것입니다.
 
 > 이 도구는 AI 판별기 회피나 출처 위장을 보장하지 않습니다. `sanitize`는 비가시 Unicode, BOM, 제어문자처럼 실제로 확인 가능한 텍스트 이상만 보여 주고 정리합니다.
 

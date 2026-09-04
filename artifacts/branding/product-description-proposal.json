@@ -1,0 +1,233 @@
+{
+  "original": "KR-humanizer는 한국어 글을 더 자연스럽고 편안하게 읽을 수 있도록 돕는 로컬 우선 윤문 도구입니다. 문단 구성과 오탈자를 먼저 점검하고, 국립국어원 근거를 검색해 글의 의미와 수치를 보존하면서 어색한 표현을 다듬습니다. 사용자는 바뀐 단어와 어순을 문장별로 비교한 뒤 원하는 수정만 수락할 수 있습니다. 별도 모델 API 대신 로그인된 Codex 또는 Claude Code를 실행하며, npm CLI와 로컬 GUI, 각 도구용 플러그인으로 사용할 수 있습니다.\n",
+  "rewritten": "KR-humanizer는 한국어 글을 더 자연스럽고 편안하게 읽도록 돕는 로컬 우선 윤문 도구입니다. 문단 구성과 오탈자를 먼저 점검하고 국립국어원의 근거 자료를 검색해, 글의 의미와 수치를 보존하면서 어색한 표현을 다듬습니다. 사용자는 바뀐 단어와 어순을 문장별로 비교한 뒤 원하는 수정만 수락할 수 있습니다. 별도의 모델 API 대신 로그인된 Codex 또는 Claude Code를 실행하며, npm CLI와 로컬 GUI, 각 도구에 맞는 플러그인으로 사용할 수 있습니다.",
+  "originalSentences": [
+    "KR-humanizer는 한국어 글을 더 자연스럽고 편안하게 읽을 수 있도록 돕는 로컬 우선 윤문 도구입니다.",
+    "문단 구성과 오탈자를 먼저 점검하고, 국립국어원 근거를 검색해 글의 의미와 수치를 보존하면서 어색한 표현을 다듬습니다.",
+    "사용자는 바뀐 단어와 어순을 문장별로 비교한 뒤 원하는 수정만 수락할 수 있습니다.",
+    "별도 모델 API 대신 로그인된 Codex 또는 Claude Code를 실행하며, npm CLI와 로컬 GUI, 각 도구용 플러그인으로 사용할 수 있습니다."
+  ],
+  "rewrittenSentences": [
+    "KR-humanizer는 한국어 글을 더 자연스럽고 편안하게 읽도록 돕는 로컬 우선 윤문 도구입니다.",
+    "문단 구성과 오탈자를 먼저 점검하고 국립국어원의 근거 자료를 검색해, 글의 의미와 수치를 보존하면서 어색한 표현을 다듬습니다.",
+    "사용자는 바뀐 단어와 어순을 문장별로 비교한 뒤 원하는 수정만 수락할 수 있습니다.",
+    "별도의 모델 API 대신 로그인된 Codex 또는 Claude Code를 실행하며, npm CLI와 로컬 GUI, 각 도구에 맞는 플러그인으로 사용할 수 있습니다."
+  ],
+  "units": [
+    {
+      "id": "s1",
+      "index": 0,
+      "start": 0,
+      "end": 61,
+      "before": "KR-humanizer는 한국어 글을 더 자연스럽고 편안하게 읽을 수 있도록 돕는 로컬 우선 윤문 도구입니다.",
+      "after": "KR-humanizer는 한국어 글을 더 자연스럽고 편안하게 읽도록 돕는 로컬 우선 윤문 도구입니다.",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "KR-humanizer는 한국어 글을 더 자연스럽고 편안하게 "
+        },
+        {
+          "type": "remove",
+          "text": "읽을 수 있도록"
+        },
+        {
+          "type": "add",
+          "text": "읽도록"
+        },
+        {
+          "type": "same",
+          "text": " 돕는 로컬 우선 윤문 도구입니다."
+        }
+      ]
+    },
+    {
+      "id": "s2",
+      "index": 1,
+      "start": 62,
+      "end": 128,
+      "before": "문단 구성과 오탈자를 먼저 점검하고, 국립국어원 근거를 검색해 글의 의미와 수치를 보존하면서 어색한 표현을 다듬습니다.",
+      "after": "문단 구성과 오탈자를 먼저 점검하고 국립국어원의 근거 자료를 검색해, 글의 의미와 수치를 보존하면서 어색한 표현을 다듬습니다.",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "문단 구성과 오탈자를 먼저 점검하고"
+        },
+        {
+          "type": "remove",
+          "text": ","
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "국립국어원"
+        },
+        {
+          "type": "add",
+          "text": "국립국어원의"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "근거를"
+        },
+        {
+          "type": "add",
+          "text": "근거"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "add",
+          "text": "자료를 "
+        },
+        {
+          "type": "same",
+          "text": "검색해"
+        },
+        {
+          "type": "add",
+          "text": ","
+        },
+        {
+          "type": "same",
+          "text": " 글의 의미와 수치를 보존하면서 어색한 표현을 다듬습니다."
+        }
+      ]
+    },
+    {
+      "id": "s4",
+      "index": 3,
+      "start": 176,
+      "end": 263,
+      "before": "별도 모델 API 대신 로그인된 Codex 또는 Claude Code를 실행하며, npm CLI와 로컬 GUI, 각 도구용 플러그인으로 사용할 수 있습니다.",
+      "after": "별도의 모델 API 대신 로그인된 Codex 또는 Claude Code를 실행하며, npm CLI와 로컬 GUI, 각 도구에 맞는 플러그인으로 사용할 수 있습니다.",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "별도"
+        },
+        {
+          "type": "add",
+          "text": "별도의"
+        },
+        {
+          "type": "same",
+          "text": " 모델 API 대신 로그인된 Codex 또는 Claude Code를 실행하며, npm CLI와 로컬 GUI, 각 "
+        },
+        {
+          "type": "remove",
+          "text": "도구용"
+        },
+        {
+          "type": "add",
+          "text": "도구에"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "add",
+          "text": "맞는 "
+        },
+        {
+          "type": "same",
+          "text": "플러그인으로 사용할 수 있습니다."
+        }
+      ]
+    }
+  ],
+  "summary": "1개 문단과 4개 문장의 구조를 유지했습니다. 고유명사와 기능에 관한 주장은 그대로 두고, 조사·수식 관계와 일부 표현만 자연스럽게 다듬었습니다.",
+  "flow": {
+    "nodes": [
+      {
+        "id": "p1",
+        "label": "KR-humanizer의 목적, 윤문 과정, 선택적 수락 기능, 실행·사용 방식을 차례로 설명",
+        "role": "도구 소개"
+      }
+    ],
+    "edges": []
+  },
+  "knowledge": [
+    {
+      "id": "nikl-spacing-particle-dependent-noun",
+      "title": "조사와 의존 명사 띄어쓰기",
+      "kind": "norm",
+      "authority": "국립국어원",
+      "sourceUrl": "https://www.korean.go.kr/kornorms/m/m_regltn.do",
+      "sourceSection": "한글 맞춤법 제41항·제42항",
+      "path": "규범/띄어쓰기-조사와-의존명사.md",
+      "guidance": "조사는 앞말에 붙이고 의존 명사는 띄어 쓴다. `할수`는 `할 수`로, 체언 뒤 조사 `만큼·뿐`은 붙이고 관형형 뒤 의존 명사 `만큼·뿐`은 띄운다. 품사를 문맥으로 확정할 수 없으면 후보로만 제시한다.",
+      "score": 24
+    },
+    {
+      "id": "skill-humanize-korean-audit",
+      "title": "humanize-korean의 감사 기반 검증",
+      "kind": "skill-observation",
+      "authority": "community-skill",
+      "sourceUrl": "https://github.com/hashgraph-online/awesome-codex-plugins/blob/486ac208b3f40929c62a6954b5f58147b483a2f7/plugins/beefiker/superloopy/skills/humanize-korean/SKILL.md",
+      "sourceSection": "plugins/beefiker/superloopy/skills/humanize-korean/SKILL.md @ 486ac208",
+      "path": "skills/humanize-korean-감사기반-검증.md",
+      "guidance": "윤문 전 보호 대상인 숫자·날짜·단위·URL·코드·제품명·약어·인용을 식별한다. 결과에서 보호 대상이 모두 유지되는지 확인하고, 변경이 넓으면 문장별 의미 대조를 강화한다. 검증되지 않은 품질 등급이나 탐지기 통과율을 만들지 않는다.",
+      "score": 13
+    },
+    {
+      "id": "nikl-particle-roseo-rosseo",
+      "title": "로서와 로써",
+      "kind": "grammar",
+      "authority": "국립국어원",
+      "sourceUrl": "https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=216&pageIndex=1&qna_seq=335083",
+      "sourceSection": "온라인가나다 - 로써, 로서 문의",
+      "path": "규범/조사-로서와-로써.md",
+      "guidance": "지위·신분·자격이면 `로서`, 재료·수단·도구이면 `로써`를 쓴다. 앞말이 사람인지 여부만으로 고르지 말고 서술어와의 의미 관계를 확인한다. 두 해석이 모두 가능하면 단정 수정하지 않는다.",
+      "score": 12
+    },
+    {
+      "id": "skill-korean-polish-meaning-first",
+      "title": "korean-polish의 의미 복원 우선 원칙",
+      "kind": "skill-observation",
+      "authority": "community-skill",
+      "sourceUrl": "https://github.com/huskyhoochu/dotfiles/blob/e68af2c8c1c1ae0200217bdec1d312f02b67be26/claude/.claude/skills/korean-polish/SKILL.md",
+      "sourceSection": "claude/.claude/skills/korean-polish/SKILL.md @ e68af2c8",
+      "path": "skills/korean-polish-의미복원.md",
+      "guidance": "기술·작업 문서의 모호한 번역투나 은유적 서술어는 단어끼리 치환하지 않는다. 먼저 문장이 주장하는 사실, 행위 주체, 결과 방향을 확인하고 그 사실에 맞는 한국어 동사를 고른다. 뜻을 확정할 근거가 없으면 원문을 보존하고 위험을 보고한다.",
+      "score": 12
+    },
+    {
+      "id": "skill-text-humanize-korean-protected-scope",
+      "title": "text-humanize-korean의 보존 범위",
+      "kind": "skill-observation",
+      "authority": "community-skill",
+      "sourceUrl": "https://github.com/mols3131d/mols-agent-assets/blob/cae542f1dd4b80faa7ad9db164c7a5847e76b6b1/src/rulesync/.rulesync/skills/text-humanize-korean/SKILL.md",
+      "sourceSection": "text-humanize-korean/SKILL.md @ cae542f1",
+      "path": "skills/text-humanize-korean-보존범위.md",
+      "guidance": "윤문 전에 바뀌면 안 되는 데이터값, 고유 식별자, 문자 그대로 유지해야 할 구간을 체크리스트로 만든다. 결과에서는 누락뿐 아니라 부정 여부, 주장 강도, 의무 수준, 조건 범위, 인과 방향이 달라졌는지 대조하고 하나라도 표류한 제안은 폐기한다.",
+      "score": 7
+    },
+    {
+      "id": "nikl-subject-predicate-agreement",
+      "title": "주어와 서술어 호응",
+      "kind": "writing-guidance",
+      "authority": "국립국어원",
+      "sourceUrl": "https://www.korean.go.kr/common/download.do?c_file_name=4b822627-0996-4319-abe8-833b1248da4e.pdf&file_path=reportData",
+      "sourceSection": "행정문서 표현 개선 및 쉬운 공공언어 쓰기 지침 개발 - 문장 성분 간 호응",
+      "path": "규범/문장성분-주어와-서술어-호응.md",
+      "guidance": "각 문장의 핵심 서술어를 먼저 찾고 주어·목적어·부사어가 그 서술어와 의미상 호응하는지 확인한다. 주체가 빠져 책임 관계가 모호하면 원문 근거 안에서만 복원하고, 누구인지 확정할 수 없으면 질문 또는 후보로 남긴다.",
+      "score": 5
+    }
+  ]
+}
