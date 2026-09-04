@@ -9,7 +9,7 @@ import { runCv } from './benchmark/run.js';
 import { getEditModeInstruction, normalizeHonorificLevel } from './core/style.js';
 import { searchVault } from './knowledge/vault.js';
 
-const help = `KR-humanizer 0.6.0
+const help = `KR-humanizer 0.6.1
 
 사용법:
   kr-humanizer analyze <file|-> [--json]

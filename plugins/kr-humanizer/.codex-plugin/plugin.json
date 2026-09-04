@@ -1,6 +1,6 @@
 {
   "name": "kr-humanizer",
-  "version": "0.6.0+codex.20260904142923",
+  "version": "0.6.1+codex.20260904160653",
   "description": "Source-guided Korean writing review with explicit, user-approved changes",
   "author": {
     "name": "kuseumkkrkkr"

@@ -9,6 +9,8 @@ Use the tokens in `tokens/colors_and_type.css`. Preserve the warm paper canvas, 
 
 - Prioritize legible Korean prose and explicit review state over decoration.
 - Keep controls at least 44px tall on mobile.
+- Present sentence changes as Git-like unified hunks by default: red `-` source, green `+` proposal, with word-level emphasis and an optional split view.
+- Keep accept and reject as explicit per-hunk decisions; never infer acceptance from viewing a suggestion.
 - Use sentence case Korean labels and direct status messages.
 - Never imply that a rewrite is accepted before the writer selects and applies it.
 - Avoid gradients, emoji icons, excessive badges, and additional accent colors.

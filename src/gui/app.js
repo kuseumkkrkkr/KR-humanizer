@@ -3,7 +3,7 @@ const source = document.querySelector('#source');
 const status = document.querySelector('#status');
 let proposal = null;
 let reviewFilter = 'all';
-let reviewView = 'inline';
+let reviewView = 'unified';
 let appliedIds = new Set();
 
 const honorificLabels = {
@@ -77,23 +77,66 @@ function renderFlow(flow) {
   $('#flow').replaceChildren(...elements);
 }
 
+function diffLine(unit, side) {
+  const before = side === 'before';
+  const line = document.createElement('div');
+  line.className = `diff-line ${before ? 'removed-line' : 'added-line'}`;
+  const sign = document.createElement('span'); sign.className = 'diff-sign'; sign.textContent = before ? '−' : '+';
+  const number = document.createElement('span'); number.className = 'diff-line-number';
+  number.textContent = String((before ? unit.index : (unit.movedTo ?? unit.index)) + 1);
+  const content = document.createElement('div'); content.className = 'diff-line-content';
+  const allowed = before ? new Set(['same', 'remove']) : new Set(['same', 'add']);
+  unit.diff.filter((part) => allowed.has(part.type)).forEach((part) => {
+    const span = document.createElement('span');
+    span.className = part.type === 'same' ? 'same' : `word-${part.type}`;
+    span.textContent = part.text; content.append(span);
+  });
+  if (!content.childNodes.length) content.textContent = before ? '(원문 없음)' : '(삭제됨)';
+  line.append(sign, number, content);
+  return line;
+}
+
+function setItemDecision(item, decision, update = true) {
+  item.dataset.decision = decision;
+  const checkbox = item.querySelector('input[type="checkbox"]');
+  checkbox.checked = decision === 'accepted';
+  item.querySelector('[data-decision="accept"]').setAttribute('aria-pressed', String(decision === 'accepted'));
+  item.querySelector('[data-decision="reject"]').setAttribute('aria-pressed', String(decision === 'rejected'));
+  if (update) updateSelection();
+}
+
 function renderProposal(value) {
   proposal = value;
   reviewFilter = 'all';
-  reviewView = 'inline';
+  reviewView = 'unified';
   appliedIds = new Set();
   show('#review');
   $('#summary').textContent = value.summary ?? `${value.units.length}개 변경`;
   const elements = value.units.map((unit) => {
     const item = document.createElement('article'); item.className = 'change'; item.dataset.kind = unit.kind; item.dataset.id = unit.id;
+    item.dataset.decision = 'pending';
     const head = document.createElement('div'); head.className = 'change-head';
-    const label = document.createElement('label');
-    const check = document.createElement('input'); check.type = 'checkbox'; check.value = unit.id; check.addEventListener('change', updateSelection);
+    const title = document.createElement('div'); title.className = 'hunk-title';
+    const label = document.createElement('label'); label.className = 'change-select';
+    const check = document.createElement('input'); check.type = 'checkbox'; check.value = unit.id;
     label.append(check, ` 문장 ${unit.index + 1}`);
-    const tag = document.createElement('span'); tag.className = `tag ${unit.kind}`; tag.textContent = unit.kind === 'order' ? `어순 변경 → ${unit.movedTo + 1}` : unit.kind;
-    head.append(label, tag);
-    const diff = document.createElement('div'); diff.className = 'diff inline-comparison';
-    unit.diff.forEach((part) => { const span = document.createElement('span'); span.className = part.type; span.textContent = part.text; diff.append(span); });
+    const kindLabels = { rewrite: '문장 수정', insert: '문장 추가', delete: '문장 삭제' };
+    const tag = document.createElement('span'); tag.className = `tag ${unit.kind}`; tag.textContent = unit.kind === 'order' ? `↕ 어순 ${unit.index + 1} → ${unit.movedTo + 1}` : (kindLabels[unit.kind] ?? unit.kind);
+    title.append(label, tag);
+    const actions = document.createElement('div'); actions.className = 'hunk-actions';
+    const accept = document.createElement('button'); accept.type = 'button'; accept.className = 'decision-button accept-change'; accept.dataset.decision = 'accept'; accept.setAttribute('aria-pressed', 'false'); accept.setAttribute('aria-label', `문장 ${unit.index + 1} 변경 수락`); accept.textContent = '수락';
+    const reject = document.createElement('button'); reject.type = 'button'; reject.className = 'decision-button reject-change'; reject.dataset.decision = 'reject'; reject.setAttribute('aria-pressed', 'false'); reject.setAttribute('aria-label', `문장 ${unit.index + 1} 변경 거절`); reject.textContent = '거절';
+    actions.append(accept, reject); head.append(title, actions);
+    check.addEventListener('change', () => setItemDecision(item, check.checked ? 'accepted' : 'pending'));
+    accept.addEventListener('click', () => setItemDecision(item, 'accepted'));
+    reject.addEventListener('click', () => setItemDecision(item, 'rejected'));
+    const diff = document.createElement('div'); diff.className = 'unified-comparison';
+    if (unit.before) diff.append(diffLine(unit, 'before'));
+    if (unit.kind === 'order') {
+      const move = document.createElement('div'); move.className = 'move-note'; move.textContent = `↕ 문장 ${unit.index + 1}에서 ${unit.movedTo + 1}(으)로 이동`;
+      diff.append(move);
+    }
+    if (unit.after) diff.append(diffLine(unit, 'after'));
     const split = document.createElement('div'); split.className = 'split-comparison';
     const before = document.createElement('section'); const beforeLabel = document.createElement('strong'); beforeLabel.textContent = '원문';
     const beforeText = document.createElement('p'); beforeText.textContent = unit.before || '(없음)'; before.append(beforeLabel, beforeText);
@@ -137,12 +180,14 @@ function updateReviewControls() {
 function updateSelection() {
   const count = selectedIds().length;
   const total = proposal?.units.length ?? 0;
-  $('#selection-count').textContent = `선택 ${count}/${total}`;
+  const rejected = document.querySelectorAll('#changes .change[data-decision="rejected"]').length;
+  const pending = Math.max(0, total - count - rejected);
+  $('#selection-count').textContent = `수락 ${count}/${total}`;
   $('#accept').disabled = count === 0;
-  $('#accept').textContent = count ? `선택한 ${count}개 변경 수락` : '변경을 선택하세요';
+  $('#accept').textContent = count ? `수락한 ${count}개 변경 적용` : '수락할 변경이 없습니다';
   if (proposal) {
     const applied = appliedIds.size ? `확정 결과에 ${appliedIds.size}개 반영됨 · ` : '';
-    $('#review-state').textContent = count ? `${applied}${total}개 제안 중 ${count}개를 선택했습니다.` : applied ? `${applied}현재 선택 0개` : '변경을 검토한 뒤 수락할 문장을 선택하세요.';
+    $('#review-state').textContent = `${applied}수락 ${count} · 거절 ${rejected} · 미결정 ${pending}`;
   }
 }
 
@@ -153,11 +198,11 @@ document.querySelectorAll('.view-button').forEach((button) => button.addEventLis
   reviewView = button.dataset.view; updateReviewControls();
 }));
 $('#select-visible').addEventListener('click', () => {
-  document.querySelectorAll('#changes .change:not(.filtered-out) input[type="checkbox"]').forEach((item) => { item.checked = true; });
+  document.querySelectorAll('#changes .change:not(.filtered-out)').forEach((item) => setItemDecision(item, 'accepted', false));
   updateSelection();
 });
 $('#clear-selection').addEventListener('click', () => {
-  document.querySelectorAll('#changes input[type="checkbox"]').forEach((item) => { item.checked = false; });
+  document.querySelectorAll('#changes .change').forEach((item) => setItemDecision(item, 'pending', false));
   updateSelection();
 });
 

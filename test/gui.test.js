@@ -17,8 +17,9 @@ test('review UX exposes filters, comparison modes, and bulk selection', async ()
   }
   assert.match(html, /data-filter="all"/);
   assert.match(html, /data-filter="order"/);
-  assert.match(html, /data-view="inline"/);
+  assert.match(html, /data-view="unified"/);
   assert.match(html, /data-view="split"/);
+  assert.match(html, />통합 Diff</);
   assert.match(html, /id="accept" class="primary" disabled/);
   assert.match(html, /id="edit-mode"/);
   assert.match(html, /id="honorific" type="range" min="0" max="100" step="25" value="50"/);
@@ -26,9 +27,18 @@ test('review UX exposes filters, comparison modes, and bulk selection', async ()
   assert.match(app, /change:not\(\.filtered-out\)/);
   assert.match(app, /#accept'\)\.disabled = count === 0/);
   assert.match(app, /classList\.toggle\('applied'/);
+  assert.match(app, /function diffLine\(unit, side\)/);
+  assert.match(app, /dataset\.decision = 'accept'/);
+  assert.match(app, /dataset\.decision = 'reject'/);
+  assert.match(app, /setItemDecision\(item, 'rejected'\)/);
   assert.match(app, /honorificLevel: Number\(\$\('#honorific'\)\.value\)/);
   assert.match(app, /setAttribute\('aria-valuetext'/);
   assert.match(css, /#changes\[data-view="split"\]/);
+  assert.match(css, /\.diff-line/);
+  assert.match(css, /\.word-remove/);
+  assert.match(css, /\.word-add/);
+  assert.match(css, /\.editor-panel,\.result-panel\{min-width:0/);
+  assert.match(css, /\.selection-tools \.text-button,#copy,\.change-select\{min-height:44px/);
   assert.match(css, /\.writing-settings/);
   assert.match(css, /min-height:44px/);
 });

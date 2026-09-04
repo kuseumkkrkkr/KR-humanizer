@@ -61,17 +61,17 @@
           <button class="filter-button" data-filter="structural" aria-pressed="false">추가·삭제 <span>0</span></button>
         </div>
         <div class="view-group" role="group" aria-label="비교 보기 방식">
-          <button class="view-button active" data-view="inline" aria-pressed="true">변경 강조</button>
+          <button class="view-button active" data-view="unified" aria-pressed="true">통합 Diff</button>
           <button class="view-button" data-view="split" aria-pressed="false">전후 나란히</button>
         </div>
       </div>
       <div class="selection-tools">
-        <button id="select-visible" class="text-button">보이는 항목 전체 선택</button>
-        <button id="clear-selection" class="text-button">선택 해제</button>
-        <span id="review-state" role="status" aria-live="polite">변경을 검토한 뒤 수락할 문장을 선택하세요.</span>
+        <button id="select-visible" class="text-button">보이는 변경 모두 수락</button>
+        <button id="clear-selection" class="text-button">결정 초기화</button>
+        <span id="review-state" role="status" aria-live="polite">각 변경을 수락하거나 거절하세요.</span>
       </div>
       <div id="changes" class="changes"></div>
-      <div class="accept-bar"><span id="selection-count">선택 0/0</span><button id="accept" class="primary" disabled>변경을 선택하세요</button></div>
+      <div class="accept-bar"><span id="selection-count">수락 0/0</span><button id="accept" class="primary" disabled>수락할 변경이 없습니다</button></div>
     </section>
 
     <section id="flow-section" class="result-panel hidden">

@@ -1,6 +1,6 @@
 {
   "name": "kr-humanizer",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Local-first Korean writing review and humanization CLI with Codex and Claude Code adapters",
   "type": "module",
   "bin": {"kr-humanizer": "./bin/kr-humanizer.js"},
