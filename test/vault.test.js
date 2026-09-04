@@ -7,7 +7,7 @@ import { buildKnowledgeContext, loadVault, parseKnowledgeNote, searchVault } fro
 
 test('Obsidian vault loads only retrievable knowledge cards with unique ids', async () => {
   const notes = await loadVault();
-  assert.equal(notes.length, 14);
+  assert.equal(notes.length, 25);
   assert.equal(new Set(notes.map((note) => note.metadata.id)).size, notes.length);
   for (const note of notes) {
     assert.ok(note.metadata.source_url);
@@ -16,7 +16,21 @@ test('Obsidian vault loads only retrievable knowledge cards with unique ids', as
   }
 });
 
-test('vault search retrieves applicable Korean norms in the default top six deterministically', async () => {
+test('exact trigger terms outrank broad thematic matches and expose the reason', async () => {
+  const matches = await searchVault({ text: '이 문장은 몇일 뒤면 금새 잊혀질 수 있다.', editMode: 'strict', limit: 12 });
+  assert.deepEqual(new Set(matches.slice(0, 2).map((match) => match.id)), new Set(['nikl-spelling-myeochil', 'nikl-lexicon-geumse']));
+  assert.ok(matches.find((match) => match.id === 'nikl-spelling-myeochil')?.matchedTerms.includes('몇일'));
+  assert.ok(matches.find((match) => match.id === 'nikl-lexicon-geumse')?.matchedTerms.includes('금새'));
+});
+
+test('context-sensitive cards keep application conditions and boundaries', async () => {
+  const matches = await searchVault({ text: '어떡해 공부해야 할지 모르겠다.', limit: 12 });
+  const match = matches.find((item) => item.id === 'nikl-expression-eotteoke-eotteokhae');
+  assert.match(match.appliesWhen, /뒤에 다른 서술어/);
+  assert.match(buildKnowledgeContext([match]), /경계:/);
+});
+
+test('vault search retrieves applicable Korean norms in the default top eight deterministically', async () => {
   const options = { text: '이 역할로써 할수 있다.', editMode: 'strict', honorificLevel: 100 };
   const first = await searchVault(options);
   const second = await searchVault(options);

@@ -1,7 +1,7 @@
 {
   "name": "kr-humanizer",
-  "version": "0.8.1",
-  "description": "Local-first Korean writing review with Codex Spark sentence completion and Codex/Claude adapters",
+  "version": "0.9.0",
+  "description": "Source-grounded Korean proofreading and rewriting with an Obsidian rule vault and Codex/Claude adapters",
   "type": "module",
   "bin": {"kr-humanizer": "./bin/kr-humanizer.js"},
   "scripts": {

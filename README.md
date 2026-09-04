@@ -238,10 +238,10 @@ sequenceDiagram
   UI->>A: 문단·오탈자·비가시 문자 점검
   A-->>UI: 통계, 발견 후보, 기본 의미 흐름
   U->>UI: 윤문 제안 요청
-  UI->>M: 원문 앞 500자로 최대 6개 검색
+  UI->>M: 원문 앞 500자로 최대 8개 검색
   M-->>P: 이전 수락 성향
   UI->>K: 원문 + 윤문 방식 + 높임 단계
-  K-->>P: 관련 카드 최대 6개 + 출처
+  K-->>P: 관련 카드 최대 8개 + 출처
   P->>R: 활성 그래프 + 설명률 + 보존 규칙 + 문체 + 지식 + 메모리 + 원문
   R->>E: 셸 문자열이 아닌 인자 배열로 실행
   E-->>R: rewrite.schema.json 구조의 JSON
@@ -272,7 +272,7 @@ sequenceDiagram
 
 ## Obsidian 윤문 지식 저장소
 
-`obsidian-vault/`는 Obsidian에서 그대로 열 수 있는 Markdown 폴더이며, Obsidian 자체는 실행 필수 조건이 아닙니다. 검색기는 플러그인 API나 임베딩 서버 없이 `.md` 파일을 직접 읽습니다. 기본 카드 14개는 국립국어원 규범·글쓰기 자료 9개와 공개 한국어 윤문 Skill의 작업 방식에 대한 관찰 5개로 나뉩니다.
+`obsidian-vault/`는 Obsidian에서 그대로 열 수 있는 Markdown 폴더이며, Obsidian 자체는 실행 필수 조건이 아닙니다. 검색기는 플러그인 API나 임베딩 서버 없이 `.md` 파일을 직접 읽습니다. 기본 카드 25개는 국립국어원 규범·글쓰기 자료 20개와 공개 한국어 윤문 Skill의 작업 방식에 대한 관찰 5개로 나뉩니다.
 
 ```mermaid
 flowchart LR
@@ -280,12 +280,12 @@ flowchart LR
   Query --> Scan[Markdown frontmatter 및 프롬프트 지침 읽기]
   Scan --> Filter{retrieval true와 필수 필드}
   Filter --> Score[제목·태그·검색어·정확 구문 점수]
-  Score --> Top[상위 6개 / 최대 6000자]
+  Score --> Top[상위 8개 / 최대 6000자]
   Top --> Prompt[Codex·Claude 윤문 프롬프트]
   Prompt --> Proposal[검색 후보 ID가 첨부된 변경 제안]
 ```
 
-각 카드는 `id`, `kind`, `authority`, `source_url`, `source_section`, `tags`, `retrieval_terms`와 `프롬프트 지침`을 가집니다. 이 필드 중 하나라도 없으면 검색에서 제외합니다. `규범/` 카드는 국립국어원의 해당 조항이나 자료를 짧게 재구성했고, `skills/` 카드는 공개 Skill의 단계와 검증 방식만 요약했습니다. 원문 전체나 외부 프롬프트는 복제하지 않습니다. 출처가 명시되지 않았거나 적용 조건이 불분명한 노트는 검색 카드로 사용하지 않습니다.
+각 카드는 `id`, `kind`, `authority`, `source_url`, `source_section`, `tags`, `retrieval_terms`와 `프롬프트 지침`을 가집니다. 정통 규범 카드는 `적용 조건`, `예외와 경계`, 선택적인 `trigger_terms`도 둡니다. 입력에 정확한 오표기나 특징 구문이 있으면 `trigger_terms`가 넓은 주제 일치보다 높은 점수를 받으며, 검색 결과에는 일치한 구문이 함께 표시됩니다. `규범/` 카드는 국립국어원의 해당 조항이나 자료를 짧게 재구성했고, `skills/` 카드는 공개 Skill의 단계와 검증 방식만 요약했습니다. 원문 전체나 외부 프롬프트는 복제하지 않습니다. 출처가 명시되지 않았거나 적용 조건이 불분명한 노트는 검색 카드로 사용하지 않습니다.
 
 - 제목·출처 절 일치: 토큰당 5점
 - 태그 일치: 토큰당 4점

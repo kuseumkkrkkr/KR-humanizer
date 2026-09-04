@@ -1,6 +1,11 @@
 [
   {"id":"typo-doeda","kind":"typo","pattern":"되요","replacement":"돼요","message":"'되어요'의 준말은 '돼요'입니다.","source":"korean-rules","confidence":0.99},
   {"id":"typo-oetteoke","kind":"typo","pattern":"어떻해","replacement":"어떻게","message":"방법을 묻는 말은 '어떻게'입니다.","source":"korean-rules","confidence":0.99},
+  {"id":"typo-dwaet","kind":"typo","pattern":"됬","replacement":"됐","message":"'되었'의 준말은 '됐'입니다.","source":"nikl-common-spelling-qna","confidence":0.99},
+  {"id":"typo-doem","kind":"typo","pattern":"됌","replacement":"됨","message":"'되-'에 명사형 어미 '-ㅁ'이 붙으면 '됨'입니다.","source":"nikl-doem-qna","confidence":0.99},
+  {"id":"typo-myeochil","kind":"typo","pattern":"몇일","replacement":"며칠","message":"날짜나 기간을 나타내는 말은 '며칠'로 적습니다.","source":"nikl-common-spelling-qna","confidence":0.99},
+  {"id":"typo-wenji","kind":"typo","pattern":"웬지","replacement":"왠지","message":"'왜인지'가 준 부사는 '왠지'입니다.","source":"nikl-wen-waen-qna","confidence":0.99},
+  {"id":"typo-dwaerago","kind":"typo","pattern":"돼라고","replacement":"되라고","message":"이 자리에는 '되-'에 '-라고'가 붙은 '되라고'를 씁니다.","source":"nikl-common-spelling-qna","confidence":0.99},
   {"id":"spacing-halsu","kind":"spacing","pattern":"할수 있다","replacement":"할 수 있다","message":"의존 명사 '수'는 띄어 씁니다.","source":"korean-rules","confidence":0.98},
   {"id":"spacing-doelsu","kind":"spacing","pattern":"될수 있다","replacement":"될 수 있다","message":"의존 명사 '수'는 띄어 씁니다.","source":"korean-rules","confidence":0.98},
   {"id":"style-through","kind":"style","pattern":"을 통해","replacement":null,"message":"'통해'가 반복되면 구체적인 동작으로 바꿀 수 있습니다.","source":"korean-writing-corpus-research","confidence":0.55,"regex":"[을를]\\s+통해"},

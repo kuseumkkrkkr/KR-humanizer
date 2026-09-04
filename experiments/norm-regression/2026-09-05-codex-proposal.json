@@ -1,0 +1,442 @@
+{
+  "original": "이번 사업은 몇일 뒤면 시작되며 준비가 금새 완료될 것으로 예상됬습니다. 담당자는 신청이 안됌이라고 안내했고, 시민들은 웬지 어떡해 신청해야 하는지 알기 어렵다고 말했습니다.\n\n사업의 목적은 지역 상권 활성화와 시민의 참여를 높이는 것입니다. 시는 설명회를 개최하고 신청 절차와 지원 조건, 선정 뒤의 일정을 한 문장으로 모두 안내하고자 하오니 참가를 원하시는 분은 금요일까지 서류를 제출해 주시기 바랍니다.\n",
+  "rewritten": "이번 사업은 며칠 뒤에 시작되며, 준비도 금세 완료될 것으로 예상됐어요. 담당자는 신청이 안 된다고 안내했고, 시민들은 왠지 어떻게 신청해야 하는지 알기 어렵다고 말했어요.\n\n사업의 목적은 지역 상권을 활성화하고 시민의 참여를 높이는 것이에요. 시는 설명회를 개최해 신청 절차와 지원 조건, 선정 뒤의 일정을 한 문장으로 모두 안내하려고 해요. 참가를 원하시는 분은 금요일까지 서류를 제출해 주세요.",
+  "originalSentences": [
+    "이번 사업은 몇일 뒤면 시작되며 준비가 금새 완료될 것으로 예상됬습니다.",
+    "담당자는 신청이 안됌이라고 안내했고, 시민들은 웬지 어떡해 신청해야 하는지 알기 어렵다고 말했습니다.",
+    "사업의 목적은 지역 상권 활성화와 시민의 참여를 높이는 것입니다.",
+    "시는 설명회를 개최하고 신청 절차와 지원 조건, 선정 뒤의 일정을 한 문장으로 모두 안내하고자 하오니 참가를 원하시는 분은 금요일까지 서류를 제출해 주시기 바랍니다."
+  ],
+  "rewrittenSentences": [
+    "이번 사업은 며칠 뒤에 시작되며, 준비도 금세 완료될 것으로 예상됐어요.",
+    "담당자는 신청이 안 된다고 안내했고, 시민들은 왠지 어떻게 신청해야 하는지 알기 어렵다고 말했어요.",
+    "사업의 목적은 지역 상권을 활성화하고 시민의 참여를 높이는 것이에요.",
+    "시는 설명회를 개최해 신청 절차와 지원 조건, 선정 뒤의 일정을 한 문장으로 모두 안내하려고 해요.",
+    "참가를 원하시는 분은 금요일까지 서류를 제출해 주세요."
+  ],
+  "units": [
+    {
+      "id": "s1",
+      "index": 0,
+      "start": 0,
+      "end": 40,
+      "before": "이번 사업은 몇일 뒤면 시작되며 준비가 금새 완료될 것으로 예상됬습니다.",
+      "after": "이번 사업은 며칠 뒤에 시작되며, 준비도 금세 완료될 것으로 예상됐어요.",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "이번 사업은 "
+        },
+        {
+          "type": "remove",
+          "text": "몇일"
+        },
+        {
+          "type": "add",
+          "text": "며칠"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "뒤면"
+        },
+        {
+          "type": "add",
+          "text": "뒤에"
+        },
+        {
+          "type": "same",
+          "text": " 시작되며"
+        },
+        {
+          "type": "add",
+          "text": ","
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "준비가"
+        },
+        {
+          "type": "add",
+          "text": "준비도"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "금새"
+        },
+        {
+          "type": "add",
+          "text": "금세"
+        },
+        {
+          "type": "same",
+          "text": " 완료될 것으로 "
+        },
+        {
+          "type": "remove",
+          "text": "예상됬습니다"
+        },
+        {
+          "type": "add",
+          "text": "예상됐어요"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s2",
+      "index": 1,
+      "start": 41,
+      "end": 97,
+      "before": "담당자는 신청이 안됌이라고 안내했고, 시민들은 웬지 어떡해 신청해야 하는지 알기 어렵다고 말했습니다.",
+      "after": "담당자는 신청이 안 된다고 안내했고, 시민들은 왠지 어떻게 신청해야 하는지 알기 어렵다고 말했어요.",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "담당자는 신청이 "
+        },
+        {
+          "type": "remove",
+          "text": "안됌이라고"
+        },
+        {
+          "type": "add",
+          "text": "안"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "add",
+          "text": "된다고 "
+        },
+        {
+          "type": "same",
+          "text": "안내했고, 시민들은 "
+        },
+        {
+          "type": "remove",
+          "text": "웬지"
+        },
+        {
+          "type": "add",
+          "text": "왠지"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "어떡해"
+        },
+        {
+          "type": "add",
+          "text": "어떻게"
+        },
+        {
+          "type": "same",
+          "text": " 신청해야 하는지 알기 어렵다고 "
+        },
+        {
+          "type": "remove",
+          "text": "말했습니다"
+        },
+        {
+          "type": "add",
+          "text": "말했어요"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s3",
+      "index": 2,
+      "start": 99,
+      "end": 135,
+      "before": "사업의 목적은 지역 상권 활성화와 시민의 참여를 높이는 것입니다.",
+      "after": "사업의 목적은 지역 상권을 활성화하고 시민의 참여를 높이는 것이에요.",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "사업의 목적은 지역 "
+        },
+        {
+          "type": "remove",
+          "text": "상권"
+        },
+        {
+          "type": "add",
+          "text": "상권을"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "활성화와"
+        },
+        {
+          "type": "add",
+          "text": "활성화하고"
+        },
+        {
+          "type": "same",
+          "text": " 시민의 참여를 높이는 "
+        },
+        {
+          "type": "remove",
+          "text": "것입니다"
+        },
+        {
+          "type": "add",
+          "text": "것이에요"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s4",
+      "index": 3,
+      "start": 136,
+      "end": 228,
+      "before": "시는 설명회를 개최하고 신청 절차와 지원 조건, 선정 뒤의 일정을 한 문장으로 모두 안내하고자 하오니 참가를 원하시는 분은 금요일까지 서류를 제출해 주시기 바랍니다.",
+      "after": "시는 설명회를 개최해 신청 절차와 지원 조건, 선정 뒤의 일정을 한 문장으로 모두 안내하려고 해요.",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "시는 설명회를 "
+        },
+        {
+          "type": "remove",
+          "text": "개최하고"
+        },
+        {
+          "type": "add",
+          "text": "개최해"
+        },
+        {
+          "type": "same",
+          "text": " 신청 절차와 지원 조건, 선정 뒤의 일정을 한 문장으로 모두 "
+        },
+        {
+          "type": "remove",
+          "text": "안내하고자 하오니 참가를 원하시는 분은 금요일까지 서류를 제출해 주시기"
+        },
+        {
+          "type": "add",
+          "text": "안내하려고"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "바랍니다"
+        },
+        {
+          "type": "add",
+          "text": "해요"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s5",
+      "index": 4,
+      "start": 229,
+      "end": 229,
+      "before": "",
+      "after": "참가를 원하시는 분은 금요일까지 서류를 제출해 주세요.",
+      "kind": "insert",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "add",
+          "text": "참가를 원하시는 분은 금요일까지 서류를 제출해 주세요."
+        }
+      ]
+    }
+  ],
+  "summary": "맞춤법 오류를 바로잡고 문체를 해요체로 통일했어요. 긴 안내 문장은 의미 단위로 나누되 사업 목적, 안내 범위, 제출 기한은 그대로 유지했어요.",
+  "flow": {
+    "nodes": [
+      {
+        "id": "p1",
+        "label": "사업 시작과 준비 전망, 신청 안내의 혼선",
+        "role": "현황 및 문제 제시"
+      },
+      {
+        "id": "p2",
+        "label": "사업 목적과 설명회 안내, 서류 제출 기한",
+        "role": "목적 및 참여 안내"
+      }
+    ],
+    "edges": [
+      {
+        "from": "p1",
+        "to": "p2",
+        "relation": "신청 과정의 혼선에 이어 사업 목적과 참여 방법을 안내함"
+      }
+    ]
+  },
+  "knowledge": [
+    {
+      "id": "nikl-lexicon-geumse",
+      "title": "금세와 금새",
+      "kind": "norm",
+      "authority": "국립국어원",
+      "sourceUrl": "https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=216&pageIndex=1&qna_seq=305617",
+      "sourceSection": "온라인가나다 - 금세와 금새",
+      "path": "규범/어휘-금세와-금새.md",
+      "guidance": "`금새 끝났다`처럼 곧바로라는 뜻이면 `금세`로 제안한다. 가격의 정도를 뜻하는 명사 `금새`는 보존한다.",
+      "appliesWhen": "시간이 짧게 걸렸다는 의미라면 `금세`, 가격의 정도를 가리키면 `금새`인지 확인한다.",
+      "boundary": "두 형태가 모두 사전에 있는 말이므로 문맥 확인 없이 전역 치환하지 않는다.",
+      "matchedTerms": [
+        "금새"
+      ],
+      "score": 55
+    },
+    {
+      "id": "nikl-sentence-information-splitting",
+      "title": "긴 문장과 정보 분할",
+      "kind": "writing-guidance",
+      "authority": "국립국어원",
+      "sourceUrl": "https://korean.go.kr/common/download.do?c_file_name=f595077c-82b4-42a5-8ab6-0c31fef547ff.pdf&file_path=etcData",
+      "sourceSection": "개정판 한눈에 알아보는 공공언어 바로 쓰기 11쪽 - 지나치게 긴 문장 삼가기",
+      "path": "규범/문장-긴문장과-정보분할.md",
+      "guidance": "핵심 사실과 독자가 해야 할 행동을 분리하되, 원문의 인과·조건·범위를 유지한다. 문장 길이 숫자만으로 자르지 말고 의미 단위에서 나눈다.",
+      "appliesWhen": "일시·목적·대상·행동·기한 등 서로 다른 정보가 한 문장에 이어지고 독자가 다시 읽어야 할 때 적용한다.",
+      "boundary": "법률 문장, 정의문, 목록 도입문처럼 한 문장 구조가 기능적인 경우는 임의 분할하지 않는다.",
+      "matchedTerms": [
+        "하오니",
+        "참가를 원하시는 분"
+      ],
+      "score": 54
+    },
+    {
+      "id": "nikl-lexicon-waenji-wen",
+      "title": "왠지와 웬",
+      "kind": "norm",
+      "authority": "국립국어원",
+      "sourceUrl": "https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=216&pageIndex=1&qna_seq=326371",
+      "sourceSection": "온라인가나다 - 웬/왠 맞춤법",
+      "path": "규범/어휘-왠지와-웬.md",
+      "guidance": "`웬지`는 `왠지`로, `왠 말`은 `웬 말`로 제안한다. `웬일`, `웬만하다`의 붙임도 보존한다.",
+      "appliesWhen": "이유를 뚜렷이 모르는 뜻이면 `왠지`, 뒤 명사를 꾸며 `어찌 된`의 뜻이면 `웬`인지 확인한다.",
+      "boundary": "고유 명칭과 인용문은 제외한다. `왠지` 외의 `왠`을 기계적으로 모두 `웬`으로 바꾸기 전에 문맥을 확인한다.",
+      "matchedTerms": [
+        "웬지"
+      ],
+      "score": 49
+    },
+    {
+      "id": "nikl-spelling-myeochil",
+      "title": "며칠의 표기",
+      "kind": "norm",
+      "authority": "국립국어원",
+      "sourceUrl": "https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=216&qna_seq=317387",
+      "sourceSection": "온라인가나다 답변 및 덧붙임 2 - 한글 맞춤법 제27항",
+      "path": "규범/맞춤법-며칠.md",
+      "guidance": "날짜 수나 기간을 뜻하는 `몇일`은 `며칠`로 제안한다. 월과 일을 각각 묻는 `몇 월 며칠`도 같은 표기를 쓴다.",
+      "appliesWhen": "며칠 동안, 며칠 뒤처럼 날짜 수나 기간을 나타내는 문맥에 적용한다.",
+      "boundary": "숫자나 식별자의 일부, 인용된 오표기는 자동으로 바꾸지 않는다.",
+      "matchedTerms": [
+        "몇일"
+      ],
+      "score": 49
+    },
+    {
+      "id": "nikl-translationese-e-itta",
+      "title": "목적·목표와 에 있다 구성",
+      "kind": "writing-guidance",
+      "authority": "국립국어원",
+      "sourceUrl": "https://korean.go.kr/common/download.do?c_file_name=f595077c-82b4-42a5-8ab6-0c31fef547ff.pdf&file_path=etcData",
+      "sourceSection": "개정판 한눈에 알아보는 공공언어 바로 쓰기 13쪽 - 일본어 번역 투 삼가기",
+      "path": "규범/번역투-에-있다.md",
+      "guidance": "`목적은 ~하는 데 있다`나 `목표는 ~에 있다`를 새로 만들지 않는다. 뜻이 유지되면 `목적은 ~하는 것이다` 또는 구체적인 서술어로 직접 쓴다.",
+      "appliesWhen": "`목적은`, `목표는` 뒤에서 핵심 내용을 `~에 있다`로 명사화해 서술한 문장에 적용한다.",
+      "boundary": "실제 위치나 존재를 뜻하는 `에 있다`는 바꾸지 않는다. 원문의 의미 강도와 문체를 먼저 보존한다.",
+      "matchedTerms": [
+        "목적은"
+      ],
+      "score": 49
+    },
+    {
+      "id": "nikl-public-language-clarity",
+      "title": "공공언어의 명료성과 행위 주체",
+      "kind": "writing-guidance",
+      "authority": "국립국어원",
+      "sourceUrl": "https://www.korean.go.kr/common/download.do?c_file_name=4b822627-0996-4319-abe8-833b1248da4e.pdf&file_path=reportData",
+      "sourceSection": "행정문서 표현 개선 및 쉬운 공공언어 쓰기 지침 개발",
+      "path": "규범/공공언어-명료성과-능동표현.md",
+      "guidance": "공공·행정 문맥에서는 누가 무엇을 하는지, 대상과 조건이 무엇인지 문장 안에서 확인한다. 긴 명사열은 의미를 보존하며 서술 구조로 풀고, 행위 주체가 원문에 있을 때만 능동 표현으로 명확히 한다.",
+      "appliesWhen": "",
+      "boundary": "법적·행정적 용어를 쉬운 말로 바꾸면서 효력이나 범위를 달리하지 않는다. 정의된 용어는 보존한다.",
+      "matchedTerms": [],
+      "score": 32
+    },
+    {
+      "id": "nikl-expression-eotteoke-eotteokhae",
+      "title": "어떻게와 어떡해",
+      "kind": "norm",
+      "authority": "국립국어원",
+      "sourceUrl": "https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=216&qna_seq=317387",
+      "sourceSection": "온라인가나다 답변 및 덧붙임 8",
+      "path": "규범/표현-어떻게와-어떡해.md",
+      "guidance": "`어떡해 공부하다`처럼 뒤 서술어를 꾸미는 자리는 `어떻게`로 제안한다. `이제 어떡해`처럼 `어떻게 해`로 풀리는 종결 표현은 유지한다.",
+      "appliesWhen": "뒤에 다른 서술어가 이어져 방법을 묻는다면 `어떻게`를 검토한다. 그 표현 자체가 서술어 구실을 하면 `어떡해`가 가능하다.",
+      "boundary": "감탄이나 독립 발화에서는 생략된 성분을 고려한다. 단순 문자열 치환을 하지 않는다.",
+      "matchedTerms": [],
+      "score": 31
+    },
+    {
+      "id": "skill-text-humanize-korean-protected-scope",
+      "title": "text-humanize-korean의 보존 범위",
+      "kind": "skill-observation",
+      "authority": "community-skill",
+      "sourceUrl": "https://github.com/mols3131d/mols-agent-assets/blob/cae542f1dd4b80faa7ad9db164c7a5847e76b6b1/src/rulesync/.rulesync/skills/text-humanize-korean/SKILL.md",
+      "sourceSection": "text-humanize-korean/SKILL.md @ cae542f1",
+      "path": "skills/text-humanize-korean-보존범위.md",
+      "guidance": "윤문 전에 바뀌면 안 되는 데이터값, 고유 식별자, 문자 그대로 유지해야 할 구간을 체크리스트로 만든다. 결과에서는 누락뿐 아니라 부정 여부, 주장 강도, 의무 수준, 조건 범위, 인과 방향이 달라졌는지 대조하고 하나라도 표류한 제안은 폐기한다.",
+      "appliesWhen": "",
+      "boundary": "공개 Skill에서 관찰한 보존 계약이며 개별 문법 판단의 근거로 사용하지 않는다.",
+      "matchedTerms": [],
+      "score": 26
+    }
+  ]
+}

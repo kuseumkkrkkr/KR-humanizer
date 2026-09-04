@@ -31,7 +31,9 @@ export function parseKnowledgeNote(content, path = '') {
   if (!Array.isArray(metadata.tags) || !metadata.tags.length || !Array.isArray(metadata.retrieval_terms) || !metadata.retrieval_terms.length) return null;
   const guidance = match[2].match(/## 프롬프트 지침\s*\r?\n([\s\S]*?)(?=\r?\n## |$)/)?.[1]?.trim();
   if (!guidance) return null;
-  return { metadata, guidance, path };
+  const appliesWhen = match[2].match(/## 적용 조건\s*\r?\n([\s\S]*?)(?=\r?\n## |$)/)?.[1]?.trim() ?? '';
+  const boundary = match[2].match(/## (?:예외와 )?경계\s*\r?\n([\s\S]*?)(?=\r?\n## |$)/)?.[1]?.trim() ?? '';
+  return { metadata, guidance, appliesWhen, boundary, path };
 }
 
 async function markdownFiles(root) {
@@ -69,6 +71,7 @@ function scoreNote(note, query) {
   const title = `${note.metadata.title ?? ''} ${note.metadata.source_section ?? ''}`;
   const tagText = array(note.metadata.tags).join(' ');
   const terms = array(note.metadata.retrieval_terms);
+  const triggers = array(note.metadata.trigger_terms);
   const queryTokens = [...new Set(tokens(query))];
   let score = note.metadata.always ? 3 : 0;
   for (const token of queryTokens) {
@@ -79,7 +82,10 @@ function scoreNote(note, query) {
   }
   const compactQuery = compact(query);
   for (const term of terms) if (compact(term).length > 1 && compactQuery.includes(compact(term))) score += 12;
-  return score;
+  const matchedTerms = triggers.filter((term) => compact(term).length > 1 && compactQuery.includes(compact(term)));
+  score += matchedTerms.length * 24;
+  if (score > 0 && note.metadata.authority === '국립국어원') score += 2;
+  return { score, matchedTerms };
 }
 
 export async function loadVault(vaultPath = DEFAULT_VAULT_PATH) {
@@ -103,15 +109,16 @@ export async function loadVault(vaultPath = DEFAULT_VAULT_PATH) {
   return notes;
 }
 
-export async function searchVault({ text, editMode = 'balanced', honorificLevel = 50, vaultPath = DEFAULT_VAULT_PATH, limit = 6 } = {}) {
-  const boundedLimit = Math.max(1, Math.min(12, Number(limit) || 6));
+export async function searchVault({ text, editMode = 'balanced', honorificLevel = 50, vaultPath = DEFAULT_VAULT_PATH, limit = 8 } = {}) {
+  const boundedLimit = Math.max(1, Math.min(12, Number(limit) || 8));
   const honorific = getHonorificProfile(honorificLevel);
   const query = String(text ?? '').slice(0, 20_000);
   const scored = (await loadVault(vaultPath)).map((note) => {
-    const textScore = scoreNote(note, query);
-    const modeScore = textScore > 0 ? Math.min(3, scoreNote(note, modeTerms(editMode))) : 0;
+    const textMatch = scoreNote(note, query);
+    const modeMatch = scoreNote(note, modeTerms(editMode));
+    const modeScore = textMatch.score > 0 ? Math.min(3, modeMatch.score) : 0;
     const honorificScore = honorific.key !== 'preserve' && note.metadata.id === 'nikl-relative-honorific-endings' ? 10 : 0;
-    return { ...note, score: textScore + modeScore + honorificScore };
+    return { ...note, score: textMatch.score + modeScore + honorificScore, matchedTerms: textMatch.matchedTerms };
   });
   return scored.filter((note) => note.score > 0).sort((a, b) => b.score - a.score || a.metadata.id.localeCompare(b.metadata.id)).slice(0, boundedLimit).map((note) => ({
     id: note.metadata.id,
@@ -122,6 +129,9 @@ export async function searchVault({ text, editMode = 'balanced', honorificLevel 
     sourceSection: note.metadata.source_section,
     path: note.path,
     guidance: note.guidance,
+    appliesWhen: note.appliesWhen,
+    boundary: note.boundary,
+    matchedTerms: note.matchedTerms,
     score: note.score
   }));
 }
@@ -129,7 +139,9 @@ export async function searchVault({ text, editMode = 'balanced', honorificLevel 
 export function buildKnowledgeContext(matches = []) {
   let context = '';
   for (const match of matches) {
-    const block = `<knowledge-card id="${match.id}">\n제목: ${match.title}\n근거: ${match.sourceSection ?? match.authority} · ${match.sourceUrl}\n지침: ${match.guidance}\n</knowledge-card>\n`;
+    const conditions = match.appliesWhen ? `\n적용 조건: ${match.appliesWhen}` : '';
+    const boundary = match.boundary ? `\n경계: ${match.boundary}` : '';
+    const block = `<knowledge-card id="${match.id}">\n제목: ${match.title}\n근거: ${match.sourceSection ?? match.authority} · ${match.sourceUrl}\n지침: ${match.guidance}${conditions}${boundary}\n</knowledge-card>\n`;
     if (context.length + block.length > MAX_CONTEXT_CHARS) break;
     context += `${block}\n`;
   }

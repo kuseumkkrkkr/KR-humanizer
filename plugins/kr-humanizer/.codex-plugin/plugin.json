@@ -1,15 +1,15 @@
 {
   "name": "kr-humanizer",
-  "version": "0.8.1+codex.20260904173352",
-  "description": "Graph-guided Korean drafting, Spark sentence completion, and explicit review",
+  "version": "0.9.0+codex.20260904181331",
+  "description": "Source-grounded Korean proofreading and explicit rewrite review",
   "author": {
     "name": "kuseumkkrkkr"
   },
   "skills": "./skills/",
   "interface": {
     "displayName": "KR-humanizer",
-    "shortDescription": "Source-guided Korean writing review.",
-    "longDescription": "Plan Korean writing as editable context nodes, continue a draft with opt-in Codex Spark sentence suggestions, retrieve relevant National Institute of Korean Language guidance, compare rewrites sentence by sentence, and accept only chosen changes.",
+    "shortDescription": "\uad6d\ub9bd\uad6d\uc5b4\uc6d0 \uadfc\uac70\ub85c \uac80\ud1a0\ud558\ub294 \ud55c\uad6d\uc5b4 \uc724\ubb38.",
+    "longDescription": "Retrieve Korean spelling, spacing, grammar, sentence, and paragraph guidance with explicit source sections, application conditions, and boundaries. Compare every rewrite sentence by sentence and accept only chosen changes.",
     "developerName": "kuseumkkrkkr",
     "category": "Productivity",
     "capabilities": [
@@ -26,6 +26,10 @@
       "local GUI",
       "Codex Spark Tab completion"
     ],
-    "defaultPrompt": "Use KR-humanizer to review this Korean text and show every proposed change before applying it."
+    "defaultPrompt": [
+      "\uc774 \ud55c\uad6d\uc5b4 \uae00\uc744 \uad6d\ub9bd\uad6d\uc5b4\uc6d0 \uadfc\uac70\ub85c \uc9c4\ub2e8\ud558\uace0 \ubcc0\uacbd\uc548\uc744 \ubcf4\uc5ec \uc8fc\uc138\uc694.",
+      "\ub9de\ucda4\ubc95\uacfc \ub744\uc5b4\uc4f0\uae30\ub97c \uba3c\uc800 \ucc3e\uace0 \ubb38\uc7a5\ubcc4 Diff\ub97c \ub9cc\ub4e4\uc5b4 \uc8fc\uc138\uc694.",
+      "\uc774 \uae00\uc758 \ud638\uc751\uacfc \ubb38\ub2e8 \ud750\ub984\uc744 \uc810\uac80\ud558\ub418 \uc758\ubbf8\ub294 \ubcf4\uc874\ud574 \uc8fc\uc138\uc694."
+    ]
   }
 }
