@@ -1,0 +1,4431 @@
+{
+  "original": "## Skill과 플러그인 작동 방식\n\n```mermaid\nflowchart TB\n  Marketplace[Codex·Claude marketplace] --> Manifest[플러그인 manifest]\n  Manifest --> SharedSkill[skills/humanize/SKILL.md]\n  SharedSkill --> AnalyzeCmd[kr-humanizer analyze]\n  SharedSkill --> KnowledgeCmd[kr-humanizer knowledge]\n  SharedSkill --> RewriteCmd[kr-humanizer rewrite]\n  SharedSkill --> GuiCmd[kr-humanizer gui]\n  SharedSkill --> CvCmd[kr-humanizer cv]\n  AnalyzeCmd --> ReviewRule[진단을 먼저 제시]\n  KnowledgeCmd --> VaultRule[출처 있는 관련 카드 검색]\n  RewriteCmd --> ReviewRule\n  GuiCmd --> Approval[변경별 사용자 수락]\n  CvCmd --> Synthetic[합성 평가 경계 표시]\n```\n\nCodex와 Claude용 manifest는 같은 `humanize-korean-writing` Skill을 가리킵니다. Skill은 진단을 먼저 보여 주고, 원본을 덮어쓰지 않으며, 어순 변경을 표시하고, 사용자가 수락한 문장만 적용하도록 실행 순서를 정의합니다. 플러그인은 자체 모델이나 원격 서비스를 포함하지 않으며 npm CLI를 호출하는 사용 지침과 실행 래퍼를 제공합니다.\n\n### 다른 Humanizer에서 선별한 편집 원리\n\n공개된 공식 기능 설명을 비교해 다음 원리만 독립적으로 구현했습니다. 외부 제품의 코드·프롬프트·규칙 데이터는 포함하지 않습니다.\n\n| KR-humanizer 기능 | 참고한 공개 원리 | 적용 경계 |\n|---|---|---|\n| `fluent` 최소 수정 | [QuillBot Fluency는 문법과 자연스러움에 집중하고 변경과 동의어 치환을 줄임](https://help.quillbot.com/hc/en-us/articles/35854318883351-What-are-modes-in-the-QuillBot-Paraphraser-and-how-do-I-use-them) | 의미 없는 단어 교체 금지 |\n| 독자 관점 말투 점검 | [Grammarly는 글이 더 친근하고 긍정적이며 자신감 있게 들리도록 문장별 말투 제안을 제공](https://support.grammarly.com/hc/en-us/articles/10674801783309-How-do-Grammarly-s-tone-suggestions-work) | 성격 판단이 아닌 독자가 받는 인상만 검토 |\n| 격식·간결 조절 | [Wordtune은 Formal/Casual과 Shorten/Expand 제어를 제공](https://www.wordtune.com/rewrite) | 사실 추가 위험이 있는 Expand는 제외 |\n| `strict` 엄격 검토 | [LanguageTool Picky Mode는 격식 문맥에서 더 많은 문법·문체 제안을 표시](https://languagetool.org/insights/post/picky-mode/) | 자동 반영하지 않고 문장별 수락 유지 |\n\n윤문 방식은 `fluent`(최소 수정), `balanced`(균형 편집), `strict`(문체 혼용과 모호성까지 검토), `concise`(근거를 보존한 간결화) 네 가지입니다. 의미가 달라질 수 있는 창작 모드와 근거 없는 내용 확장은 넣지 않았습니다.\n\n## 메모리 구조\n\n- 기본 `LocalMemoryStore`는 `%USERPROFILE%/.kr-humanizer/memory.json`에 최대 500개 결정을 보관합니다.\n- 파일은 임시 파일에 먼저 쓴 뒤 `rename`하며, 생성 시 권한 모드는 `0600`을 요청합니다.\n- 검색은 질의와 저장 문장의 공통 공백 토큰 수로 정렬하는 단순 로컬 방식입니다.\n- mem0를 고르면 `127.0.0.1`, `localhost`, `::1`만 허용합니다. 검색 제한은 10초이며 외부 호스트 주소는 생성 단계에서 거부합니다.\n- GUI의 `이번 선택을 로컬에 기억`을 눌러야 선택 ID가 저장됩니다. 자동 학습이나 백그라운드 업로드는 없습니다.\n\n## 합성 CV 데이터 흐름\n\n```mermaid\nflowchart LR\n  Topics[정치·경제·사회] --> Minimal[주제 한 줄 최소 프롬프트]\n  Minimal --> GateA{기준문 gate}\n  GateA -->|짧음·메타응답·URL·중복| RetryA[최대 6회 재생성]\n  RetryA --> GateA\n  GateA -->|통과| Rewrite[KR-humanizer EXEC 윤문]\n  Rewrite --> GateB{윤문 gate}\n  GateB -->|길이비·숫자 불일치| RetryB[최대 6회 재생성]\n  RetryB --> GateB\n  GateB -->|통과| Pair[원문·윤문 pair 고정]\n  Pair --> Fold[같은 pair를 같은 fold에 배치]\n  Fold --> Metrics[결정적 문체 지표]\n  Fold --> Blind[A/B 위치 무작위화 모델 평가]\n  Metrics --> Files[run.json·JSONL·report.md]\n  Blind --> Files\n```\n\nCV는 정치·경제·사회 각 3개 원문과 그 윤문을 만듭니다. 원문과 대응 윤문은 항상 같은 fold에 있어 pair 누수를 막습니다. 숫자 토큰 보존, 길이비, 가독성 대리 지표, 문체 구분기와 A/B 위치 무작위화 의견을 별도로 기록합니다. 평가 프롬프트에는 의미 보존 확인을 위한 참조 원문이 함께 제공되므로 평가자가 원문과 같은 문안을 식별할 수 있습니다. 따라서 완전한 블라인드 실험이 아니며, 같은 Codex 계열이 생성·윤문·평가한다는 점까지 포함해 실제 사람 선호나 AI 판별 회피 성능으로 해석할 수 없습니다.\n\n## 보안과 신뢰 경계\n\n```mermaid\nflowchart LR\n  subgraph Local[로컬 신뢰 영역]\n    Browser[브라우저 GUI]\n    Server[127.0.0.1 서버]\n    Files[사용자 파일]\n    Memory[로컬 메모리]\n  end\n  subgraph Process[허용된 자식 프로세스]\n    Codex[Codex CLI]\n    Claude[Claude Code CLI]\n  end\n  subgraph Rejected[기본 거부]\n    RemoteMem0[외부 mem0 호스트]\n    NoToken[세션 토큰 없는 POST]\n    Oversize[1 MiB 초과 요청·20만 자 초과 글]\n  end\n  Browser -->|무작위 세션 토큰| Server\n  Files --> Server\n  Server --> Memory\n  Server -->|인자 배열| Codex\n  Server -->|인자 배열| Claude\n  RemoteMem0 -. 차단 .-> Server\n  NoToken -. 403 .-> Server\n  Oversize -. 413 또는 오류 .-> Server\n```\n\n- 서버는 모든 인터페이스가 아닌 `127.0.0.1`에만 바인딩합니다.\n- HTML에 매 실행 무작위 토큰을 넣고 모든 POST 요청의 `x-kr-humanizer-token`과 비교합니다.\n- 응답에는 CSP, `frame-ancestors 'none'`, `nosniff`, `no-referrer`, `no-store` 헤더를 설정합니다.\n- 요청 본문은 1 MiB, 분석 원문은 200,000자, 엔진 출력은 2 MiB로 제한합니다.\n- 비가시 문자 정리는 탐지된 Unicode 제어문자만 제거하고 NFC 정규화를 적용합니다. 이를 AI 워터마크 검출이나 제거라고 주장하지 않습니다.\n\n## 현재 한계\n\n- 규칙 기반 분석은 교정 후보를 보여 주며 국립국어원 수준의 완전한 문법 판정기가 아닙니다.\n- 문장 정렬은 동일 인덱스를 우선하는 휴리스틱이라 문단 전체 재구성에는 적합하지 않습니다.\n- 로컬 메모리 검색은 의미 임베딩이 아니라 토큰 겹침 점수입니다.\n- 최신 사실 검증, 정치적 편향 평가, 실제 독자 실험은 현재 CV 범위 밖입니다.\n",
+  "rewritten": "## Skill과 플러그인 작동 방식\n\n```mermaid\nflowchart TB\n  Marketplace[Codex·Claude marketplace] --> Manifest[플러그인 manifest]\n  Manifest --> SharedSkill[skills/humanize/SKILL.md]\n  SharedSkill --> AnalyzeCmd[kr-humanizer analyze]\n  SharedSkill --> KnowledgeCmd[kr-humanizer knowledge]\n  SharedSkill --> RewriteCmd[kr-humanizer rewrite]\n  SharedSkill --> GuiCmd[kr-humanizer gui]\n  SharedSkill --> CvCmd[kr-humanizer cv]\n  AnalyzeCmd --> ReviewRule[진단을 먼저 제시]\n  KnowledgeCmd --> VaultRule[출처 있는 관련 카드 검색]\n  RewriteCmd --> ReviewRule\n  GuiCmd --> Approval[변경별 사용자 수락]\n  CvCmd --> Synthetic[합성 평가 경계 표시]\n```\n\nCodex와 Claude용 manifest는 모두 같은 `humanize-korean-writing` Skill을 가리킵니다. Skill은 진단을 먼저 보여 주고 원본을 덮어쓰지 않으며, 어순 변경을 표시하고 사용자가 수락한 문장만 적용하도록 실행 순서를 정의합니다. 플러그인은 자체 모델이나 원격 서비스를 포함하지 않습니다. npm CLI를 호출하는 사용 지침과 실행 래퍼만 제공합니다.\n\n### 다른 Humanizer에서 선별한 편집 원리\n\n공개된 공식 기능 설명을 비교해 다음 원리만 독립적으로 구현했습니다. 외부 제품의 코드·프롬프트·규칙 데이터는 포함하지 않습니다.\n\n| KR-humanizer 기능 | 참고한 공개 원리 | 적용 경계 |\n|---|---|---|\n| `fluent` 최소 수정 | [QuillBot Fluency는 문법과 자연스러움에 집중하고 변경과 동의어 치환을 줄임](https://help.quillbot.com/hc/en-us/articles/35854318883351-What-are-modes-in-the-QuillBot-Paraphraser-and-how-do-I-use-them) | 의미 없는 단어 교체 금지 |\n| 독자 관점 말투 점검 | [Grammarly는 글이 더 친근하고 긍정적이며 자신감 있게 들리도록 문장별 말투 제안을 제공](https://support.grammarly.com/hc/en-us/articles/10674801783309-How-do-Grammarly-s-tone-suggestions-work) | 성격 판단이 아닌 독자가 받는 인상만 검토 |\n| 격식·간결 조절 | [Wordtune은 Formal/Casual과 Shorten/Expand 제어를 제공](https://www.wordtune.com/rewrite) | 사실 추가 위험이 있는 Expand는 제외 |\n| `strict` 엄격 검토 | [LanguageTool Picky Mode는 격식 문맥에서 더 많은 문법·문체 제안을 표시](https://languagetool.org/insights/post/picky-mode/) | 자동 반영하지 않고 문장별 수락 유지 |\n\n윤문 방식은 `fluent`(최소 수정), `balanced`(균형 편집), `strict`(문체 혼용과 모호성까지 검토), `concise`(근거를 보존한 간결화) 네 가지입니다. 의미가 달라질 수 있는 창작 모드와 근거 없는 내용 확장은 넣지 않았습니다.\n\n## 메모리 구조\n\n- 기본 `LocalMemoryStore`는 `%USERPROFILE%/.kr-humanizer/memory.json`에 최대 500개의 결정을 보관합니다.\n- 파일은 임시 파일에 먼저 쓴 뒤 `rename`합니다. 생성할 때는 권한 모드 `0600`을 요청합니다.\n- 검색 결과는 질의와 저장 문장에 공통으로 포함된 공백 토큰 수를 기준으로 정렬합니다. 단순한 로컬 검색 방식입니다.\n- mem0를 선택하면 `127.0.0.1`, `localhost`, `::1`만 허용합니다. 검색 제한 시간은 10초이며, 외부 호스트 주소는 생성 단계에서 거부합니다.\n- GUI에서 `이번 선택을 로컬에 기억`을 눌러야 선택 ID가 저장됩니다. 자동 학습이나 백그라운드 업로드는 없습니다.\n\n## 합성 CV 데이터 흐름\n\n```mermaid\nflowchart LR\n  Topics[정치·경제·사회] --> Minimal[주제 한 줄 최소 프롬프트]\n  Minimal --> GateA{기준문 gate}\n  GateA -->|짧음·메타응답·URL·중복| RetryA[최대 6회 재생성]\n  RetryA --> GateA\n  GateA -->|통과| Rewrite[KR-humanizer EXEC 윤문]\n  Rewrite --> GateB{윤문 gate}\n  GateB -->|길이비·숫자 불일치| RetryB[최대 6회 재생성]\n  RetryB --> GateB\n  GateB -->|통과| Pair[원문·윤문 pair 고정]\n  Pair --> Fold[같은 pair를 같은 fold에 배치]\n  Fold --> Metrics[결정적 문체 지표]\n  Fold --> Blind[A/B 위치 무작위화 모델 평가]\n  Metrics --> Files[run.json·JSONL·report.md]\n  Blind --> Files\n```\n\nCV는 정치·경제·사회 분야에서 각각 3개의 원문과 그 윤문을 만듭니다. 원문과 이에 대응하는 윤문은 항상 같은 fold에 배치해 pair 누수를 막습니다. 숫자 토큰 보존, 길이비, 가독성 대리 지표, 문체 구분기와 A/B 위치 무작위화 의견을 각각 기록합니다. 평가 프롬프트에는 의미 보존 여부를 확인할 수 있도록 참조 원문도 함께 제공합니다. 따라서 평가자는 원문과 같은 문안을 식별할 수 있습니다. 완전한 블라인드 실험이 아니며, 같은 Codex 계열이 생성·윤문·평가한다는 점을 고려할 때 실제 사람의 선호나 AI 판별 회피 성능으로 해석할 수 없습니다.\n\n## 보안과 신뢰 경계\n\n```mermaid\nflowchart LR\n  subgraph Local[로컬 신뢰 영역]\n    Browser[브라우저 GUI]\n    Server[127.0.0.1 서버]\n    Files[사용자 파일]\n    Memory[로컬 메모리]\n  end\n  subgraph Process[허용된 자식 프로세스]\n    Codex[Codex CLI]\n    Claude[Claude Code CLI]\n  end\n  subgraph Rejected[기본 거부]\n    RemoteMem0[외부 mem0 호스트]\n    NoToken[세션 토큰 없는 POST]\n    Oversize[1 MiB 초과 요청·20만 자 초과 글]\n  end\n  Browser -->|무작위 세션 토큰| Server\n  Files --> Server\n  Server --> Memory\n  Server -->|인자 배열| Codex\n  Server -->|인자 배열| Claude\n  RemoteMem0 -. 차단 .-> Server\n  NoToken -. 403 .-> Server\n  Oversize -. 413 또는 오류 .-> Server\n```\n\n- 서버는 모든 인터페이스가 아닌 `127.0.0.1`에만 바인딩합니다.\n- HTML에는 실행할 때마다 생성되는 무작위 토큰을 넣고, 모든 POST 요청의 `x-kr-humanizer-token`과 비교합니다.\n- 응답에는 CSP, `frame-ancestors 'none'`, `nosniff`, `no-referrer`, `no-store` 헤더를 설정합니다.\n- 요청 본문은 1 MiB, 분석 원문은 200,000자, 엔진 출력은 2 MiB로 제한합니다.\n- 비가시 문자를 정리할 때는 탐지된 Unicode 제어문자만 제거하고 NFC 정규화를 적용합니다. 이를 AI 워터마크 검출이나 제거라고 주장하지 않습니다.\n\n## 현재 한계\n\n- 규칙 기반 분석은 교정 후보를 제시하지만, 국립국어원 수준의 완전한 문법 판정기는 아닙니다.\n- 문장 정렬은 동일한 인덱스를 우선하는 휴리스틱을 사용하므로 문단 전체를 재구성하는 작업에는 적합하지 않습니다.\n- 로컬 메모리 검색에는 의미 임베딩이 아닌 토큰 겹침 점수를 사용합니다.\n- 최신 사실 검증, 정치적 편향 평가, 실제 독자 실험은 현재 CV 범위에 포함되지 않습니다.",
+  "originalSentences": [
+    "## Skill과 플러그인 작동 방식",
+    "```mermaid",
+    "flowchart TB",
+    "Marketplace[Codex·Claude marketplace] --> Manifest[플러그인 manifest]",
+    "Manifest --> SharedSkill[skills/humanize/SKILL.md]",
+    "SharedSkill --> AnalyzeCmd[kr-humanizer analyze]",
+    "SharedSkill --> KnowledgeCmd[kr-humanizer knowledge]",
+    "SharedSkill --> RewriteCmd[kr-humanizer rewrite]",
+    "SharedSkill --> GuiCmd[kr-humanizer gui]",
+    "SharedSkill --> CvCmd[kr-humanizer cv]",
+    "AnalyzeCmd --> ReviewRule[진단을 먼저 제시]",
+    "KnowledgeCmd --> VaultRule[출처 있는 관련 카드 검색]",
+    "RewriteCmd --> ReviewRule",
+    "GuiCmd --> Approval[변경별 사용자 수락]",
+    "CvCmd --> Synthetic[합성 평가 경계 표시]",
+    "```",
+    "Codex와 Claude용 manifest는 같은 `humanize-korean-writing` Skill을 가리킵니다.",
+    "Skill은 진단을 먼저 보여 주고, 원본을 덮어쓰지 않으며, 어순 변경을 표시하고, 사용자가 수락한 문장만 적용하도록 실행 순서를 정의합니다.",
+    "플러그인은 자체 모델이나 원격 서비스를 포함하지 않으며 npm CLI를 호출하는 사용 지침과 실행 래퍼를 제공합니다.",
+    "### 다른 Humanizer에서 선별한 편집 원리",
+    "공개된 공식 기능 설명을 비교해 다음 원리만 독립적으로 구현했습니다.",
+    "외부 제품의 코드·프롬프트·규칙 데이터는 포함하지 않습니다.",
+    "| KR-humanizer 기능 | 참고한 공개 원리 | 적용 경계 |",
+    "|---|---|---|",
+    "| `fluent` 최소 수정 | [QuillBot Fluency는 문법과 자연스러움에 집중하고 변경과 동의어 치환을 줄임](https://help.quillbot.com/hc/en-us/articles/35854318883351-What-are-modes-in-the-QuillBot-Paraphraser-and-how-do-I-use-them) | 의미 없는 단어 교체 금지 |",
+    "| 독자 관점 말투 점검 | [Grammarly는 글이 더 친근하고 긍정적이며 자신감 있게 들리도록 문장별 말투 제안을 제공](https://support.grammarly.com/hc/en-us/articles/10674801783309-How-do-Grammarly-s-tone-suggestions-work) | 성격 판단이 아닌 독자가 받는 인상만 검토 |",
+    "| 격식·간결 조절 | [Wordtune은 Formal/Casual과 Shorten/Expand 제어를 제공](https://www.wordtune.com/rewrite) | 사실 추가 위험이 있는 Expand는 제외 |",
+    "| `strict` 엄격 검토 | [LanguageTool Picky Mode는 격식 문맥에서 더 많은 문법·문체 제안을 표시](https://languagetool.org/insights/post/picky-mode/) | 자동 반영하지 않고 문장별 수락 유지 |",
+    "윤문 방식은 `fluent`(최소 수정), `balanced`(균형 편집), `strict`(문체 혼용과 모호성까지 검토), `concise`(근거를 보존한 간결화) 네 가지입니다.",
+    "의미가 달라질 수 있는 창작 모드와 근거 없는 내용 확장은 넣지 않았습니다.",
+    "## 메모리 구조",
+    "- 기본 `LocalMemoryStore`는 `%USERPROFILE%/.kr-humanizer/memory.json`에 최대 500개 결정을 보관합니다.",
+    "- 파일은 임시 파일에 먼저 쓴 뒤 `rename`하며, 생성 시 권한 모드는 `0600`을 요청합니다.",
+    "- 검색은 질의와 저장 문장의 공통 공백 토큰 수로 정렬하는 단순 로컬 방식입니다.",
+    "- mem0를 고르면 `127.0.0.1`, `localhost`, `::1`만 허용합니다.",
+    "검색 제한은 10초이며 외부 호스트 주소는 생성 단계에서 거부합니다.",
+    "- GUI의 `이번 선택을 로컬에 기억`을 눌러야 선택 ID가 저장됩니다.",
+    "자동 학습이나 백그라운드 업로드는 없습니다.",
+    "## 합성 CV 데이터 흐름",
+    "```mermaid",
+    "flowchart LR",
+    "Topics[정치·경제·사회] --> Minimal[주제 한 줄 최소 프롬프트]",
+    "Minimal --> GateA{기준문 gate}",
+    "GateA -->|짧음·메타응답·URL·중복| RetryA[최대 6회 재생성]",
+    "RetryA --> GateA",
+    "GateA -->|통과| Rewrite[KR-humanizer EXEC 윤문]",
+    "Rewrite --> GateB{윤문 gate}",
+    "GateB -->|길이비·숫자 불일치| RetryB[최대 6회 재생성]",
+    "RetryB --> GateB",
+    "GateB -->|통과| Pair[원문·윤문 pair 고정]",
+    "Pair --> Fold[같은 pair를 같은 fold에 배치]",
+    "Fold --> Metrics[결정적 문체 지표]",
+    "Fold --> Blind[A/B 위치 무작위화 모델 평가]",
+    "Metrics --> Files[run.json·JSONL·report.md]",
+    "Blind --> Files",
+    "```",
+    "CV는 정치·경제·사회 각 3개 원문과 그 윤문을 만듭니다.",
+    "원문과 대응 윤문은 항상 같은 fold에 있어 pair 누수를 막습니다.",
+    "숫자 토큰 보존, 길이비, 가독성 대리 지표, 문체 구분기와 A/B 위치 무작위화 의견을 별도로 기록합니다.",
+    "평가 프롬프트에는 의미 보존 확인을 위한 참조 원문이 함께 제공되므로 평가자가 원문과 같은 문안을 식별할 수 있습니다.",
+    "따라서 완전한 블라인드 실험이 아니며, 같은 Codex 계열이 생성·윤문·평가한다는 점까지 포함해 실제 사람 선호나 AI 판별 회피 성능으로 해석할 수 없습니다.",
+    "## 보안과 신뢰 경계",
+    "```mermaid",
+    "flowchart LR",
+    "subgraph Local[로컬 신뢰 영역]",
+    "Browser[브라우저 GUI]",
+    "Server[127.0.0.1 서버]",
+    "Files[사용자 파일]",
+    "Memory[로컬 메모리]",
+    "end",
+    "subgraph Process[허용된 자식 프로세스]",
+    "Codex[Codex CLI]",
+    "Claude[Claude Code CLI]",
+    "end",
+    "subgraph Rejected[기본 거부]",
+    "RemoteMem0[외부 mem0 호스트]",
+    "NoToken[세션 토큰 없는 POST]",
+    "Oversize[1 MiB 초과 요청·20만 자 초과 글]",
+    "end",
+    "Browser -->|무작위 세션 토큰| Server",
+    "Files --> Server",
+    "Server --> Memory",
+    "Server -->|인자 배열| Codex",
+    "Server -->|인자 배열| Claude",
+    "RemoteMem0 -.",
+    "차단 .-> Server",
+    "NoToken -.",
+    "403 .-> Server",
+    "Oversize -.",
+    "413 또는 오류 .-> Server",
+    "```",
+    "- 서버는 모든 인터페이스가 아닌 `127.0.0.1`에만 바인딩합니다.",
+    "- HTML에 매 실행 무작위 토큰을 넣고 모든 POST 요청의 `x-kr-humanizer-token`과 비교합니다.",
+    "- 응답에는 CSP, `frame-ancestors 'none'`, `nosniff`, `no-referrer`, `no-store` 헤더를 설정합니다.",
+    "- 요청 본문은 1 MiB, 분석 원문은 200,000자, 엔진 출력은 2 MiB로 제한합니다.",
+    "- 비가시 문자 정리는 탐지된 Unicode 제어문자만 제거하고 NFC 정규화를 적용합니다.",
+    "이를 AI 워터마크 검출이나 제거라고 주장하지 않습니다.",
+    "## 현재 한계",
+    "- 규칙 기반 분석은 교정 후보를 보여 주며 국립국어원 수준의 완전한 문법 판정기가 아닙니다.",
+    "- 문장 정렬은 동일 인덱스를 우선하는 휴리스틱이라 문단 전체 재구성에는 적합하지 않습니다.",
+    "- 로컬 메모리 검색은 의미 임베딩이 아니라 토큰 겹침 점수입니다.",
+    "- 최신 사실 검증, 정치적 편향 평가, 실제 독자 실험은 현재 CV 범위 밖입니다."
+  ],
+  "rewrittenSentences": [
+    "## Skill과 플러그인 작동 방식",
+    "```mermaid",
+    "flowchart TB",
+    "Marketplace[Codex·Claude marketplace] --> Manifest[플러그인 manifest]",
+    "Manifest --> SharedSkill[skills/humanize/SKILL.md]",
+    "SharedSkill --> AnalyzeCmd[kr-humanizer analyze]",
+    "SharedSkill --> KnowledgeCmd[kr-humanizer knowledge]",
+    "SharedSkill --> RewriteCmd[kr-humanizer rewrite]",
+    "SharedSkill --> GuiCmd[kr-humanizer gui]",
+    "SharedSkill --> CvCmd[kr-humanizer cv]",
+    "AnalyzeCmd --> ReviewRule[진단을 먼저 제시]",
+    "KnowledgeCmd --> VaultRule[출처 있는 관련 카드 검색]",
+    "RewriteCmd --> ReviewRule",
+    "GuiCmd --> Approval[변경별 사용자 수락]",
+    "CvCmd --> Synthetic[합성 평가 경계 표시]",
+    "```",
+    "Codex와 Claude용 manifest는 모두 같은 `humanize-korean-writing` Skill을 가리킵니다.",
+    "Skill은 진단을 먼저 보여 주고 원본을 덮어쓰지 않으며, 어순 변경을 표시하고 사용자가 수락한 문장만 적용하도록 실행 순서를 정의합니다.",
+    "플러그인은 자체 모델이나 원격 서비스를 포함하지 않습니다. npm CLI를 호출하는 사용 지침과 실행 래퍼만 제공합니다.",
+    "### 다른 Humanizer에서 선별한 편집 원리",
+    "공개된 공식 기능 설명을 비교해 다음 원리만 독립적으로 구현했습니다.",
+    "외부 제품의 코드·프롬프트·규칙 데이터는 포함하지 않습니다.",
+    "| KR-humanizer 기능 | 참고한 공개 원리 | 적용 경계 |",
+    "|---|---|---|",
+    "| `fluent` 최소 수정 | [QuillBot Fluency는 문법과 자연스러움에 집중하고 변경과 동의어 치환을 줄임](https://help.quillbot.com/hc/en-us/articles/35854318883351-What-are-modes-in-the-QuillBot-Paraphraser-and-how-do-I-use-them) | 의미 없는 단어 교체 금지 |",
+    "| 독자 관점 말투 점검 | [Grammarly는 글이 더 친근하고 긍정적이며 자신감 있게 들리도록 문장별 말투 제안을 제공](https://support.grammarly.com/hc/en-us/articles/10674801783309-How-do-Grammarly-s-tone-suggestions-work) | 성격 판단이 아닌 독자가 받는 인상만 검토 |",
+    "| 격식·간결 조절 | [Wordtune은 Formal/Casual과 Shorten/Expand 제어를 제공](https://www.wordtune.com/rewrite) | 사실 추가 위험이 있는 Expand는 제외 |",
+    "| `strict` 엄격 검토 | [LanguageTool Picky Mode는 격식 문맥에서 더 많은 문법·문체 제안을 표시](https://languagetool.org/insights/post/picky-mode/) | 자동 반영하지 않고 문장별 수락 유지 |",
+    "윤문 방식은 `fluent`(최소 수정), `balanced`(균형 편집), `strict`(문체 혼용과 모호성까지 검토), `concise`(근거를 보존한 간결화) 네 가지입니다.",
+    "의미가 달라질 수 있는 창작 모드와 근거 없는 내용 확장은 넣지 않았습니다.",
+    "## 메모리 구조",
+    "- 기본 `LocalMemoryStore`는 `%USERPROFILE%/.kr-humanizer/memory.json`에 최대 500개의 결정을 보관합니다.",
+    "- 파일은 임시 파일에 먼저 쓴 뒤 `rename`합니다.",
+    "생성할 때는 권한 모드 `0600`을 요청합니다.",
+    "- 검색 결과는 질의와 저장 문장에 공통으로 포함된 공백 토큰 수를 기준으로 정렬합니다.",
+    "단순한 로컬 검색 방식입니다.",
+    "- mem0를 선택하면 `127.0.0.1`, `localhost`, `::1`만 허용합니다.",
+    "검색 제한 시간은 10초이며, 외부 호스트 주소는 생성 단계에서 거부합니다.",
+    "- GUI에서 `이번 선택을 로컬에 기억`을 눌러야 선택 ID가 저장됩니다.",
+    "자동 학습이나 백그라운드 업로드는 없습니다.",
+    "## 합성 CV 데이터 흐름",
+    "```mermaid",
+    "flowchart LR",
+    "Topics[정치·경제·사회] --> Minimal[주제 한 줄 최소 프롬프트]",
+    "Minimal --> GateA{기준문 gate}",
+    "GateA -->|짧음·메타응답·URL·중복| RetryA[최대 6회 재생성]",
+    "RetryA --> GateA",
+    "GateA -->|통과| Rewrite[KR-humanizer EXEC 윤문]",
+    "Rewrite --> GateB{윤문 gate}",
+    "GateB -->|길이비·숫자 불일치| RetryB[최대 6회 재생성]",
+    "RetryB --> GateB",
+    "GateB -->|통과| Pair[원문·윤문 pair 고정]",
+    "Pair --> Fold[같은 pair를 같은 fold에 배치]",
+    "Fold --> Metrics[결정적 문체 지표]",
+    "Fold --> Blind[A/B 위치 무작위화 모델 평가]",
+    "Metrics --> Files[run.json·JSONL·report.md]",
+    "Blind --> Files",
+    "```",
+    "CV는 정치·경제·사회 분야에서 각각 3개의 원문과 그 윤문을 만듭니다.",
+    "원문과 이에 대응하는 윤문은 항상 같은 fold에 배치해 pair 누수를 막습니다.",
+    "숫자 토큰 보존, 길이비, 가독성 대리 지표, 문체 구분기와 A/B 위치 무작위화 의견을 각각 기록합니다.",
+    "평가 프롬프트에는 의미 보존 여부를 확인할 수 있도록 참조 원문도 함께 제공합니다.",
+    "따라서 평가자는 원문과 같은 문안을 식별할 수 있습니다.",
+    "완전한 블라인드 실험이 아니며, 같은 Codex 계열이 생성·윤문·평가한다는 점을 고려할 때 실제 사람의 선호나 AI 판별 회피 성능으로 해석할 수 없습니다.",
+    "## 보안과 신뢰 경계",
+    "```mermaid",
+    "flowchart LR",
+    "subgraph Local[로컬 신뢰 영역]",
+    "Browser[브라우저 GUI]",
+    "Server[127.0.0.1 서버]",
+    "Files[사용자 파일]",
+    "Memory[로컬 메모리]",
+    "end",
+    "subgraph Process[허용된 자식 프로세스]",
+    "Codex[Codex CLI]",
+    "Claude[Claude Code CLI]",
+    "end",
+    "subgraph Rejected[기본 거부]",
+    "RemoteMem0[외부 mem0 호스트]",
+    "NoToken[세션 토큰 없는 POST]",
+    "Oversize[1 MiB 초과 요청·20만 자 초과 글]",
+    "end",
+    "Browser -->|무작위 세션 토큰| Server",
+    "Files --> Server",
+    "Server --> Memory",
+    "Server -->|인자 배열| Codex",
+    "Server -->|인자 배열| Claude",
+    "RemoteMem0 -.",
+    "차단 .-> Server",
+    "NoToken -.",
+    "403 .-> Server",
+    "Oversize -.",
+    "413 또는 오류 .-> Server",
+    "```",
+    "- 서버는 모든 인터페이스가 아닌 `127.0.0.1`에만 바인딩합니다.",
+    "- HTML에는 실행할 때마다 생성되는 무작위 토큰을 넣고, 모든 POST 요청의 `x-kr-humanizer-token`과 비교합니다.",
+    "- 응답에는 CSP, `frame-ancestors 'none'`, `nosniff`, `no-referrer`, `no-store` 헤더를 설정합니다.",
+    "- 요청 본문은 1 MiB, 분석 원문은 200,000자, 엔진 출력은 2 MiB로 제한합니다.",
+    "- 비가시 문자를 정리할 때는 탐지된 Unicode 제어문자만 제거하고 NFC 정규화를 적용합니다.",
+    "이를 AI 워터마크 검출이나 제거라고 주장하지 않습니다.",
+    "## 현재 한계",
+    "- 규칙 기반 분석은 교정 후보를 제시하지만, 국립국어원 수준의 완전한 문법 판정기는 아닙니다.",
+    "- 문장 정렬은 동일한 인덱스를 우선하는 휴리스틱을 사용하므로 문단 전체를 재구성하는 작업에는 적합하지 않습니다.",
+    "- 로컬 메모리 검색에는 의미 임베딩이 아닌 토큰 겹침 점수를 사용합니다.",
+    "- 최신 사실 검증, 정치적 편향 평가, 실제 독자 실험은 현재 CV 범위에 포함되지 않습니다."
+  ],
+  "units": [
+    {
+      "id": "s17",
+      "index": 16,
+      "start": 594,
+      "end": 661,
+      "before": "Codex와 Claude용 manifest는 같은 `humanize-korean-writing` Skill을 가리킵니다.",
+      "after": "Codex와 Claude용 manifest는 모두 같은 `humanize-korean-writing` Skill을 가리킵니다.",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "Codex와 Claude용 manifest는 "
+        },
+        {
+          "type": "add",
+          "text": "모두 "
+        },
+        {
+          "type": "same",
+          "text": "같은 `humanize-korean-writing` Skill을 가리킵니다."
+        }
+      ]
+    },
+    {
+      "id": "s18",
+      "index": 17,
+      "start": 662,
+      "end": 742,
+      "before": "Skill은 진단을 먼저 보여 주고, 원본을 덮어쓰지 않으며, 어순 변경을 표시하고, 사용자가 수락한 문장만 적용하도록 실행 순서를 정의합니다.",
+      "after": "Skill은 진단을 먼저 보여 주고 원본을 덮어쓰지 않으며, 어순 변경을 표시하고 사용자가 수락한 문장만 적용하도록 실행 순서를 정의합니다.",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "Skill은 진단을 먼저 보여 주고"
+        },
+        {
+          "type": "remove",
+          "text": ","
+        },
+        {
+          "type": "same",
+          "text": " 원본을 덮어쓰지 않으며, 어순 변경을 표시하고"
+        },
+        {
+          "type": "remove",
+          "text": ","
+        },
+        {
+          "type": "same",
+          "text": " 사용자가 수락한 문장만 적용하도록 실행 순서를 정의합니다."
+        }
+      ]
+    },
+    {
+      "id": "s19",
+      "index": 18,
+      "start": 743,
+      "end": 808,
+      "before": "플러그인은 자체 모델이나 원격 서비스를 포함하지 않으며 npm CLI를 호출하는 사용 지침과 실행 래퍼를 제공합니다.",
+      "after": "플러그인은 자체 모델이나 원격 서비스를 포함하지 않습니다. npm CLI를 호출하는 사용 지침과 실행 래퍼만 제공합니다.",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "플러그인은 자체 모델이나 원격 서비스를 포함하지 "
+        },
+        {
+          "type": "remove",
+          "text": "않으며"
+        },
+        {
+          "type": "add",
+          "text": "않습니다."
+        },
+        {
+          "type": "same",
+          "text": " npm CLI를 호출하는 사용 지침과 실행 "
+        },
+        {
+          "type": "remove",
+          "text": "래퍼를"
+        },
+        {
+          "type": "add",
+          "text": "래퍼만"
+        },
+        {
+          "type": "same",
+          "text": " 제공합니다."
+        }
+      ]
+    },
+    {
+      "id": "s32",
+      "index": 31,
+      "start": 1817,
+      "end": 1903,
+      "before": "- 기본 `LocalMemoryStore`는 `%USERPROFILE%/.kr-humanizer/memory.json`에 최대 500개 결정을 보관합니다.",
+      "after": "- 기본 `LocalMemoryStore`는 `%USERPROFILE%/.kr-humanizer/memory.json`에 최대 500개의 결정을 보관합니다.",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "- 기본 `LocalMemoryStore`는 `%USERPROFILE%/.kr-humanizer/memory.json`에 최대 "
+        },
+        {
+          "type": "remove",
+          "text": "500개"
+        },
+        {
+          "type": "add",
+          "text": "500개의"
+        },
+        {
+          "type": "same",
+          "text": " 결정을 보관합니다."
+        }
+      ]
+    },
+    {
+      "id": "s33",
+      "index": 32,
+      "start": 1904,
+      "end": 1962,
+      "before": "- 파일은 임시 파일에 먼저 쓴 뒤 `rename`하며, 생성 시 권한 모드는 `0600`을 요청합니다.",
+      "after": "- 파일은 임시 파일에 먼저 쓴 뒤 `rename`합니다.",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "- 파일은 임시 파일에 먼저 쓴 뒤 `rename`"
+        },
+        {
+          "type": "remove",
+          "text": "하며, 생성 시 권한 모드는 `0600`을 요청합니다"
+        },
+        {
+          "type": "add",
+          "text": "합니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s34",
+      "index": 33,
+      "start": 1963,
+      "end": 2009,
+      "before": "- 검색은 질의와 저장 문장의 공통 공백 토큰 수로 정렬하는 단순 로컬 방식입니다.",
+      "after": "생성할 때는 권한 모드 `0600`을 요청합니다.",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "- 검색은 질의와 저장 문장의 공통 공백 토큰"
+        },
+        {
+          "type": "add",
+          "text": "생성할"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "수로"
+        },
+        {
+          "type": "add",
+          "text": "때는"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "정렬하는"
+        },
+        {
+          "type": "add",
+          "text": "권한"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "단순"
+        },
+        {
+          "type": "add",
+          "text": "모드"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "로컬"
+        },
+        {
+          "type": "add",
+          "text": "`0600`을"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "방식입니다"
+        },
+        {
+          "type": "add",
+          "text": "요청합니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s35",
+      "index": 34,
+      "start": 2010,
+      "end": 2061,
+      "before": "- mem0를 고르면 `127.0.0.1`, `localhost`, `::1`만 허용합니다.",
+      "after": "- 검색 결과는 질의와 저장 문장에 공통으로 포함된 공백 토큰 수를 기준으로 정렬합니다.",
+      "kind": "order",
+      "movedTo": 36,
+      "diff": [
+        {
+          "type": "same",
+          "text": "- "
+        },
+        {
+          "type": "remove",
+          "text": "mem0를"
+        },
+        {
+          "type": "add",
+          "text": "검색"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "고르면"
+        },
+        {
+          "type": "add",
+          "text": "결과는"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "`127.0.0.1`,"
+        },
+        {
+          "type": "add",
+          "text": "질의와"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "`localhost`,"
+        },
+        {
+          "type": "add",
+          "text": "저장"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "`::1`만"
+        },
+        {
+          "type": "add",
+          "text": "문장에"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "허용합니다"
+        },
+        {
+          "type": "add",
+          "text": "공통으로 포함된 공백 토큰 수를 기준으로 정렬합니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s36",
+      "index": 35,
+      "start": 2062,
+      "end": 2100,
+      "before": "검색 제한은 10초이며 외부 호스트 주소는 생성 단계에서 거부합니다.",
+      "after": "단순한 로컬 검색 방식입니다.",
+      "kind": "order",
+      "movedTo": 37,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "검색 제한은 10초이며 외부 호스트 주소는"
+        },
+        {
+          "type": "add",
+          "text": "단순한"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "생성"
+        },
+        {
+          "type": "add",
+          "text": "로컬"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "단계에서"
+        },
+        {
+          "type": "add",
+          "text": "검색"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "거부합니다"
+        },
+        {
+          "type": "add",
+          "text": "방식입니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s37",
+      "index": 36,
+      "start": 2101,
+      "end": 2142,
+      "before": "- GUI의 `이번 선택을 로컬에 기억`을 눌러야 선택 ID가 저장됩니다.",
+      "after": "- mem0를 선택하면 `127.0.0.1`, `localhost`, `::1`만 허용합니다.",
+      "kind": "order",
+      "movedTo": 38,
+      "diff": [
+        {
+          "type": "same",
+          "text": "- "
+        },
+        {
+          "type": "remove",
+          "text": "GUI의 `이번 선택을"
+        },
+        {
+          "type": "add",
+          "text": "mem0를"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "로컬에"
+        },
+        {
+          "type": "add",
+          "text": "선택하면"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "기억"
+        },
+        {
+          "type": "same",
+          "text": "`"
+        },
+        {
+          "type": "remove",
+          "text": "을 눌러야"
+        },
+        {
+          "type": "add",
+          "text": "127.0.0.1`,"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "선택"
+        },
+        {
+          "type": "add",
+          "text": "`localhost`,"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "ID가"
+        },
+        {
+          "type": "add",
+          "text": "`::1`만"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "저장됩니다"
+        },
+        {
+          "type": "add",
+          "text": "허용합니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s38",
+      "index": 37,
+      "start": 2143,
+      "end": 2167,
+      "before": "자동 학습이나 백그라운드 업로드는 없습니다.",
+      "after": "검색 제한 시간은 10초이며, 외부 호스트 주소는 생성 단계에서 거부합니다.",
+      "kind": "order",
+      "movedTo": 39,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "자동"
+        },
+        {
+          "type": "add",
+          "text": "검색"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "학습이나"
+        },
+        {
+          "type": "add",
+          "text": "제한"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "백그라운드"
+        },
+        {
+          "type": "add",
+          "text": "시간은"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "업로드는"
+        },
+        {
+          "type": "add",
+          "text": "10초이며,"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "없습니다"
+        },
+        {
+          "type": "add",
+          "text": "외부 호스트 주소는 생성 단계에서 거부합니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s39",
+      "index": 38,
+      "start": 2169,
+      "end": 2184,
+      "before": "## 합성 CV 데이터 흐름",
+      "after": "- GUI에서 `이번 선택을 로컬에 기억`을 눌러야 선택 ID가 저장됩니다.",
+      "kind": "order",
+      "movedTo": 40,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "##"
+        },
+        {
+          "type": "add",
+          "text": "-"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "합성"
+        },
+        {
+          "type": "add",
+          "text": "GUI에서"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "CV"
+        },
+        {
+          "type": "add",
+          "text": "`이번"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "데이터"
+        },
+        {
+          "type": "add",
+          "text": "선택을"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "흐름"
+        },
+        {
+          "type": "add",
+          "text": "로컬에 기억`을 눌러야 선택 ID가 저장됩니다."
+        }
+      ]
+    },
+    {
+      "id": "s40",
+      "index": 39,
+      "start": 2186,
+      "end": 2196,
+      "before": "```mermaid",
+      "after": "자동 학습이나 백그라운드 업로드는 없습니다.",
+      "kind": "order",
+      "movedTo": 1,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "```mermaid"
+        },
+        {
+          "type": "add",
+          "text": "자동 학습이나 백그라운드 업로드는 없습니다."
+        }
+      ]
+    },
+    {
+      "id": "s41",
+      "index": 40,
+      "start": 2197,
+      "end": 2209,
+      "before": "flowchart LR",
+      "after": "## 합성 CV 데이터 흐름",
+      "kind": "order",
+      "movedTo": 42,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "flowchart"
+        },
+        {
+          "type": "add",
+          "text": "##"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "LR"
+        },
+        {
+          "type": "add",
+          "text": "합성 CV 데이터 흐름"
+        }
+      ]
+    },
+    {
+      "id": "s42",
+      "index": 41,
+      "start": 2212,
+      "end": 2256,
+      "before": "Topics[정치·경제·사회] --> Minimal[주제 한 줄 최소 프롬프트]",
+      "after": "```mermaid",
+      "kind": "order",
+      "movedTo": 43,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Topics[정치·경제·사회] --> Minimal[주제 한 줄 최소 프롬프트]"
+        },
+        {
+          "type": "add",
+          "text": "```mermaid"
+        }
+      ]
+    },
+    {
+      "id": "s43",
+      "index": 42,
+      "start": 2259,
+      "end": 2286,
+      "before": "Minimal --> GateA{기준문 gate}",
+      "after": "flowchart LR",
+      "kind": "order",
+      "movedTo": 44,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Minimal --> GateA{기준문"
+        },
+        {
+          "type": "add",
+          "text": "flowchart"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "gate}"
+        },
+        {
+          "type": "add",
+          "text": "LR"
+        }
+      ]
+    },
+    {
+      "id": "s44",
+      "index": 43,
+      "start": 2289,
+      "end": 2332,
+      "before": "GateA -->|짧음·메타응답·URL·중복| RetryA[최대 6회 재생성]",
+      "after": "Topics[정치·경제·사회] --> Minimal[주제 한 줄 최소 프롬프트]",
+      "kind": "order",
+      "movedTo": 45,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "GateA"
+        },
+        {
+          "type": "add",
+          "text": "Topics[정치·경제·사회]"
+        },
+        {
+          "type": "same",
+          "text": " -->"
+        },
+        {
+          "type": "remove",
+          "text": "|짧음·메타응답·URL·중복|"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "RetryA"
+        },
+        {
+          "type": "add",
+          "text": "Minimal"
+        },
+        {
+          "type": "same",
+          "text": "["
+        },
+        {
+          "type": "remove",
+          "text": "최대"
+        },
+        {
+          "type": "add",
+          "text": "주제"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "6회"
+        },
+        {
+          "type": "add",
+          "text": "한"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "재생성"
+        },
+        {
+          "type": "add",
+          "text": "줄 최소 프롬프트"
+        },
+        {
+          "type": "same",
+          "text": "]"
+        }
+      ]
+    },
+    {
+      "id": "s45",
+      "index": 44,
+      "start": 2335,
+      "end": 2351,
+      "before": "RetryA --> GateA",
+      "after": "Minimal --> GateA{기준문 gate}",
+      "kind": "order",
+      "movedTo": 46,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "RetryA"
+        },
+        {
+          "type": "add",
+          "text": "Minimal"
+        },
+        {
+          "type": "same",
+          "text": " --> GateA"
+        },
+        {
+          "type": "add",
+          "text": "{기준문 gate}"
+        }
+      ]
+    },
+    {
+      "id": "s46",
+      "index": 45,
+      "start": 2354,
+      "end": 2397,
+      "before": "GateA -->|통과| Rewrite[KR-humanizer EXEC 윤문]",
+      "after": "GateA -->|짧음·메타응답·URL·중복| RetryA[최대 6회 재생성]",
+      "kind": "order",
+      "movedTo": 47,
+      "diff": [
+        {
+          "type": "same",
+          "text": "GateA -->|"
+        },
+        {
+          "type": "remove",
+          "text": "통과"
+        },
+        {
+          "type": "add",
+          "text": "짧음·메타응답·URL·중복"
+        },
+        {
+          "type": "same",
+          "text": "| "
+        },
+        {
+          "type": "remove",
+          "text": "Rewrite"
+        },
+        {
+          "type": "add",
+          "text": "RetryA"
+        },
+        {
+          "type": "same",
+          "text": "["
+        },
+        {
+          "type": "remove",
+          "text": "KR-humanizer"
+        },
+        {
+          "type": "add",
+          "text": "최대"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "EXEC"
+        },
+        {
+          "type": "add",
+          "text": "6회"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "윤문"
+        },
+        {
+          "type": "add",
+          "text": "재생성"
+        },
+        {
+          "type": "same",
+          "text": "]"
+        }
+      ]
+    },
+    {
+      "id": "s47",
+      "index": 46,
+      "start": 2400,
+      "end": 2426,
+      "before": "Rewrite --> GateB{윤문 gate}",
+      "after": "RetryA --> GateA",
+      "kind": "order",
+      "movedTo": 48,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Rewrite"
+        },
+        {
+          "type": "add",
+          "text": "RetryA"
+        },
+        {
+          "type": "same",
+          "text": " --> "
+        },
+        {
+          "type": "remove",
+          "text": "GateB{윤문 gate}"
+        },
+        {
+          "type": "add",
+          "text": "GateA"
+        }
+      ]
+    },
+    {
+      "id": "s48",
+      "index": 47,
+      "start": 2429,
+      "end": 2468,
+      "before": "GateB -->|길이비·숫자 불일치| RetryB[최대 6회 재생성]",
+      "after": "GateA -->|통과| Rewrite[KR-humanizer EXEC 윤문]",
+      "kind": "order",
+      "movedTo": 49,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "GateB"
+        },
+        {
+          "type": "add",
+          "text": "GateA"
+        },
+        {
+          "type": "same",
+          "text": " -->|"
+        },
+        {
+          "type": "remove",
+          "text": "길이비·숫자 불일치"
+        },
+        {
+          "type": "add",
+          "text": "통과"
+        },
+        {
+          "type": "same",
+          "text": "| "
+        },
+        {
+          "type": "remove",
+          "text": "RetryB"
+        },
+        {
+          "type": "add",
+          "text": "Rewrite"
+        },
+        {
+          "type": "same",
+          "text": "["
+        },
+        {
+          "type": "remove",
+          "text": "최대"
+        },
+        {
+          "type": "add",
+          "text": "KR-humanizer"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "6회"
+        },
+        {
+          "type": "add",
+          "text": "EXEC"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "재생성"
+        },
+        {
+          "type": "add",
+          "text": "윤문"
+        },
+        {
+          "type": "same",
+          "text": "]"
+        }
+      ]
+    },
+    {
+      "id": "s49",
+      "index": 48,
+      "start": 2471,
+      "end": 2487,
+      "before": "RetryB --> GateB",
+      "after": "Rewrite --> GateB{윤문 gate}",
+      "kind": "order",
+      "movedTo": 50,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "RetryB"
+        },
+        {
+          "type": "add",
+          "text": "Rewrite"
+        },
+        {
+          "type": "same",
+          "text": " --> GateB"
+        },
+        {
+          "type": "add",
+          "text": "{윤문 gate}"
+        }
+      ]
+    },
+    {
+      "id": "s50",
+      "index": 49,
+      "start": 2490,
+      "end": 2523,
+      "before": "GateB -->|통과| Pair[원문·윤문 pair 고정]",
+      "after": "GateB -->|길이비·숫자 불일치| RetryB[최대 6회 재생성]",
+      "kind": "order",
+      "movedTo": 51,
+      "diff": [
+        {
+          "type": "same",
+          "text": "GateB -->|"
+        },
+        {
+          "type": "remove",
+          "text": "통과"
+        },
+        {
+          "type": "add",
+          "text": "길이비·숫자 불일치"
+        },
+        {
+          "type": "same",
+          "text": "| "
+        },
+        {
+          "type": "remove",
+          "text": "Pair"
+        },
+        {
+          "type": "add",
+          "text": "RetryB"
+        },
+        {
+          "type": "same",
+          "text": "["
+        },
+        {
+          "type": "remove",
+          "text": "원문·윤문"
+        },
+        {
+          "type": "add",
+          "text": "최대"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "pair"
+        },
+        {
+          "type": "add",
+          "text": "6회"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "고정"
+        },
+        {
+          "type": "add",
+          "text": "재생성"
+        },
+        {
+          "type": "same",
+          "text": "]"
+        }
+      ]
+    },
+    {
+      "id": "s51",
+      "index": 50,
+      "start": 2526,
+      "end": 2561,
+      "before": "Pair --> Fold[같은 pair를 같은 fold에 배치]",
+      "after": "RetryB --> GateB",
+      "kind": "order",
+      "movedTo": 52,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Pair"
+        },
+        {
+          "type": "add",
+          "text": "RetryB"
+        },
+        {
+          "type": "same",
+          "text": " --> "
+        },
+        {
+          "type": "remove",
+          "text": "Fold[같은 pair를 같은 fold에 배치]"
+        },
+        {
+          "type": "add",
+          "text": "GateB"
+        }
+      ]
+    },
+    {
+      "id": "s52",
+      "index": 51,
+      "start": 2564,
+      "end": 2591,
+      "before": "Fold --> Metrics[결정적 문체 지표]",
+      "after": "GateB -->|통과| Pair[원문·윤문 pair 고정]",
+      "kind": "order",
+      "movedTo": 53,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Fold"
+        },
+        {
+          "type": "add",
+          "text": "GateB"
+        },
+        {
+          "type": "same",
+          "text": " -->"
+        },
+        {
+          "type": "add",
+          "text": "|통과|"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "Metrics"
+        },
+        {
+          "type": "add",
+          "text": "Pair"
+        },
+        {
+          "type": "same",
+          "text": "["
+        },
+        {
+          "type": "remove",
+          "text": "결정적"
+        },
+        {
+          "type": "add",
+          "text": "원문·윤문"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "문체"
+        },
+        {
+          "type": "add",
+          "text": "pair"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "지표"
+        },
+        {
+          "type": "add",
+          "text": "고정"
+        },
+        {
+          "type": "same",
+          "text": "]"
+        }
+      ]
+    },
+    {
+      "id": "s53",
+      "index": 52,
+      "start": 2594,
+      "end": 2627,
+      "before": "Fold --> Blind[A/B 위치 무작위화 모델 평가]",
+      "after": "Pair --> Fold[같은 pair를 같은 fold에 배치]",
+      "kind": "order",
+      "movedTo": 54,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Fold"
+        },
+        {
+          "type": "add",
+          "text": "Pair"
+        },
+        {
+          "type": "same",
+          "text": " --> "
+        },
+        {
+          "type": "remove",
+          "text": "Blind"
+        },
+        {
+          "type": "add",
+          "text": "Fold"
+        },
+        {
+          "type": "same",
+          "text": "["
+        },
+        {
+          "type": "remove",
+          "text": "A/B"
+        },
+        {
+          "type": "add",
+          "text": "같은"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "위치"
+        },
+        {
+          "type": "add",
+          "text": "pair를"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "무작위화"
+        },
+        {
+          "type": "add",
+          "text": "같은"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "모델"
+        },
+        {
+          "type": "add",
+          "text": "fold에"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "평가"
+        },
+        {
+          "type": "add",
+          "text": "배치"
+        },
+        {
+          "type": "same",
+          "text": "]"
+        }
+      ]
+    },
+    {
+      "id": "s54",
+      "index": 53,
+      "start": 2630,
+      "end": 2673,
+      "before": "Metrics --> Files[run.json·JSONL·report.md]",
+      "after": "Fold --> Metrics[결정적 문체 지표]",
+      "kind": "order",
+      "movedTo": 55,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Metrics"
+        },
+        {
+          "type": "add",
+          "text": "Fold"
+        },
+        {
+          "type": "same",
+          "text": " --> "
+        },
+        {
+          "type": "remove",
+          "text": "Files"
+        },
+        {
+          "type": "add",
+          "text": "Metrics"
+        },
+        {
+          "type": "same",
+          "text": "["
+        },
+        {
+          "type": "remove",
+          "text": "run.json·JSONL·report.md"
+        },
+        {
+          "type": "add",
+          "text": "결정적 문체 지표"
+        },
+        {
+          "type": "same",
+          "text": "]"
+        }
+      ]
+    },
+    {
+      "id": "s55",
+      "index": 54,
+      "start": 2676,
+      "end": 2691,
+      "before": "Blind --> Files",
+      "after": "Fold --> Blind[A/B 위치 무작위화 모델 평가]",
+      "kind": "order",
+      "movedTo": 56,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Blind"
+        },
+        {
+          "type": "add",
+          "text": "Fold"
+        },
+        {
+          "type": "same",
+          "text": " --> "
+        },
+        {
+          "type": "remove",
+          "text": "Files"
+        },
+        {
+          "type": "add",
+          "text": "Blind[A/B 위치 무작위화 모델 평가]"
+        }
+      ]
+    },
+    {
+      "id": "s56",
+      "index": 55,
+      "start": 2692,
+      "end": 2695,
+      "before": "```",
+      "after": "Metrics --> Files[run.json·JSONL·report.md]",
+      "kind": "order",
+      "movedTo": 15,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "```"
+        },
+        {
+          "type": "add",
+          "text": "Metrics --> Files[run.json·JSONL·report.md]"
+        }
+      ]
+    },
+    {
+      "id": "s57",
+      "index": 56,
+      "start": 2697,
+      "end": 2730,
+      "before": "CV는 정치·경제·사회 각 3개 원문과 그 윤문을 만듭니다.",
+      "after": "Blind --> Files",
+      "kind": "order",
+      "movedTo": 58,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "CV는 정치·경제·사회 각 3개 원문과 그"
+        },
+        {
+          "type": "add",
+          "text": "Blind"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "윤문을"
+        },
+        {
+          "type": "add",
+          "text": "-->"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "만듭니다."
+        },
+        {
+          "type": "add",
+          "text": "Files"
+        }
+      ]
+    },
+    {
+      "id": "s58",
+      "index": 57,
+      "start": 2731,
+      "end": 2771,
+      "before": "원문과 대응 윤문은 항상 같은 fold에 있어 pair 누수를 막습니다.",
+      "after": "```",
+      "kind": "order",
+      "movedTo": 59,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "원문과 대응 윤문은 항상 같은 fold에 있어 pair 누수를 막습니다."
+        },
+        {
+          "type": "add",
+          "text": "```"
+        }
+      ]
+    },
+    {
+      "id": "s59",
+      "index": 58,
+      "start": 2772,
+      "end": 2832,
+      "before": "숫자 토큰 보존, 길이비, 가독성 대리 지표, 문체 구분기와 A/B 위치 무작위화 의견을 별도로 기록합니다.",
+      "after": "CV는 정치·경제·사회 분야에서 각각 3개의 원문과 그 윤문을 만듭니다.",
+      "kind": "order",
+      "movedTo": 60,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "숫자 토큰 보존, 길이비, 가독성 대리 지표,"
+        },
+        {
+          "type": "add",
+          "text": "CV는"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "문체"
+        },
+        {
+          "type": "add",
+          "text": "정치·경제·사회"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "구분기와"
+        },
+        {
+          "type": "add",
+          "text": "분야에서"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "A/B"
+        },
+        {
+          "type": "add",
+          "text": "각각"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "위치"
+        },
+        {
+          "type": "add",
+          "text": "3개의"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "무작위화"
+        },
+        {
+          "type": "add",
+          "text": "원문과"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "의견을"
+        },
+        {
+          "type": "add",
+          "text": "그"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "별도로"
+        },
+        {
+          "type": "add",
+          "text": "윤문을"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "기록합니다"
+        },
+        {
+          "type": "add",
+          "text": "만듭니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s60",
+      "index": 59,
+      "start": 2833,
+      "end": 2899,
+      "before": "평가 프롬프트에는 의미 보존 확인을 위한 참조 원문이 함께 제공되므로 평가자가 원문과 같은 문안을 식별할 수 있습니다.",
+      "after": "원문과 이에 대응하는 윤문은 항상 같은 fold에 배치해 pair 누수를 막습니다.",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "평가 프롬프트에는 의미 보존 확인을 위한 참조 원문이"
+        },
+        {
+          "type": "add",
+          "text": "원문과"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "함께"
+        },
+        {
+          "type": "add",
+          "text": "이에"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "제공되므로"
+        },
+        {
+          "type": "add",
+          "text": "대응하는"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "평가자가"
+        },
+        {
+          "type": "add",
+          "text": "윤문은"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "원문과"
+        },
+        {
+          "type": "add",
+          "text": "항상"
+        },
+        {
+          "type": "same",
+          "text": " 같은 "
+        },
+        {
+          "type": "remove",
+          "text": "문안을"
+        },
+        {
+          "type": "add",
+          "text": "fold에"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "식별할"
+        },
+        {
+          "type": "add",
+          "text": "배치해"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "수"
+        },
+        {
+          "type": "add",
+          "text": "pair"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "있습니다"
+        },
+        {
+          "type": "add",
+          "text": "누수를 막습니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s61",
+      "index": 60,
+      "start": 2900,
+      "end": 2990,
+      "before": "따라서 완전한 블라인드 실험이 아니며, 같은 Codex 계열이 생성·윤문·평가한다는 점까지 포함해 실제 사람 선호나 AI 판별 회피 성능으로 해석할 수 없습니다.",
+      "after": "숫자 토큰 보존, 길이비, 가독성 대리 지표, 문체 구분기와 A/B 위치 무작위화 의견을 각각 기록합니다.",
+      "kind": "order",
+      "movedTo": 63,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "따라서 완전한 블라인드"
+        },
+        {
+          "type": "add",
+          "text": "숫자"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "실험이"
+        },
+        {
+          "type": "add",
+          "text": "토큰"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "아니며"
+        },
+        {
+          "type": "add",
+          "text": "보존"
+        },
+        {
+          "type": "same",
+          "text": ", "
+        },
+        {
+          "type": "remove",
+          "text": "같은 Codex 계열이 생성·윤문·평가한다는 점까지"
+        },
+        {
+          "type": "add",
+          "text": "길이비,"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "포함해"
+        },
+        {
+          "type": "add",
+          "text": "가독성"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "실제"
+        },
+        {
+          "type": "add",
+          "text": "대리"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "사람"
+        },
+        {
+          "type": "add",
+          "text": "지표,"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "선호나"
+        },
+        {
+          "type": "add",
+          "text": "문체"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "AI"
+        },
+        {
+          "type": "add",
+          "text": "구분기와"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "판별"
+        },
+        {
+          "type": "add",
+          "text": "A/B"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "회피"
+        },
+        {
+          "type": "add",
+          "text": "위치"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "성능으로"
+        },
+        {
+          "type": "add",
+          "text": "무작위화"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "해석할"
+        },
+        {
+          "type": "add",
+          "text": "의견을"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "수"
+        },
+        {
+          "type": "add",
+          "text": "각각"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "없습니다"
+        },
+        {
+          "type": "add",
+          "text": "기록합니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s62",
+      "index": 61,
+      "start": 2992,
+      "end": 3004,
+      "before": "## 보안과 신뢰 경계",
+      "after": "평가 프롬프트에는 의미 보존 여부를 확인할 수 있도록 참조 원문도 함께 제공합니다.",
+      "kind": "order",
+      "movedTo": 64,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "##"
+        },
+        {
+          "type": "add",
+          "text": "평가"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "보안과"
+        },
+        {
+          "type": "add",
+          "text": "프롬프트에는"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "신뢰"
+        },
+        {
+          "type": "add",
+          "text": "의미"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "경계"
+        },
+        {
+          "type": "add",
+          "text": "보존 여부를 확인할 수 있도록 참조 원문도 함께 제공합니다."
+        }
+      ]
+    },
+    {
+      "id": "s63",
+      "index": 62,
+      "start": 3006,
+      "end": 3016,
+      "before": "```mermaid",
+      "after": "따라서 평가자는 원문과 같은 문안을 식별할 수 있습니다.",
+      "kind": "order",
+      "movedTo": 1,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "```mermaid"
+        },
+        {
+          "type": "add",
+          "text": "따라서 평가자는 원문과 같은 문안을 식별할 수 있습니다."
+        }
+      ]
+    },
+    {
+      "id": "s64",
+      "index": 63,
+      "start": 3017,
+      "end": 3029,
+      "before": "flowchart LR",
+      "after": "완전한 블라인드 실험이 아니며, 같은 Codex 계열이 생성·윤문·평가한다는 점을 고려할 때 실제 사람의 선호나 AI 판별 회피 성능으로 해석할 수 없습니다.",
+      "kind": "order",
+      "movedTo": 42,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "flowchart"
+        },
+        {
+          "type": "add",
+          "text": "완전한"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "LR"
+        },
+        {
+          "type": "add",
+          "text": "블라인드 실험이 아니며, 같은 Codex 계열이 생성·윤문·평가한다는 점을 고려할 때 실제 사람의 선호나 AI 판별 회피 성능으로 해석할 수 없습니다."
+        }
+      ]
+    },
+    {
+      "id": "s65",
+      "index": 64,
+      "start": 3032,
+      "end": 3056,
+      "before": "subgraph Local[로컬 신뢰 영역]",
+      "after": "## 보안과 신뢰 경계",
+      "kind": "order",
+      "movedTo": 67,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "subgraph"
+        },
+        {
+          "type": "add",
+          "text": "##"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "Local[로컬"
+        },
+        {
+          "type": "add",
+          "text": "보안과"
+        },
+        {
+          "type": "same",
+          "text": " 신뢰 "
+        },
+        {
+          "type": "remove",
+          "text": "영역]"
+        },
+        {
+          "type": "add",
+          "text": "경계"
+        }
+      ]
+    },
+    {
+      "id": "s66",
+      "index": 65,
+      "start": 3061,
+      "end": 3078,
+      "before": "Browser[브라우저 GUI]",
+      "after": "```mermaid",
+      "kind": "order",
+      "movedTo": 68,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Browser[브라우저 GUI]"
+        },
+        {
+          "type": "add",
+          "text": "```mermaid"
+        }
+      ]
+    },
+    {
+      "id": "s67",
+      "index": 66,
+      "start": 3083,
+      "end": 3103,
+      "before": "Server[127.0.0.1 서버]",
+      "after": "flowchart LR",
+      "kind": "order",
+      "movedTo": 69,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Server[127.0.0.1"
+        },
+        {
+          "type": "add",
+          "text": "flowchart"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "서버]"
+        },
+        {
+          "type": "add",
+          "text": "LR"
+        }
+      ]
+    },
+    {
+      "id": "s68",
+      "index": 67,
+      "start": 3108,
+      "end": 3121,
+      "before": "Files[사용자 파일]",
+      "after": "subgraph Local[로컬 신뢰 영역]",
+      "kind": "order",
+      "movedTo": 70,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Files"
+        },
+        {
+          "type": "add",
+          "text": "subgraph Local"
+        },
+        {
+          "type": "same",
+          "text": "["
+        },
+        {
+          "type": "remove",
+          "text": "사용자"
+        },
+        {
+          "type": "add",
+          "text": "로컬"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "파일"
+        },
+        {
+          "type": "add",
+          "text": "신뢰 영역"
+        },
+        {
+          "type": "same",
+          "text": "]"
+        }
+      ]
+    },
+    {
+      "id": "s69",
+      "index": 68,
+      "start": 3126,
+      "end": 3140,
+      "before": "Memory[로컬 메모리]",
+      "after": "Browser[브라우저 GUI]",
+      "kind": "order",
+      "movedTo": 71,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Memory"
+        },
+        {
+          "type": "add",
+          "text": "Browser"
+        },
+        {
+          "type": "same",
+          "text": "["
+        },
+        {
+          "type": "remove",
+          "text": "로컬"
+        },
+        {
+          "type": "add",
+          "text": "브라우저"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "메모리"
+        },
+        {
+          "type": "add",
+          "text": "GUI"
+        },
+        {
+          "type": "same",
+          "text": "]"
+        }
+      ]
+    },
+    {
+      "id": "s70",
+      "index": 69,
+      "start": 3143,
+      "end": 3146,
+      "before": "end",
+      "after": "Server[127.0.0.1 서버]",
+      "kind": "order",
+      "movedTo": 72,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "end"
+        },
+        {
+          "type": "add",
+          "text": "Server[127.0.0.1 서버]"
+        }
+      ]
+    },
+    {
+      "id": "s71",
+      "index": 70,
+      "start": 3149,
+      "end": 3178,
+      "before": "subgraph Process[허용된 자식 프로세스]",
+      "after": "Files[사용자 파일]",
+      "kind": "order",
+      "movedTo": 73,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "subgraph Process"
+        },
+        {
+          "type": "add",
+          "text": "Files"
+        },
+        {
+          "type": "same",
+          "text": "["
+        },
+        {
+          "type": "remove",
+          "text": "허용된 자식"
+        },
+        {
+          "type": "add",
+          "text": "사용자"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "프로세스"
+        },
+        {
+          "type": "add",
+          "text": "파일"
+        },
+        {
+          "type": "same",
+          "text": "]"
+        }
+      ]
+    },
+    {
+      "id": "s72",
+      "index": 71,
+      "start": 3183,
+      "end": 3199,
+      "before": "Codex[Codex CLI]",
+      "after": "Memory[로컬 메모리]",
+      "kind": "order",
+      "movedTo": 74,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Codex"
+        },
+        {
+          "type": "add",
+          "text": "Memory"
+        },
+        {
+          "type": "same",
+          "text": "["
+        },
+        {
+          "type": "remove",
+          "text": "Codex"
+        },
+        {
+          "type": "add",
+          "text": "로컬"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "CLI"
+        },
+        {
+          "type": "add",
+          "text": "메모리"
+        },
+        {
+          "type": "same",
+          "text": "]"
+        }
+      ]
+    },
+    {
+      "id": "s73",
+      "index": 72,
+      "start": 3204,
+      "end": 3227,
+      "before": "Claude[Claude Code CLI]",
+      "after": "end",
+      "kind": "order",
+      "movedTo": 75,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Claude[Claude Code CLI]"
+        },
+        {
+          "type": "add",
+          "text": "end"
+        }
+      ]
+    },
+    {
+      "id": "s74",
+      "index": 73,
+      "start": 3230,
+      "end": 3233,
+      "before": "end",
+      "after": "subgraph Process[허용된 자식 프로세스]",
+      "kind": "order",
+      "movedTo": 72,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "end"
+        },
+        {
+          "type": "add",
+          "text": "subgraph Process[허용된 자식 프로세스]"
+        }
+      ]
+    },
+    {
+      "id": "s75",
+      "index": 74,
+      "start": 3236,
+      "end": 3260,
+      "before": "subgraph Rejected[기본 거부]",
+      "after": "Codex[Codex CLI]",
+      "kind": "order",
+      "movedTo": 77,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "subgraph Rejected"
+        },
+        {
+          "type": "add",
+          "text": "Codex"
+        },
+        {
+          "type": "same",
+          "text": "["
+        },
+        {
+          "type": "remove",
+          "text": "기본"
+        },
+        {
+          "type": "add",
+          "text": "Codex"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "거부"
+        },
+        {
+          "type": "add",
+          "text": "CLI"
+        },
+        {
+          "type": "same",
+          "text": "]"
+        }
+      ]
+    },
+    {
+      "id": "s76",
+      "index": 75,
+      "start": 3265,
+      "end": 3288,
+      "before": "RemoteMem0[외부 mem0 호스트]",
+      "after": "Claude[Claude Code CLI]",
+      "kind": "order",
+      "movedTo": 78,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "RemoteMem0"
+        },
+        {
+          "type": "add",
+          "text": "Claude"
+        },
+        {
+          "type": "same",
+          "text": "["
+        },
+        {
+          "type": "remove",
+          "text": "외부"
+        },
+        {
+          "type": "add",
+          "text": "Claude"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "mem0"
+        },
+        {
+          "type": "add",
+          "text": "Code"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "호스트"
+        },
+        {
+          "type": "add",
+          "text": "CLI"
+        },
+        {
+          "type": "same",
+          "text": "]"
+        }
+      ]
+    },
+    {
+      "id": "s77",
+      "index": 76,
+      "start": 3293,
+      "end": 3315,
+      "before": "NoToken[세션 토큰 없는 POST]",
+      "after": "end",
+      "kind": "order",
+      "movedTo": 79,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "NoToken[세션 토큰 없는 POST]"
+        },
+        {
+          "type": "add",
+          "text": "end"
+        }
+      ]
+    },
+    {
+      "id": "s78",
+      "index": 77,
+      "start": 3320,
+      "end": 3352,
+      "before": "Oversize[1 MiB 초과 요청·20만 자 초과 글]",
+      "after": "subgraph Rejected[기본 거부]",
+      "kind": "order",
+      "movedTo": 80,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Oversize[1 MiB 초과 요청·20만 자"
+        },
+        {
+          "type": "add",
+          "text": "subgraph"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "초과"
+        },
+        {
+          "type": "add",
+          "text": "Rejected[기본"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "글"
+        },
+        {
+          "type": "add",
+          "text": "거부"
+        },
+        {
+          "type": "same",
+          "text": "]"
+        }
+      ]
+    },
+    {
+      "id": "s79",
+      "index": 78,
+      "start": 3355,
+      "end": 3358,
+      "before": "end",
+      "after": "RemoteMem0[외부 mem0 호스트]",
+      "kind": "order",
+      "movedTo": 72,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "end"
+        },
+        {
+          "type": "add",
+          "text": "RemoteMem0[외부 mem0 호스트]"
+        }
+      ]
+    },
+    {
+      "id": "s80",
+      "index": 79,
+      "start": 3361,
+      "end": 3390,
+      "before": "Browser -->|무작위 세션 토큰| Server",
+      "after": "NoToken[세션 토큰 없는 POST]",
+      "kind": "order",
+      "movedTo": 82,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Browser -->|무작위 "
+        },
+        {
+          "type": "add",
+          "text": "NoToken["
+        },
+        {
+          "type": "same",
+          "text": "세션 토큰"
+        },
+        {
+          "type": "remove",
+          "text": "|"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "Server"
+        },
+        {
+          "type": "add",
+          "text": "없는 POST]"
+        }
+      ]
+    },
+    {
+      "id": "s81",
+      "index": 80,
+      "start": 3393,
+      "end": 3409,
+      "before": "Files --> Server",
+      "after": "Oversize[1 MiB 초과 요청·20만 자 초과 글]",
+      "kind": "order",
+      "movedTo": 83,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Files"
+        },
+        {
+          "type": "add",
+          "text": "Oversize[1"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "-->"
+        },
+        {
+          "type": "add",
+          "text": "MiB"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "Server"
+        },
+        {
+          "type": "add",
+          "text": "초과 요청·20만 자 초과 글]"
+        }
+      ]
+    },
+    {
+      "id": "s82",
+      "index": 81,
+      "start": 3412,
+      "end": 3429,
+      "before": "Server --> Memory",
+      "after": "end",
+      "kind": "order",
+      "movedTo": 84,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Server --> Memory"
+        },
+        {
+          "type": "add",
+          "text": "end"
+        }
+      ]
+    },
+    {
+      "id": "s83",
+      "index": 82,
+      "start": 3432,
+      "end": 3455,
+      "before": "Server -->|인자 배열| Codex",
+      "after": "Browser -->|무작위 세션 토큰| Server",
+      "kind": "order",
+      "movedTo": 85,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Server"
+        },
+        {
+          "type": "add",
+          "text": "Browser"
+        },
+        {
+          "type": "same",
+          "text": " -->|"
+        },
+        {
+          "type": "remove",
+          "text": "인자"
+        },
+        {
+          "type": "add",
+          "text": "무작위"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "배열"
+        },
+        {
+          "type": "add",
+          "text": "세션 토큰"
+        },
+        {
+          "type": "same",
+          "text": "| "
+        },
+        {
+          "type": "remove",
+          "text": "Codex"
+        },
+        {
+          "type": "add",
+          "text": "Server"
+        }
+      ]
+    },
+    {
+      "id": "s84",
+      "index": 83,
+      "start": 3458,
+      "end": 3482,
+      "before": "Server -->|인자 배열| Claude",
+      "after": "Files --> Server",
+      "kind": "order",
+      "movedTo": 86,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Server"
+        },
+        {
+          "type": "add",
+          "text": "Files"
+        },
+        {
+          "type": "same",
+          "text": " -->"
+        },
+        {
+          "type": "remove",
+          "text": "|인자"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "배열| Claude"
+        },
+        {
+          "type": "add",
+          "text": "Server"
+        }
+      ]
+    },
+    {
+      "id": "s85",
+      "index": 84,
+      "start": 3485,
+      "end": 3498,
+      "before": "RemoteMem0 -.",
+      "after": "Server --> Memory",
+      "kind": "order",
+      "movedTo": 87,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "RemoteMem0"
+        },
+        {
+          "type": "add",
+          "text": "Server"
+        },
+        {
+          "type": "same",
+          "text": " -"
+        },
+        {
+          "type": "remove",
+          "text": "."
+        },
+        {
+          "type": "add",
+          "text": "-> Memory"
+        }
+      ]
+    },
+    {
+      "id": "s86",
+      "index": 85,
+      "start": 3499,
+      "end": 3512,
+      "before": "차단 .-> Server",
+      "after": "Server -->|인자 배열| Codex",
+      "kind": "order",
+      "movedTo": 88,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "차단"
+        },
+        {
+          "type": "add",
+          "text": "Server"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "."
+        },
+        {
+          "type": "same",
+          "text": "-"
+        },
+        {
+          "type": "add",
+          "text": "-"
+        },
+        {
+          "type": "same",
+          "text": ">"
+        },
+        {
+          "type": "add",
+          "text": "|인자"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "Server"
+        },
+        {
+          "type": "add",
+          "text": "배열| Codex"
+        }
+      ]
+    },
+    {
+      "id": "s87",
+      "index": 86,
+      "start": 3515,
+      "end": 3525,
+      "before": "NoToken -.",
+      "after": "Server -->|인자 배열| Claude",
+      "kind": "order",
+      "movedTo": 89,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "NoToken"
+        },
+        {
+          "type": "add",
+          "text": "Server"
+        },
+        {
+          "type": "same",
+          "text": " -"
+        },
+        {
+          "type": "remove",
+          "text": "."
+        },
+        {
+          "type": "add",
+          "text": "->|인자 배열| Claude"
+        }
+      ]
+    },
+    {
+      "id": "s88",
+      "index": 87,
+      "start": 3526,
+      "end": 3540,
+      "before": "403 .-> Server",
+      "after": "RemoteMem0 -.",
+      "kind": "order",
+      "movedTo": 90,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "403"
+        },
+        {
+          "type": "add",
+          "text": "RemoteMem0"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "."
+        },
+        {
+          "type": "same",
+          "text": "-"
+        },
+        {
+          "type": "remove",
+          "text": "> Server"
+        },
+        {
+          "type": "add",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s89",
+      "index": 88,
+      "start": 3543,
+      "end": 3554,
+      "before": "Oversize -.",
+      "after": "차단 .-> Server",
+      "kind": "order",
+      "movedTo": 91,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Oversize"
+        },
+        {
+          "type": "add",
+          "text": "차단"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "-"
+        },
+        {
+          "type": "same",
+          "text": "."
+        },
+        {
+          "type": "add",
+          "text": "-> Server"
+        }
+      ]
+    },
+    {
+      "id": "s90",
+      "index": 89,
+      "start": 3555,
+      "end": 3575,
+      "before": "413 또는 오류 .-> Server",
+      "after": "NoToken -.",
+      "kind": "order",
+      "movedTo": 92,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "413 또는 오류"
+        },
+        {
+          "type": "add",
+          "text": "NoToken"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "."
+        },
+        {
+          "type": "same",
+          "text": "-"
+        },
+        {
+          "type": "remove",
+          "text": "> Server"
+        },
+        {
+          "type": "add",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s91",
+      "index": 90,
+      "start": 3576,
+      "end": 3579,
+      "before": "```",
+      "after": "403 .-> Server",
+      "kind": "order",
+      "movedTo": 15,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "```"
+        },
+        {
+          "type": "add",
+          "text": "403 .-> Server"
+        }
+      ]
+    },
+    {
+      "id": "s92",
+      "index": 91,
+      "start": 3581,
+      "end": 3621,
+      "before": "- 서버는 모든 인터페이스가 아닌 `127.0.0.1`에만 바인딩합니다.",
+      "after": "Oversize -.",
+      "kind": "order",
+      "movedTo": 94,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "- 서버는 모든 인터페이스가 아닌 `127.0.0.1`에만"
+        },
+        {
+          "type": "add",
+          "text": "Oversize"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "바인딩합니다"
+        },
+        {
+          "type": "add",
+          "text": "-"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s93",
+      "index": 92,
+      "start": 3622,
+      "end": 3688,
+      "before": "- HTML에 매 실행 무작위 토큰을 넣고 모든 POST 요청의 `x-kr-humanizer-token`과 비교합니다.",
+      "after": "413 또는 오류 .-> Server",
+      "kind": "order",
+      "movedTo": 95,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "- HTML에 매 실행 무작위 토큰을 넣고 모든"
+        },
+        {
+          "type": "add",
+          "text": "413"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "POST"
+        },
+        {
+          "type": "add",
+          "text": "또는"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "요청의"
+        },
+        {
+          "type": "add",
+          "text": "오류"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "`x-kr-humanizer"
+        },
+        {
+          "type": "add",
+          "text": "."
+        },
+        {
+          "type": "same",
+          "text": "-"
+        },
+        {
+          "type": "remove",
+          "text": "token`과"
+        },
+        {
+          "type": "add",
+          "text": ">"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "비교합니다."
+        },
+        {
+          "type": "add",
+          "text": "Server"
+        }
+      ]
+    },
+    {
+      "id": "s94",
+      "index": 93,
+      "start": 3689,
+      "end": 3774,
+      "before": "- 응답에는 CSP, `frame-ancestors 'none'`, `nosniff`, `no-referrer`, `no-store` 헤더를 설정합니다.",
+      "after": "```",
+      "kind": "order",
+      "movedTo": 96,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "- 응답에는 CSP, "
+        },
+        {
+          "type": "same",
+          "text": "`"
+        },
+        {
+          "type": "remove",
+          "text": "frame-ancestors 'none'"
+        },
+        {
+          "type": "same",
+          "text": "`"
+        },
+        {
+          "type": "remove",
+          "text": ", "
+        },
+        {
+          "type": "same",
+          "text": "`"
+        },
+        {
+          "type": "remove",
+          "text": "nosniff`, `no-referrer`, `no-store` 헤더를 설정합니다."
+        }
+      ]
+    },
+    {
+      "id": "s95",
+      "index": 94,
+      "start": 3775,
+      "end": 3828,
+      "before": "- 요청 본문은 1 MiB, 분석 원문은 200,000자, 엔진 출력은 2 MiB로 제한합니다.",
+      "after": "- 서버는 모든 인터페이스가 아닌 `127.0.0.1`에만 바인딩합니다.",
+      "kind": "order",
+      "movedTo": 97,
+      "diff": [
+        {
+          "type": "same",
+          "text": "- "
+        },
+        {
+          "type": "remove",
+          "text": "요청 본문은 1 MiB, 분석 원문은 200,000자,"
+        },
+        {
+          "type": "add",
+          "text": "서버는"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "엔진"
+        },
+        {
+          "type": "add",
+          "text": "모든"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "출력은"
+        },
+        {
+          "type": "add",
+          "text": "인터페이스가"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "2"
+        },
+        {
+          "type": "add",
+          "text": "아닌"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "MiB로"
+        },
+        {
+          "type": "add",
+          "text": "`127.0.0.1`에만"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "제한합니다"
+        },
+        {
+          "type": "add",
+          "text": "바인딩합니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s96",
+      "index": 95,
+      "start": 3829,
+      "end": 3880,
+      "before": "- 비가시 문자 정리는 탐지된 Unicode 제어문자만 제거하고 NFC 정규화를 적용합니다.",
+      "after": "- HTML에는 실행할 때마다 생성되는 무작위 토큰을 넣고, 모든 POST 요청의 `x-kr-humanizer-token`과 비교합니다.",
+      "kind": "order",
+      "movedTo": 98,
+      "diff": [
+        {
+          "type": "same",
+          "text": "- "
+        },
+        {
+          "type": "remove",
+          "text": "비가시"
+        },
+        {
+          "type": "add",
+          "text": "HTML에는"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "문자"
+        },
+        {
+          "type": "add",
+          "text": "실행할"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "정리는"
+        },
+        {
+          "type": "add",
+          "text": "때마다"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "탐지된"
+        },
+        {
+          "type": "add",
+          "text": "생성되는"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "Unicode"
+        },
+        {
+          "type": "add",
+          "text": "무작위"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "제어문자만"
+        },
+        {
+          "type": "add",
+          "text": "토큰을"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "제거하고"
+        },
+        {
+          "type": "add",
+          "text": "넣고,"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "NFC"
+        },
+        {
+          "type": "add",
+          "text": "모든"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "정규화를"
+        },
+        {
+          "type": "add",
+          "text": "POST"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "적용합니다"
+        },
+        {
+          "type": "add",
+          "text": "요청의 `x-kr-humanizer-token`과 비교합니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s97",
+      "index": 96,
+      "start": 3881,
+      "end": 3912,
+      "before": "이를 AI 워터마크 검출이나 제거라고 주장하지 않습니다.",
+      "after": "- 응답에는 CSP, `frame-ancestors 'none'`, `nosniff`, `no-referrer`, `no-store` 헤더를 설정합니다.",
+      "kind": "order",
+      "movedTo": 99,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "이를"
+        },
+        {
+          "type": "add",
+          "text": "-"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "AI"
+        },
+        {
+          "type": "add",
+          "text": "응답에는"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "워터마크"
+        },
+        {
+          "type": "add",
+          "text": "CSP,"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "검출이나"
+        },
+        {
+          "type": "add",
+          "text": "`frame-ancestors"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "제거라고"
+        },
+        {
+          "type": "add",
+          "text": "'none'`,"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "주장하지"
+        },
+        {
+          "type": "add",
+          "text": "`nosniff`,"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "않습니다"
+        },
+        {
+          "type": "add",
+          "text": "`no-referrer`, `no-store` 헤더를 설정합니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s98",
+      "index": 97,
+      "start": 3914,
+      "end": 3922,
+      "before": "## 현재 한계",
+      "after": "- 요청 본문은 1 MiB, 분석 원문은 200,000자, 엔진 출력은 2 MiB로 제한합니다.",
+      "kind": "order",
+      "movedTo": 100,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "##"
+        },
+        {
+          "type": "add",
+          "text": "-"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "현재"
+        },
+        {
+          "type": "add",
+          "text": "요청"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "한계"
+        },
+        {
+          "type": "add",
+          "text": "본문은 1 MiB, 분석 원문은 200,000자, 엔진 출력은 2 MiB로 제한합니다."
+        }
+      ]
+    },
+    {
+      "id": "s99",
+      "index": 98,
+      "start": 3924,
+      "end": 3976,
+      "before": "- 규칙 기반 분석은 교정 후보를 보여 주며 국립국어원 수준의 완전한 문법 판정기가 아닙니다.",
+      "after": "- 비가시 문자를 정리할 때는 탐지된 Unicode 제어문자만 제거하고 NFC 정규화를 적용합니다.",
+      "kind": "order",
+      "movedTo": 101,
+      "diff": [
+        {
+          "type": "same",
+          "text": "- "
+        },
+        {
+          "type": "remove",
+          "text": "규칙 기반 분석은"
+        },
+        {
+          "type": "add",
+          "text": "비가시"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "교정"
+        },
+        {
+          "type": "add",
+          "text": "문자를"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "후보를"
+        },
+        {
+          "type": "add",
+          "text": "정리할"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "보여"
+        },
+        {
+          "type": "add",
+          "text": "때는"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "주며"
+        },
+        {
+          "type": "add",
+          "text": "탐지된"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "국립국어원"
+        },
+        {
+          "type": "add",
+          "text": "Unicode"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "수준의"
+        },
+        {
+          "type": "add",
+          "text": "제어문자만"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "완전한"
+        },
+        {
+          "type": "add",
+          "text": "제거하고"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "문법"
+        },
+        {
+          "type": "add",
+          "text": "NFC"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "판정기가"
+        },
+        {
+          "type": "add",
+          "text": "정규화를"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "아닙니다"
+        },
+        {
+          "type": "add",
+          "text": "적용합니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s100",
+      "index": 99,
+      "start": 3977,
+      "end": 4028,
+      "before": "- 문장 정렬은 동일 인덱스를 우선하는 휴리스틱이라 문단 전체 재구성에는 적합하지 않습니다.",
+      "after": "이를 AI 워터마크 검출이나 제거라고 주장하지 않습니다.",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "- 문장 정렬은 동일 인덱스를 우선하는"
+        },
+        {
+          "type": "add",
+          "text": "이를"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "휴리스틱이라"
+        },
+        {
+          "type": "add",
+          "text": "AI"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "문단"
+        },
+        {
+          "type": "add",
+          "text": "워터마크"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "전체"
+        },
+        {
+          "type": "add",
+          "text": "검출이나"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "재구성에는"
+        },
+        {
+          "type": "add",
+          "text": "제거라고"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "적합하지"
+        },
+        {
+          "type": "add",
+          "text": "주장하지"
+        },
+        {
+          "type": "same",
+          "text": " 않습니다."
+        }
+      ]
+    },
+    {
+      "id": "s101",
+      "index": 100,
+      "start": 4029,
+      "end": 4066,
+      "before": "- 로컬 메모리 검색은 의미 임베딩이 아니라 토큰 겹침 점수입니다.",
+      "after": "## 현재 한계",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "- 로컬 메모리 검색은 의미 임베딩이 아니라 토큰"
+        },
+        {
+          "type": "add",
+          "text": "##"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "겹침"
+        },
+        {
+          "type": "add",
+          "text": "현재"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "점수입니다."
+        },
+        {
+          "type": "add",
+          "text": "한계"
+        }
+      ]
+    },
+    {
+      "id": "s102",
+      "index": 101,
+      "start": 4067,
+      "end": 4114,
+      "before": "- 최신 사실 검증, 정치적 편향 평가, 실제 독자 실험은 현재 CV 범위 밖입니다.",
+      "after": "- 규칙 기반 분석은 교정 후보를 제시하지만, 국립국어원 수준의 완전한 문법 판정기는 아닙니다.",
+      "kind": "order",
+      "movedTo": 104,
+      "diff": [
+        {
+          "type": "same",
+          "text": "- "
+        },
+        {
+          "type": "remove",
+          "text": "최신"
+        },
+        {
+          "type": "add",
+          "text": "규칙"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "사실"
+        },
+        {
+          "type": "add",
+          "text": "기반"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "검증,"
+        },
+        {
+          "type": "add",
+          "text": "분석은"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "정치적"
+        },
+        {
+          "type": "add",
+          "text": "교정"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "편향"
+        },
+        {
+          "type": "add",
+          "text": "후보를"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "평가"
+        },
+        {
+          "type": "add",
+          "text": "제시하지만"
+        },
+        {
+          "type": "same",
+          "text": ", "
+        },
+        {
+          "type": "remove",
+          "text": "실제 독자"
+        },
+        {
+          "type": "add",
+          "text": "국립국어원"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "실험은"
+        },
+        {
+          "type": "add",
+          "text": "수준의"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "현재"
+        },
+        {
+          "type": "add",
+          "text": "완전한"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "CV"
+        },
+        {
+          "type": "add",
+          "text": "문법"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "범위"
+        },
+        {
+          "type": "add",
+          "text": "판정기는"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "밖입니다"
+        },
+        {
+          "type": "add",
+          "text": "아닙니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s103",
+      "index": 102,
+      "start": 4115,
+      "end": 4115,
+      "before": "",
+      "after": "- 문장 정렬은 동일한 인덱스를 우선하는 휴리스틱을 사용하므로 문단 전체를 재구성하는 작업에는 적합하지 않습니다.",
+      "kind": "order",
+      "movedTo": 15,
+      "diff": [
+        {
+          "type": "add",
+          "text": "- 문장 정렬은 동일한 인덱스를 우선하는 휴리스틱을 사용하므로 문단 전체를 재구성하는 작업에는 적합하지 않습니다."
+        }
+      ]
+    },
+    {
+      "id": "s104",
+      "index": 103,
+      "start": 4115,
+      "end": 4115,
+      "before": "",
+      "after": "- 로컬 메모리 검색에는 의미 임베딩이 아닌 토큰 겹침 점수를 사용합니다.",
+      "kind": "order",
+      "movedTo": 15,
+      "diff": [
+        {
+          "type": "add",
+          "text": "- 로컬 메모리 검색에는 의미 임베딩이 아닌 토큰 겹침 점수를 사용합니다."
+        }
+      ]
+    },
+    {
+      "id": "s105",
+      "index": 104,
+      "start": 4115,
+      "end": 4115,
+      "before": "",
+      "after": "- 최신 사실 검증, 정치적 편향 평가, 실제 독자 실험은 현재 CV 범위에 포함되지 않습니다.",
+      "kind": "order",
+      "movedTo": 15,
+      "diff": [
+        {
+          "type": "add",
+          "text": "- 최신 사실 검증, 정치적 편향 평가, 실제 독자 실험은 현재 CV 범위에 포함되지 않습니다."
+        }
+      ]
+    }
+  ],
+  "summary": "뚜렷한 맞춤법 오류보다 긴 문장, 병렬 구조, 일부 번역투 표현이 가독성을 낮추는 부분이 중심이었습니다. 수치·경로·명령어·제품명·URL·보안 제한과 주장 강도는 유지하면서 문장을 나누고 서술 관계를 명확히 했습니다.",
+  "flow": {
+    "nodes": [
+      {
+        "id": "p1",
+        "label": "manifest에서 공통 Skill과 각 명령으로 이어지는 작동 구조",
+        "role": "구조 설명"
+      },
+      {
+        "id": "p2",
+        "label": "Skill의 실행 원칙과 플러그인의 기능 범위",
+        "role": "범위 정의"
+      },
+      {
+        "id": "p3",
+        "label": "외부 Humanizer에서 참고한 공개 원리와 독립 구현 경계",
+        "role": "구현 근거"
+      },
+      {
+        "id": "p4",
+        "label": "네 가지 윤문 방식과 제외한 기능",
+        "role": "모드 설명"
+      },
+      {
+        "id": "p5",
+        "label": "로컬 메모리의 저장·검색·접근 제한·사용자 동의 방식",
+        "role": "메모리 구조"
+      },
+      {
+        "id": "p6",
+        "label": "합성 CV의 생성·검증·fold 배치·평가 흐름",
+        "role": "평가 절차"
+      },
+      {
+        "id": "p7",
+        "label": "합성 CV 결과를 실제 선호나 판별 회피 성능으로 해석할 수 없는 이유",
+        "role": "해석 한계"
+      },
+      {
+        "id": "p8",
+        "label": "로컬 서버와 허용 프로세스, 기본 거부 대상의 신뢰 경계",
+        "role": "보안 구조"
+      },
+      {
+        "id": "p9",
+        "label": "바인딩·세션 토큰·보안 헤더·크기 제한·문자 정리 정책",
+        "role": "보안 조치"
+      },
+      {
+        "id": "p10",
+        "label": "분석·정렬·검색·검증 범위의 현재 한계",
+        "role": "제약 정리"
+      }
+    ],
+    "edges": [
+      {
+        "from": "p1",
+        "to": "p2",
+        "relation": "구조를 기능 범위로 구체화"
+      },
+      {
+        "from": "p2",
+        "to": "p3",
+        "relation": "편집 기능의 구현 근거 제시"
+      },
+      {
+        "from": "p3",
+        "to": "p4",
+        "relation": "참고 원리를 실제 윤문 모드로 연결"
+      },
+      {
+        "from": "p4",
+        "to": "p5",
+        "relation": "윤문 기능에서 사용자 결정 저장 구조로 전환"
+      },
+      {
+        "from": "p5",
+        "to": "p6",
+        "relation": "로컬 기능 설명에서 평가 절차로 확장"
+      },
+      {
+        "from": "p6",
+        "to": "p7",
+        "relation": "평가 흐름에 따른 해석 한계 명시"
+      },
+      {
+        "from": "p7",
+        "to": "p8",
+        "relation": "평가 경계에서 시스템 신뢰 경계로 전환"
+      },
+      {
+        "from": "p8",
+        "to": "p9",
+        "relation": "보안 구조를 구체적인 조치로 설명"
+      },
+      {
+        "from": "p9",
+        "to": "p10",
+        "relation": "전체 기능과 보안 설명 뒤 남은 한계 정리"
+      }
+    ]
+  },
+  "knowledge": [
+    {
+      "id": "skill-text-humanize-korean-protected-scope",
+      "title": "text-humanize-korean의 보존 범위",
+      "kind": "skill-observation",
+      "authority": "community-skill",
+      "sourceUrl": "https://github.com/mols3131d/mols-agent-assets/blob/cae542f1dd4b80faa7ad9db164c7a5847e76b6b1/src/rulesync/.rulesync/skills/text-humanize-korean/SKILL.md",
+      "sourceSection": "text-humanize-korean/SKILL.md @ cae542f1",
+      "path": "skills/text-humanize-korean-보존범위.md",
+      "guidance": "윤문 전에 바뀌면 안 되는 데이터값, 고유 식별자, 문자 그대로 유지해야 할 구간을 체크리스트로 만든다. 결과에서는 누락뿐 아니라 부정 여부, 주장 강도, 의무 수준, 조건 범위, 인과 방향이 달라졌는지 대조하고 하나라도 표류한 제안은 폐기한다.",
+      "score": 87
+    },
+    {
+      "id": "skill-humanize-korean-audit",
+      "title": "humanize-korean의 감사 기반 검증",
+      "kind": "skill-observation",
+      "authority": "community-skill",
+      "sourceUrl": "https://github.com/hashgraph-online/awesome-codex-plugins/blob/486ac208b3f40929c62a6954b5f58147b483a2f7/plugins/beefiker/superloopy/skills/humanize-korean/SKILL.md",
+      "sourceSection": "plugins/beefiker/superloopy/skills/humanize-korean/SKILL.md @ 486ac208",
+      "path": "skills/humanize-korean-감사기반-검증.md",
+      "guidance": "윤문 전 보호 대상인 숫자·날짜·단위·URL·코드·제품명·약어·인용을 식별한다. 결과에서 보호 대상이 모두 유지되는지 확인하고, 변경이 넓으면 문장별 의미 대조를 강화한다. 검증되지 않은 품질 등급이나 탐지기 통과율을 만들지 않는다.",
+      "score": 76
+    },
+    {
+      "id": "nikl-writing-ending-genre-consistency",
+      "title": "종결 어미와 장르 일관성",
+      "kind": "writing-guidance",
+      "authority": "국립국어원",
+      "sourceUrl": "https://www.korean.go.kr/common/download.do?c_file_name=84ced1e6-7ca7-4556-862a-e62d23ceca8f.pdf&file_path=reportData",
+      "sourceSection": "글쓰기 첨삭 지원을 위한 지시문 기반 생성 말뭉치 구축 연구 - 문체·관습 유형",
+      "path": "규범/글쓰기-종결어미와-장르일관성.md",
+      "guidance": "원문의 장르와 선택한 높임 단계를 기준으로 종결 어미를 통일한다. 인용·대화·의도적 전환은 보존하고, 보고서·논증문에서 우연히 섞인 구어체만 제안 대상으로 삼는다. 문법상 가능한 표현을 장르상 덜 적합하다는 이유만으로 오류라고 부르지 않는다.",
+      "score": 63
+    },
+    {
+      "id": "skill-korean-polish-meaning-first",
+      "title": "korean-polish의 의미 복원 우선 원칙",
+      "kind": "skill-observation",
+      "authority": "community-skill",
+      "sourceUrl": "https://github.com/huskyhoochu/dotfiles/blob/e68af2c8c1c1ae0200217bdec1d312f02b67be26/claude/.claude/skills/korean-polish/SKILL.md",
+      "sourceSection": "claude/.claude/skills/korean-polish/SKILL.md @ e68af2c8",
+      "path": "skills/korean-polish-의미복원.md",
+      "guidance": "기술·작업 문서의 모호한 번역투나 은유적 서술어는 단어끼리 치환하지 않는다. 먼저 문장이 주장하는 사실, 행위 주체, 결과 방향을 확인하고 그 사실에 맞는 한국어 동사를 고른다. 뜻을 확정할 근거가 없으면 원문을 보존하고 위험을 보고한다.",
+      "score": 27
+    },
+    {
+      "id": "nikl-punctuation-terminal",
+      "title": "마침표·물음표·느낌표",
+      "kind": "norm",
+      "authority": "국립국어원",
+      "sourceUrl": "https://www.korean.go.kr/kornorms/m/m_regltn.do",
+      "sourceSection": "문장 부호 제1항~제3항",
+      "path": "규범/문장부호-종결부호.md",
+      "guidance": "문장의 기능에 맞춰 종결 부호를 고른다. 평서문을 과도한 느낌표로 강화하거나 약한 의문을 임의로 강한 질문으로 바꾸지 않는다. 제목·표어·개조식의 기존 문서 관습은 보존한다.",
+      "score": 26
+    },
+    {
+      "id": "nikl-spacing-particle-dependent-noun",
+      "title": "조사와 의존 명사 띄어쓰기",
+      "kind": "norm",
+      "authority": "국립국어원",
+      "sourceUrl": "https://www.korean.go.kr/kornorms/m/m_regltn.do",
+      "sourceSection": "한글 맞춤법 제41항·제42항",
+      "path": "규범/띄어쓰기-조사와-의존명사.md",
+      "guidance": "조사는 앞말에 붙이고 의존 명사는 띄어 쓴다. `할수`는 `할 수`로, 체언 뒤 조사 `만큼·뿐`은 붙이고 관형형 뒤 의존 명사 `만큼·뿐`은 띄운다. 품사를 문맥으로 확정할 수 없으면 후보로만 제시한다.",
+      "score": 24
+    }
+  ]
+}

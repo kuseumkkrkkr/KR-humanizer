@@ -1,0 +1,900 @@
+{
+  "original": "## 구성요소와 실제 파일\n\n| 계층 | 파일 | 역할 |\n|---|---|---|\n| 명령 진입점 | `bin/kr-humanizer.js`, `src/cli.js` | 인자 해석, 파일·표준입력 처리, 명령 라우팅 |\n| 한국어 분석 | `src/core/analyze.js`, `data/ko-rules.json` | 문장 분리, 문단·문장 통계, 규칙 후보, 장문, 비가시 문자 검사 |\n| 변경 계산 | `src/core/diff.js` | 문장 정렬, 단어 단위 LCS, 어순 변경 표식, 선택 변경 적용 |\n| 문체 제어 | `src/core/style.js` | 5단계 상대 높임 프로필과 4가지 윤문 방식 검증 |\n| 프롬프트 | `src/core/prompt.js` | 의미 보존 규칙, 목표 문체, 높임·윤문 방식, 이전 수락 성향, 원문 결합 |\n| 지식 검색 | `src/knowledge/vault.js`, `obsidian-vault/` | Markdown 카드 파싱, 입력별 점수화, 출처가 포함된 상위 지침 선택 |\n| 실행기 | `src/engines/runner.js` | Codex·Claude 자식 프로세스 실행, 시간·출력 제한, 구조화 JSON 파싱 |\n| GUI | `src/gui/index.html`, `app.js`, `styles.css`, `server.js` | 로컬 편집·검토 UI와 토큰 보호 HTTP API |\n| 메모리 | `src/memory/` | 기본 로컬 JSON 또는 localhost 전용 mem0 검색·기록 |\n| 합성 CV | `src/benchmark/`, `schemas/`, `data/cv-topics.json` | 최소 프롬프트 생성, 윤문, fold 분리, 지표·A/B 위치 무작위화 의견 저장 |\n| 플러그인 | `plugins/kr-humanizer/`, `.agents/`, `.claude-plugin/` | Codex·Claude 마켓플레이스 메타데이터와 공용 Skill |\n\n### CLI 도구 표면\n\n| 명령 | 입력 | 출력·부작용 |\n|---|---|---|\n| `analyze` | 파일 또는 표준입력 | 통계, 규칙 후보, 의미 흐름 JSON |\n| `sanitize` | 파일 또는 표준입력 | 확인된 비가시 문자를 제거한 UTF-8 텍스트; `--out`을 줬을 때만 파일 작성 |\n| `knowledge` | 원문, `--mode`, `--honorific`, 선택적 `--vault` | 모델 실행 없이 관련 지식 카드와 출처를 JSON으로 반환 |\n| `rewrite` | 원문, 엔진, 문체, `--mode`, `--honorific` | 구조화 윤문 응답을 문장별 proposal JSON으로 변환 |\n| `review` | 원문 파일 + 별도 윤문 파일 | 모델 실행 없이 두 글의 Diff proposal 생성 |\n| `accept` | proposal JSON + 문장 ID | 선택한 변경만 반영한 텍스트 생성 |\n| `cv` | 샘플·fold 수 | 합성 원문, EXEC 윤문, 지표, A/B 위치 무작위화 의견 파일 저장 |\n| `gui` | 포트 | `127.0.0.1` 로컬 검토 서버 실행 |\n\n파일을 생략하거나 `-`를 지정하면 표준입력을 읽습니다. `rewrite`와 `cv`를 제외한 핵심 분석·Diff·수락 명령은 모델 없이 결정적으로 실행됩니다.\n\n### 런타임 라이브러리\n\n런타임 npm 의존성은 없습니다. Node.js 20 이상의 표준 기능만 사용합니다.\n\n| 기능 | 사용 모듈·API |\n|---|---|\n| 파일·원자적 저장 | `node:fs/promises`, 임시 파일 작성 후 `rename` |\n| 로컬 서버 | `node:http`, `URL` |\n| CLI 실행 | `node:child_process.spawn` |\n| 임시 결과·경로 | `node:os`, `node:path`, `node:url` |\n| 토큰·식별자 | `node:crypto`의 `randomBytes`, `randomUUID`, `createHash` |\n| 한국어 문장 분리 | `Intl.Segmenter('ko')` |\n| localhost mem0 | Node 내장 `fetch`, `AbortSignal.timeout` |\n\nPlaywright는 제품 런타임이 아니라 `scripts/capture-gui.cjs`의 화면 검증에만 선택적으로 사용됩니다.\n\n## 윤문 요청의 내부 흐름\n\n```mermaid\nsequenceDiagram\n  actor U as 작성자\n  participant UI as GUI 또는 CLI\n  participant A as analyze.js\n  participant M as local memory / mem0\n  participant K as Obsidian vault search\n  participant P as prompt.js\n  participant R as runner.js\n  participant E as Codex 또는 Claude CLI\n  participant D as diff.js\n\n  U->>UI: 한국어 원문 입력\n  UI->>A: 문단·오탈자·비가시 문자 점검\n  A-->>UI: 통계, 발견 후보, 기본 의미 흐름\n  U->>UI: 윤문 제안 요청\n  UI->>M: 원문 앞 500자로 최대 6개 검색\n  M-->>P: 이전 수락 성향\n  UI->>K: 원문 + 윤문 방식 + 높임 단계\n  K-->>P: 관련 카드 최대 6개 + 출처\n  P->>R: 보존 규칙 + 윤문 방식 + 높임 정도 + 지식 + 메모리 + 원문\n  R->>E: 셸 문자열이 아닌 인자 배열로 실행\n  E-->>R: rewrite.schema.json 구조의 JSON\n  R->>D: 원문과 rewrittenText 비교\n  D-->>UI: 문장별 변경, 단어 Diff, 어순 표식\n  U->>UI: 원하는 문장 ID만 선택\n  UI->>D: acceptedIds 적용\n  D-->>U: 확정 결과\n```\n\n### 실제 윤문 프롬프트\n\n`buildRewritePrompt()`는 다음 정보를 한 요청으로 조립합니다.\n\n1. 사실·고유명사·수치·주장·관점을 바꾸지 말라는 보존 조건\n2. 사용자가 고른 목표 문체\n3. `fluent`, `balanced`, `strict`, `concise` 중 선택한 윤문 방식\n4. 0~100 높임 정도와 이에 대응하는 상대 높임 등급\n5. 과장된 접속어와 상투 표현을 줄이고 구체적인 동사와 짧은 문장을 우선하는 편집 규칙\n6. AI 판별기 회피와 출처 위장을 하지 않는다는 경계\n7. Obsidian 저장소에서 검색한 규범·편집 지침과 출처\n8. 로컬 메모리에서 검색한 이전 수락 성향\n9. 구분선 안의 원문 전체\n\n응답은 `schemas/rewrite.schema.json`으로 제한합니다. 필수 필드는 윤문 본문 `rewrittenText`, 요약 `summary`, 의미 흐름 노드 `flow`, 관계 `edges`입니다. 스키마에 맞지 않거나 필드가 빠지면 결과를 적용하지 않고 오류로 처리합니다.\n\n",
+  "rewritten": "## 구성요소와 실제 파일\n\n| 계층 | 파일 | 역할 |\n|---|---|---|\n| 명령 진입점 | `bin/kr-humanizer.js`, `src/cli.js` | 인자 해석, 파일·표준입력 처리, 명령 라우팅 |\n| 한국어 분석 | `src/core/analyze.js`, `data/ko-rules.json` | 문장 분리, 문단·문장 통계, 규칙 후보·장문·비가시 문자 검사 |\n| 변경 계산 | `src/core/diff.js` | 문장 정렬, 단어 단위 LCS, 어순 변경 표식, 선택한 변경 적용 |\n| 문체 제어 | `src/core/style.js` | 5단계 상대 높임 프로필과 4가지 윤문 방식 검증 |\n| 프롬프트 | `src/core/prompt.js` | 의미 보존 규칙, 목표 문체, 높임·윤문 방식, 이전 수락 성향, 원문 결합 |\n| 지식 검색 | `src/knowledge/vault.js`, `obsidian-vault/` | Markdown 카드 파싱, 입력별 점수화, 출처를 포함한 상위 지침 선택 |\n| 실행기 | `src/engines/runner.js` | Codex·Claude 자식 프로세스 실행, 시간·출력 제한, 구조화된 JSON 파싱 |\n| GUI | `src/gui/index.html`, `app.js`, `styles.css`, `server.js` | 로컬 편집·검토 UI와 토큰 보호용 HTTP API |\n| 메모리 | `src/memory/` | 기본 로컬 JSON 또는 localhost 전용 mem0 검색·기록 |\n| 합성 CV | `src/benchmark/`, `schemas/`, `data/cv-topics.json` | 최소 프롬프트 생성, 윤문, fold 분리, 지표 및 A/B 위치를 무작위화한 의견 저장 |\n| 플러그인 | `plugins/kr-humanizer/`, `.agents/`, `.claude-plugin/` | Codex·Claude 마켓플레이스 메타데이터와 공용 Skill |\n\n### CLI 도구 표면\n\n| 명령 | 입력 | 출력·부작용 |\n|---|---|---|\n| `analyze` | 파일 또는 표준입력 | 통계, 규칙 후보, 의미 흐름 JSON |\n| `sanitize` | 파일 또는 표준입력 | 확인된 비가시 문자를 제거한 UTF-8 텍스트. `--out`을 지정한 경우에만 파일 작성 |\n| `knowledge` | 원문, `--mode`, `--honorific`, 선택 사항인 `--vault` | 모델 실행 없이 관련 지식 카드와 출처를 JSON으로 반환 |\n| `rewrite` | 원문, 엔진, 문체, `--mode`, `--honorific` | 구조화된 윤문 응답을 문장별 proposal JSON으로 변환 |\n| `review` | 원문 파일 + 별도 윤문 파일 | 모델 실행 없이 두 글의 Diff proposal 생성 |\n| `accept` | proposal JSON + 문장 ID | 선택한 변경만 반영한 텍스트 생성 |\n| `cv` | 샘플·fold 수 | 합성 원문, EXEC 윤문, 지표, A/B 위치를 무작위화한 의견 파일 저장 |\n| `gui` | 포트 | `127.0.0.1`에서 로컬 검토 서버 실행 |\n\n파일을 생략하거나 `-`를 지정하면 표준입력을 읽습니다. `rewrite`와 `cv`를 제외한 핵심 분석·Diff·수락 명령은 모델 없이 결정적으로 실행됩니다.\n\n### 런타임 라이브러리\n\n런타임 npm 의존성은 없습니다. Node.js 20 이상에서 제공하는 표준 기능만 사용합니다.\n\n| 기능 | 사용 모듈·API |\n|---|---|\n| 파일·원자적 저장 | `node:fs/promises`, 임시 파일 작성 후 `rename` |\n| 로컬 서버 | `node:http`, `URL` |\n| CLI 실행 | `node:child_process.spawn` |\n| 임시 결과·경로 | `node:os`, `node:path`, `node:url` |\n| 토큰·식별자 | `node:crypto`의 `randomBytes`, `randomUUID`, `createHash` |\n| 한국어 문장 분리 | `Intl.Segmenter('ko')` |\n| localhost mem0 | Node 내장 `fetch`, `AbortSignal.timeout` |\n\nPlaywright는 제품 런타임이 아니라 `scripts/capture-gui.cjs`의 화면 검증에만 선택적으로 사용됩니다.\n\n## 윤문 요청의 내부 흐름\n\n```mermaid\nsequenceDiagram\n  actor U as 작성자\n  participant UI as GUI 또는 CLI\n  participant A as analyze.js\n  participant M as local memory / mem0\n  participant K as Obsidian vault search\n  participant P as prompt.js\n  participant R as runner.js\n  participant E as Codex 또는 Claude CLI\n  participant D as diff.js\n\n  U->>UI: 한국어 원문 입력\n  UI->>A: 문단·오탈자·비가시 문자 점검\n  A-->>UI: 통계, 발견 후보, 기본 의미 흐름\n  U->>UI: 윤문 제안 요청\n  UI->>M: 원문 앞 500자로 최대 6개 검색\n  M-->>P: 이전 수락 성향\n  UI->>K: 원문 + 윤문 방식 + 높임 단계\n  K-->>P: 관련 카드 최대 6개 + 출처\n  P->>R: 보존 규칙 + 윤문 방식 + 높임 정도 + 지식 + 메모리 + 원문\n  R->>E: 셸 문자열이 아닌 인자 배열로 실행\n  E-->>R: rewrite.schema.json 구조의 JSON\n  R->>D: 원문과 rewrittenText 비교\n  D-->>UI: 문장별 변경, 단어 Diff, 어순 표식\n  U->>UI: 원하는 문장 ID만 선택\n  UI->>D: acceptedIds 적용\n  D-->>U: 확정 결과\n```\n\n### 실제 윤문 프롬프트\n\n`buildRewritePrompt()`는 다음 정보를 하나의 요청으로 조립합니다.\n\n1. 사실·고유명사·수치·주장·관점을 바꾸지 말라는 보존 조건\n2. 사용자가 고른 목표 문체\n3. `fluent`, `balanced`, `strict`, `concise` 중에서 선택한 윤문 방식\n4. 0~100의 높임 정도와 이에 대응하는 상대 높임 등급\n5. 과장된 접속어와 상투 표현을 줄이고 구체적인 동사와 짧은 문장을 우선하는 편집 규칙\n6. AI 판별기 회피와 출처 위장을 하지 않는다는 경계\n7. Obsidian 저장소에서 검색한 규범·편집 지침과 출처\n8. 로컬 메모리에서 검색한 이전 수락 성향\n9. 구분선 안의 원문 전체\n\n응답 형식은 `schemas/rewrite.schema.json`으로 제한됩니다. 필수 필드는 윤문 본문 `rewrittenText`, 요약 `summary`, 의미 흐름 노드 `flow`, 관계 `edges`입니다. 스키마에 맞지 않거나 필드가 빠지면 결과를 적용하지 않고 오류로 처리합니다.",
+  "originalSentences": [
+    "## 구성요소와 실제 파일",
+    "| 계층 | 파일 | 역할 |",
+    "|---|---|---|",
+    "| 명령 진입점 | `bin/kr-humanizer.js`, `src/cli.js` | 인자 해석, 파일·표준입력 처리, 명령 라우팅 |",
+    "| 한국어 분석 | `src/core/analyze.js`, `data/ko-rules.json` | 문장 분리, 문단·문장 통계, 규칙 후보, 장문, 비가시 문자 검사 |",
+    "| 변경 계산 | `src/core/diff.js` | 문장 정렬, 단어 단위 LCS, 어순 변경 표식, 선택 변경 적용 |",
+    "| 문체 제어 | `src/core/style.js` | 5단계 상대 높임 프로필과 4가지 윤문 방식 검증 |",
+    "| 프롬프트 | `src/core/prompt.js` | 의미 보존 규칙, 목표 문체, 높임·윤문 방식, 이전 수락 성향, 원문 결합 |",
+    "| 지식 검색 | `src/knowledge/vault.js`, `obsidian-vault/` | Markdown 카드 파싱, 입력별 점수화, 출처가 포함된 상위 지침 선택 |",
+    "| 실행기 | `src/engines/runner.js` | Codex·Claude 자식 프로세스 실행, 시간·출력 제한, 구조화 JSON 파싱 |",
+    "| GUI | `src/gui/index.html`, `app.js`, `styles.css`, `server.js` | 로컬 편집·검토 UI와 토큰 보호 HTTP API |",
+    "| 메모리 | `src/memory/` | 기본 로컬 JSON 또는 localhost 전용 mem0 검색·기록 |",
+    "| 합성 CV | `src/benchmark/`, `schemas/`, `data/cv-topics.json` | 최소 프롬프트 생성, 윤문, fold 분리, 지표·A/B 위치 무작위화 의견 저장 |",
+    "| 플러그인 | `plugins/kr-humanizer/`, `.agents/`, `.claude-plugin/` | Codex·Claude 마켓플레이스 메타데이터와 공용 Skill |",
+    "### CLI 도구 표면",
+    "| 명령 | 입력 | 출력·부작용 |",
+    "|---|---|---|",
+    "| `analyze` | 파일 또는 표준입력 | 통계, 규칙 후보, 의미 흐름 JSON |",
+    "| `sanitize` | 파일 또는 표준입력 | 확인된 비가시 문자를 제거한 UTF-8 텍스트; `--out`을 줬을 때만 파일 작성 |",
+    "| `knowledge` | 원문, `--mode`, `--honorific`, 선택적 `--vault` | 모델 실행 없이 관련 지식 카드와 출처를 JSON으로 반환 |",
+    "| `rewrite` | 원문, 엔진, 문체, `--mode`, `--honorific` | 구조화 윤문 응답을 문장별 proposal JSON으로 변환 |",
+    "| `review` | 원문 파일 + 별도 윤문 파일 | 모델 실행 없이 두 글의 Diff proposal 생성 |",
+    "| `accept` | proposal JSON + 문장 ID | 선택한 변경만 반영한 텍스트 생성 |",
+    "| `cv` | 샘플·fold 수 | 합성 원문, EXEC 윤문, 지표, A/B 위치 무작위화 의견 파일 저장 |",
+    "| `gui` | 포트 | `127.0.0.1` 로컬 검토 서버 실행 |",
+    "파일을 생략하거나 `-`를 지정하면 표준입력을 읽습니다. `rewrite`와 `cv`를 제외한 핵심 분석·Diff·수락 명령은 모델 없이 결정적으로 실행됩니다.",
+    "### 런타임 라이브러리",
+    "런타임 npm 의존성은 없습니다.",
+    "Node.js 20 이상의 표준 기능만 사용합니다.",
+    "| 기능 | 사용 모듈·API |",
+    "|---|---|",
+    "| 파일·원자적 저장 | `node:fs/promises`, 임시 파일 작성 후 `rename` |",
+    "| 로컬 서버 | `node:http`, `URL` |",
+    "| CLI 실행 | `node:child_process.spawn` |",
+    "| 임시 결과·경로 | `node:os`, `node:path`, `node:url` |",
+    "| 토큰·식별자 | `node:crypto`의 `randomBytes`, `randomUUID`, `createHash` |",
+    "| 한국어 문장 분리 | `Intl.Segmenter('ko')` |",
+    "| localhost mem0 | Node 내장 `fetch`, `AbortSignal.timeout` |",
+    "Playwright는 제품 런타임이 아니라 `scripts/capture-gui.cjs`의 화면 검증에만 선택적으로 사용됩니다.",
+    "## 윤문 요청의 내부 흐름",
+    "```mermaid",
+    "sequenceDiagram",
+    "actor U as 작성자",
+    "participant UI as GUI 또는 CLI",
+    "participant A as analyze.js",
+    "participant M as local memory / mem0",
+    "participant K as Obsidian vault search",
+    "participant P as prompt.js",
+    "participant R as runner.js",
+    "participant E as Codex 또는 Claude CLI",
+    "participant D as diff.js",
+    "U->>UI: 한국어 원문 입력",
+    "UI->>A: 문단·오탈자·비가시 문자 점검",
+    "A-->>UI: 통계, 발견 후보, 기본 의미 흐름",
+    "U->>UI: 윤문 제안 요청",
+    "UI->>M: 원문 앞 500자로 최대 6개 검색",
+    "M-->>P: 이전 수락 성향",
+    "UI->>K: 원문 + 윤문 방식 + 높임 단계",
+    "K-->>P: 관련 카드 최대 6개 + 출처",
+    "P->>R: 보존 규칙 + 윤문 방식 + 높임 정도 + 지식 + 메모리 + 원문",
+    "R->>E: 셸 문자열이 아닌 인자 배열로 실행",
+    "E-->>R: rewrite.schema.json 구조의 JSON",
+    "R->>D: 원문과 rewrittenText 비교",
+    "D-->>UI: 문장별 변경, 단어 Diff, 어순 표식",
+    "U->>UI: 원하는 문장 ID만 선택",
+    "UI->>D: acceptedIds 적용",
+    "D-->>U: 확정 결과",
+    "```",
+    "### 실제 윤문 프롬프트",
+    "`buildRewritePrompt()`는 다음 정보를 한 요청으로 조립합니다.",
+    "1.",
+    "사실·고유명사·수치·주장·관점을 바꾸지 말라는 보존 조건",
+    "2.",
+    "사용자가 고른 목표 문체",
+    "3. `fluent`, `balanced`, `strict`, `concise` 중 선택한 윤문 방식",
+    "4.",
+    "0~100 높임 정도와 이에 대응하는 상대 높임 등급",
+    "5.",
+    "과장된 접속어와 상투 표현을 줄이고 구체적인 동사와 짧은 문장을 우선하는 편집 규칙",
+    "6.",
+    "AI 판별기 회피와 출처 위장을 하지 않는다는 경계",
+    "7.",
+    "Obsidian 저장소에서 검색한 규범·편집 지침과 출처",
+    "8.",
+    "로컬 메모리에서 검색한 이전 수락 성향",
+    "9.",
+    "구분선 안의 원문 전체",
+    "응답은 `schemas/rewrite.schema.json`으로 제한합니다.",
+    "필수 필드는 윤문 본문 `rewrittenText`, 요약 `summary`, 의미 흐름 노드 `flow`, 관계 `edges`입니다.",
+    "스키마에 맞지 않거나 필드가 빠지면 결과를 적용하지 않고 오류로 처리합니다."
+  ],
+  "rewrittenSentences": [
+    "## 구성요소와 실제 파일",
+    "| 계층 | 파일 | 역할 |",
+    "|---|---|---|",
+    "| 명령 진입점 | `bin/kr-humanizer.js`, `src/cli.js` | 인자 해석, 파일·표준입력 처리, 명령 라우팅 |",
+    "| 한국어 분석 | `src/core/analyze.js`, `data/ko-rules.json` | 문장 분리, 문단·문장 통계, 규칙 후보·장문·비가시 문자 검사 |",
+    "| 변경 계산 | `src/core/diff.js` | 문장 정렬, 단어 단위 LCS, 어순 변경 표식, 선택한 변경 적용 |",
+    "| 문체 제어 | `src/core/style.js` | 5단계 상대 높임 프로필과 4가지 윤문 방식 검증 |",
+    "| 프롬프트 | `src/core/prompt.js` | 의미 보존 규칙, 목표 문체, 높임·윤문 방식, 이전 수락 성향, 원문 결합 |",
+    "| 지식 검색 | `src/knowledge/vault.js`, `obsidian-vault/` | Markdown 카드 파싱, 입력별 점수화, 출처를 포함한 상위 지침 선택 |",
+    "| 실행기 | `src/engines/runner.js` | Codex·Claude 자식 프로세스 실행, 시간·출력 제한, 구조화된 JSON 파싱 |",
+    "| GUI | `src/gui/index.html`, `app.js`, `styles.css`, `server.js` | 로컬 편집·검토 UI와 토큰 보호용 HTTP API |",
+    "| 메모리 | `src/memory/` | 기본 로컬 JSON 또는 localhost 전용 mem0 검색·기록 |",
+    "| 합성 CV | `src/benchmark/`, `schemas/`, `data/cv-topics.json` | 최소 프롬프트 생성, 윤문, fold 분리, 지표 및 A/B 위치를 무작위화한 의견 저장 |",
+    "| 플러그인 | `plugins/kr-humanizer/`, `.agents/`, `.claude-plugin/` | Codex·Claude 마켓플레이스 메타데이터와 공용 Skill |",
+    "### CLI 도구 표면",
+    "| 명령 | 입력 | 출력·부작용 |",
+    "|---|---|---|",
+    "| `analyze` | 파일 또는 표준입력 | 통계, 규칙 후보, 의미 흐름 JSON |",
+    "| `sanitize` | 파일 또는 표준입력 | 확인된 비가시 문자를 제거한 UTF-8 텍스트. `--out`을 지정한 경우에만 파일 작성 |",
+    "| `knowledge` | 원문, `--mode`, `--honorific`, 선택 사항인 `--vault` | 모델 실행 없이 관련 지식 카드와 출처를 JSON으로 반환 |",
+    "| `rewrite` | 원문, 엔진, 문체, `--mode`, `--honorific` | 구조화된 윤문 응답을 문장별 proposal JSON으로 변환 |",
+    "| `review` | 원문 파일 + 별도 윤문 파일 | 모델 실행 없이 두 글의 Diff proposal 생성 |",
+    "| `accept` | proposal JSON + 문장 ID | 선택한 변경만 반영한 텍스트 생성 |",
+    "| `cv` | 샘플·fold 수 | 합성 원문, EXEC 윤문, 지표, A/B 위치를 무작위화한 의견 파일 저장 |",
+    "| `gui` | 포트 | `127.0.0.1`에서 로컬 검토 서버 실행 |",
+    "파일을 생략하거나 `-`를 지정하면 표준입력을 읽습니다. `rewrite`와 `cv`를 제외한 핵심 분석·Diff·수락 명령은 모델 없이 결정적으로 실행됩니다.",
+    "### 런타임 라이브러리",
+    "런타임 npm 의존성은 없습니다.",
+    "Node.js 20 이상에서 제공하는 표준 기능만 사용합니다.",
+    "| 기능 | 사용 모듈·API |",
+    "|---|---|",
+    "| 파일·원자적 저장 | `node:fs/promises`, 임시 파일 작성 후 `rename` |",
+    "| 로컬 서버 | `node:http`, `URL` |",
+    "| CLI 실행 | `node:child_process.spawn` |",
+    "| 임시 결과·경로 | `node:os`, `node:path`, `node:url` |",
+    "| 토큰·식별자 | `node:crypto`의 `randomBytes`, `randomUUID`, `createHash` |",
+    "| 한국어 문장 분리 | `Intl.Segmenter('ko')` |",
+    "| localhost mem0 | Node 내장 `fetch`, `AbortSignal.timeout` |",
+    "Playwright는 제품 런타임이 아니라 `scripts/capture-gui.cjs`의 화면 검증에만 선택적으로 사용됩니다.",
+    "## 윤문 요청의 내부 흐름",
+    "```mermaid",
+    "sequenceDiagram",
+    "actor U as 작성자",
+    "participant UI as GUI 또는 CLI",
+    "participant A as analyze.js",
+    "participant M as local memory / mem0",
+    "participant K as Obsidian vault search",
+    "participant P as prompt.js",
+    "participant R as runner.js",
+    "participant E as Codex 또는 Claude CLI",
+    "participant D as diff.js",
+    "U->>UI: 한국어 원문 입력",
+    "UI->>A: 문단·오탈자·비가시 문자 점검",
+    "A-->>UI: 통계, 발견 후보, 기본 의미 흐름",
+    "U->>UI: 윤문 제안 요청",
+    "UI->>M: 원문 앞 500자로 최대 6개 검색",
+    "M-->>P: 이전 수락 성향",
+    "UI->>K: 원문 + 윤문 방식 + 높임 단계",
+    "K-->>P: 관련 카드 최대 6개 + 출처",
+    "P->>R: 보존 규칙 + 윤문 방식 + 높임 정도 + 지식 + 메모리 + 원문",
+    "R->>E: 셸 문자열이 아닌 인자 배열로 실행",
+    "E-->>R: rewrite.schema.json 구조의 JSON",
+    "R->>D: 원문과 rewrittenText 비교",
+    "D-->>UI: 문장별 변경, 단어 Diff, 어순 표식",
+    "U->>UI: 원하는 문장 ID만 선택",
+    "UI->>D: acceptedIds 적용",
+    "D-->>U: 확정 결과",
+    "```",
+    "### 실제 윤문 프롬프트",
+    "`buildRewritePrompt()`는 다음 정보를 하나의 요청으로 조립합니다.",
+    "1.",
+    "사실·고유명사·수치·주장·관점을 바꾸지 말라는 보존 조건",
+    "2.",
+    "사용자가 고른 목표 문체",
+    "3. `fluent`, `balanced`, `strict`, `concise` 중에서 선택한 윤문 방식",
+    "4.",
+    "0~100의 높임 정도와 이에 대응하는 상대 높임 등급",
+    "5.",
+    "과장된 접속어와 상투 표현을 줄이고 구체적인 동사와 짧은 문장을 우선하는 편집 규칙",
+    "6.",
+    "AI 판별기 회피와 출처 위장을 하지 않는다는 경계",
+    "7.",
+    "Obsidian 저장소에서 검색한 규범·편집 지침과 출처",
+    "8.",
+    "로컬 메모리에서 검색한 이전 수락 성향",
+    "9.",
+    "구분선 안의 원문 전체",
+    "응답 형식은 `schemas/rewrite.schema.json`으로 제한됩니다.",
+    "필수 필드는 윤문 본문 `rewrittenText`, 요약 `summary`, 의미 흐름 노드 `flow`, 관계 `edges`입니다.",
+    "스키마에 맞지 않거나 필드가 빠지면 결과를 적용하지 않고 오류로 처리합니다."
+  ],
+  "units": [
+    {
+      "id": "s5",
+      "index": 4,
+      "start": 124,
+      "end": 220,
+      "before": "| 한국어 분석 | `src/core/analyze.js`, `data/ko-rules.json` | 문장 분리, 문단·문장 통계, 규칙 후보, 장문, 비가시 문자 검사 |",
+      "after": "| 한국어 분석 | `src/core/analyze.js`, `data/ko-rules.json` | 문장 분리, 문단·문장 통계, 규칙 후보·장문·비가시 문자 검사 |",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "| 한국어 분석 | `src/core/analyze.js`, `data/ko-rules.json` | 문장 분리, 문단·문장 통계, 규칙 후보"
+        },
+        {
+          "type": "remove",
+          "text": ", "
+        },
+        {
+          "type": "add",
+          "text": "·"
+        },
+        {
+          "type": "same",
+          "text": "장문"
+        },
+        {
+          "type": "remove",
+          "text": ", "
+        },
+        {
+          "type": "add",
+          "text": "·"
+        },
+        {
+          "type": "same",
+          "text": "비가시 문자 검사 |"
+        }
+      ]
+    },
+    {
+      "id": "s6",
+      "index": 5,
+      "start": 221,
+      "end": 290,
+      "before": "| 변경 계산 | `src/core/diff.js` | 문장 정렬, 단어 단위 LCS, 어순 변경 표식, 선택 변경 적용 |",
+      "after": "| 변경 계산 | `src/core/diff.js` | 문장 정렬, 단어 단위 LCS, 어순 변경 표식, 선택한 변경 적용 |",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "| 변경 계산 | `src/core/diff.js` | 문장 정렬, 단어 단위 LCS, 어순 변경 표식, "
+        },
+        {
+          "type": "remove",
+          "text": "선택"
+        },
+        {
+          "type": "add",
+          "text": "선택한"
+        },
+        {
+          "type": "same",
+          "text": " 변경 적용 |"
+        }
+      ]
+    },
+    {
+      "id": "s9",
+      "index": 8,
+      "start": 430,
+      "end": 529,
+      "before": "| 지식 검색 | `src/knowledge/vault.js`, `obsidian-vault/` | Markdown 카드 파싱, 입력별 점수화, 출처가 포함된 상위 지침 선택 |",
+      "after": "| 지식 검색 | `src/knowledge/vault.js`, `obsidian-vault/` | Markdown 카드 파싱, 입력별 점수화, 출처를 포함한 상위 지침 선택 |",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "| 지식 검색 | `src/knowledge/vault.js`, `obsidian-vault/` | Markdown 카드 파싱, 입력별 점수화, "
+        },
+        {
+          "type": "remove",
+          "text": "출처가"
+        },
+        {
+          "type": "add",
+          "text": "출처를"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "포함된"
+        },
+        {
+          "type": "add",
+          "text": "포함한"
+        },
+        {
+          "type": "same",
+          "text": " 상위 지침 선택 |"
+        }
+      ]
+    },
+    {
+      "id": "s10",
+      "index": 9,
+      "start": 530,
+      "end": 612,
+      "before": "| 실행기 | `src/engines/runner.js` | Codex·Claude 자식 프로세스 실행, 시간·출력 제한, 구조화 JSON 파싱 |",
+      "after": "| 실행기 | `src/engines/runner.js` | Codex·Claude 자식 프로세스 실행, 시간·출력 제한, 구조화된 JSON 파싱 |",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "| 실행기 | `src/engines/runner.js` | Codex·Claude 자식 프로세스 실행, 시간·출력 제한, "
+        },
+        {
+          "type": "remove",
+          "text": "구조화"
+        },
+        {
+          "type": "add",
+          "text": "구조화된"
+        },
+        {
+          "type": "same",
+          "text": " JSON 파싱 |"
+        }
+      ]
+    },
+    {
+      "id": "s11",
+      "index": 10,
+      "start": 613,
+      "end": 710,
+      "before": "| GUI | `src/gui/index.html`, `app.js`, `styles.css`, `server.js` | 로컬 편집·검토 UI와 토큰 보호 HTTP API |",
+      "after": "| GUI | `src/gui/index.html`, `app.js`, `styles.css`, `server.js` | 로컬 편집·검토 UI와 토큰 보호용 HTTP API |",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "| GUI | `src/gui/index.html`, `app.js`, `styles.css`, `server.js` | 로컬 편집·검토 UI와 토큰 "
+        },
+        {
+          "type": "remove",
+          "text": "보호"
+        },
+        {
+          "type": "add",
+          "text": "보호용"
+        },
+        {
+          "type": "same",
+          "text": " HTTP API |"
+        }
+      ]
+    },
+    {
+      "id": "s13",
+      "index": 12,
+      "start": 775,
+      "end": 886,
+      "before": "| 합성 CV | `src/benchmark/`, `schemas/`, `data/cv-topics.json` | 최소 프롬프트 생성, 윤문, fold 분리, 지표·A/B 위치 무작위화 의견 저장 |",
+      "after": "| 합성 CV | `src/benchmark/`, `schemas/`, `data/cv-topics.json` | 최소 프롬프트 생성, 윤문, fold 분리, 지표 및 A/B 위치를 무작위화한 의견 저장 |",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "| 합성 CV | `src/benchmark/`, `schemas/`, `data/cv-topics.json` | 최소 프롬프트 생성, 윤문, fold 분리, 지표"
+        },
+        {
+          "type": "remove",
+          "text": "·"
+        },
+        {
+          "type": "add",
+          "text": " 및 "
+        },
+        {
+          "type": "same",
+          "text": "A/B "
+        },
+        {
+          "type": "remove",
+          "text": "위치"
+        },
+        {
+          "type": "add",
+          "text": "위치를"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "무작위화"
+        },
+        {
+          "type": "add",
+          "text": "무작위화한"
+        },
+        {
+          "type": "same",
+          "text": " 의견 저장 |"
+        }
+      ]
+    },
+    {
+      "id": "s19",
+      "index": 18,
+      "start": 1093,
+      "end": 1170,
+      "before": "| `sanitize` | 파일 또는 표준입력 | 확인된 비가시 문자를 제거한 UTF-8 텍스트; `--out`을 줬을 때만 파일 작성 |",
+      "after": "| `sanitize` | 파일 또는 표준입력 | 확인된 비가시 문자를 제거한 UTF-8 텍스트. `--out`을 지정한 경우에만 파일 작성 |",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "| `sanitize` | 파일 또는 표준입력 | 확인된 비가시 문자를 제거한 UTF-8 텍스트"
+        },
+        {
+          "type": "remove",
+          "text": ";"
+        },
+        {
+          "type": "add",
+          "text": "."
+        },
+        {
+          "type": "same",
+          "text": " `--out`을 "
+        },
+        {
+          "type": "remove",
+          "text": "줬을"
+        },
+        {
+          "type": "add",
+          "text": "지정한"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "때만"
+        },
+        {
+          "type": "add",
+          "text": "경우에만"
+        },
+        {
+          "type": "same",
+          "text": " 파일 작성 |"
+        }
+      ]
+    },
+    {
+      "id": "s20",
+      "index": 19,
+      "start": 1171,
+      "end": 1266,
+      "before": "| `knowledge` | 원문, `--mode`, `--honorific`, 선택적 `--vault` | 모델 실행 없이 관련 지식 카드와 출처를 JSON으로 반환 |",
+      "after": "| `knowledge` | 원문, `--mode`, `--honorific`, 선택 사항인 `--vault` | 모델 실행 없이 관련 지식 카드와 출처를 JSON으로 반환 |",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "| `knowledge` | 원문, `--mode`, `--honorific`, "
+        },
+        {
+          "type": "remove",
+          "text": "선택적"
+        },
+        {
+          "type": "add",
+          "text": "선택"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "add",
+          "text": "사항인 "
+        },
+        {
+          "type": "same",
+          "text": "`--vault` | 모델 실행 없이 관련 지식 카드와 출처를 JSON으로 반환 |"
+        }
+      ]
+    },
+    {
+      "id": "s21",
+      "index": 20,
+      "start": 1267,
+      "end": 1354,
+      "before": "| `rewrite` | 원문, 엔진, 문체, `--mode`, `--honorific` | 구조화 윤문 응답을 문장별 proposal JSON으로 변환 |",
+      "after": "| `rewrite` | 원문, 엔진, 문체, `--mode`, `--honorific` | 구조화된 윤문 응답을 문장별 proposal JSON으로 변환 |",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "| `rewrite` | 원문, 엔진, 문체, `--mode`, `--honorific` | "
+        },
+        {
+          "type": "remove",
+          "text": "구조화"
+        },
+        {
+          "type": "add",
+          "text": "구조화된"
+        },
+        {
+          "type": "same",
+          "text": " 윤문 응답을 문장별 proposal JSON으로 변환 |"
+        }
+      ]
+    },
+    {
+      "id": "s24",
+      "index": 23,
+      "start": 1478,
+      "end": 1541,
+      "before": "| `cv` | 샘플·fold 수 | 합성 원문, EXEC 윤문, 지표, A/B 위치 무작위화 의견 파일 저장 |",
+      "after": "| `cv` | 샘플·fold 수 | 합성 원문, EXEC 윤문, 지표, A/B 위치를 무작위화한 의견 파일 저장 |",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "| `cv` | 샘플·fold 수 | 합성 원문, EXEC 윤문, 지표, A/B "
+        },
+        {
+          "type": "remove",
+          "text": "위치"
+        },
+        {
+          "type": "add",
+          "text": "위치를"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "무작위화"
+        },
+        {
+          "type": "add",
+          "text": "무작위화한"
+        },
+        {
+          "type": "same",
+          "text": " 의견 파일 저장 |"
+        }
+      ]
+    },
+    {
+      "id": "s25",
+      "index": 24,
+      "start": 1542,
+      "end": 1582,
+      "before": "| `gui` | 포트 | `127.0.0.1` 로컬 검토 서버 실행 |",
+      "after": "| `gui` | 포트 | `127.0.0.1`에서 로컬 검토 서버 실행 |",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "| `gui` | 포트 | `127.0.0.1`"
+        },
+        {
+          "type": "add",
+          "text": "에서"
+        },
+        {
+          "type": "same",
+          "text": " 로컬 검토 서버 실행 |"
+        }
+      ]
+    },
+    {
+      "id": "s29",
+      "index": 28,
+      "start": 1709,
+      "end": 1737,
+      "before": "Node.js 20 이상의 표준 기능만 사용합니다.",
+      "after": "Node.js 20 이상에서 제공하는 표준 기능만 사용합니다.",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "Node.js 20 "
+        },
+        {
+          "type": "remove",
+          "text": "이상의"
+        },
+        {
+          "type": "add",
+          "text": "이상에서"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "add",
+          "text": "제공하는 "
+        },
+        {
+          "type": "same",
+          "text": "표준 기능만 사용합니다."
+        }
+      ]
+    },
+    {
+      "id": "s70",
+      "index": 69,
+      "start": 2982,
+      "end": 3026,
+      "before": "`buildRewritePrompt()`는 다음 정보를 한 요청으로 조립합니다.",
+      "after": "`buildRewritePrompt()`는 다음 정보를 하나의 요청으로 조립합니다.",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "`buildRewritePrompt()`는 다음 정보를 "
+        },
+        {
+          "type": "remove",
+          "text": "한"
+        },
+        {
+          "type": "add",
+          "text": "하나의"
+        },
+        {
+          "type": "same",
+          "text": " 요청으로 조립합니다."
+        }
+      ]
+    },
+    {
+      "id": "s75",
+      "index": 74,
+      "start": 3080,
+      "end": 3136,
+      "before": "3. `fluent`, `balanced`, `strict`, `concise` 중 선택한 윤문 방식",
+      "after": "3. `fluent`, `balanced`, `strict`, `concise` 중에서 선택한 윤문 방식",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "3. `fluent`, `balanced`, `strict`, `concise` "
+        },
+        {
+          "type": "remove",
+          "text": "중"
+        },
+        {
+          "type": "add",
+          "text": "중에서"
+        },
+        {
+          "type": "same",
+          "text": " 선택한 윤문 방식"
+        }
+      ]
+    },
+    {
+      "id": "s77",
+      "index": 76,
+      "start": 3140,
+      "end": 3169,
+      "before": "0~100 높임 정도와 이에 대응하는 상대 높임 등급",
+      "after": "0~100의 높임 정도와 이에 대응하는 상대 높임 등급",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "0~"
+        },
+        {
+          "type": "remove",
+          "text": "100"
+        },
+        {
+          "type": "add",
+          "text": "100의"
+        },
+        {
+          "type": "same",
+          "text": " 높임 정도와 이에 대응하는 상대 높임 등급"
+        }
+      ]
+    },
+    {
+      "id": "s88",
+      "index": 87,
+      "start": 3329,
+      "end": 3371,
+      "before": "응답은 `schemas/rewrite.schema.json`으로 제한합니다.",
+      "after": "응답 형식은 `schemas/rewrite.schema.json`으로 제한됩니다.",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "응답은"
+        },
+        {
+          "type": "add",
+          "text": "응답"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "add",
+          "text": "형식은 "
+        },
+        {
+          "type": "same",
+          "text": "`schemas/rewrite.schema.json`으로 "
+        },
+        {
+          "type": "remove",
+          "text": "제한합니다"
+        },
+        {
+          "type": "add",
+          "text": "제한됩니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    }
+  ],
+  "summary": "고유명사, 파일 경로, 명령어, 수치, 기술적 주장과 문단 구조를 유지했습니다. 나열 표현과 조사, 일부 어색한 수식 관계를 정리해 기술 문서의 흐름을 자연스럽게 다듬었습니다.",
+  "flow": {
+    "nodes": [
+      {
+        "id": "p1",
+        "label": "프로젝트의 계층별 구성요소와 실제 파일 및 역할을 정리함",
+        "role": "structure"
+      },
+      {
+        "id": "p2",
+        "label": "CLI 명령별 입력, 출력, 부작용을 설명함",
+        "role": "interface"
+      },
+      {
+        "id": "p3",
+        "label": "표준입력 처리 방식과 모델 없이 실행되는 명령의 범위를 밝힘",
+        "role": "behavior"
+      },
+      {
+        "id": "p4",
+        "label": "런타임 의존성과 사용 중인 Node.js 표준 모듈을 정리함",
+        "role": "runtime"
+      },
+      {
+        "id": "p5",
+        "label": "Playwright가 제품 런타임이 아닌 화면 검증용임을 구분함",
+        "role": "boundary"
+      },
+      {
+        "id": "p6",
+        "label": "윤문 요청이 분석, 메모리·지식 검색, 모델 실행, Diff와 선택 적용을 거치는 과정을 제시함",
+        "role": "process"
+      },
+      {
+        "id": "p7",
+        "label": "buildRewritePrompt에 결합되는 아홉 가지 정보를 열거함",
+        "role": "prompt"
+      },
+      {
+        "id": "p8",
+        "label": "응답 스키마의 필수 필드와 오류 처리 조건을 설명함",
+        "role": "validation"
+      }
+    ],
+    "edges": [
+      {
+        "from": "p1",
+        "to": "p2",
+        "relation": "구성요소를 바탕으로 외부 명령 표면을 구체화함"
+      },
+      {
+        "from": "p2",
+        "to": "p3",
+        "relation": "명령표의 공통 입력 방식과 실행 특성을 보충함"
+      },
+      {
+        "from": "p3",
+        "to": "p4",
+        "relation": "명령 동작에서 런타임 구현 환경으로 설명을 확장함"
+      },
+      {
+        "from": "p4",
+        "to": "p5",
+        "relation": "런타임과 검증 도구의 경계를 명시함"
+      },
+      {
+        "from": "p1",
+        "to": "p6",
+        "relation": "앞서 소개한 구성요소가 윤문 과정에서 상호작용함"
+      },
+      {
+        "from": "p6",
+        "to": "p7",
+        "relation": "내부 흐름 중 프롬프트 구성 단계를 상세화함"
+      },
+      {
+        "from": "p7",
+        "to": "p8",
+        "relation": "프롬프트 실행 결과의 형식과 검증 조건으로 이어짐"
+      }
+    ]
+  },
+  "knowledge": [
+    {
+      "id": "skill-text-humanize-korean-protected-scope",
+      "title": "text-humanize-korean의 보존 범위",
+      "kind": "skill-observation",
+      "authority": "community-skill",
+      "sourceUrl": "https://github.com/mols3131d/mols-agent-assets/blob/cae542f1dd4b80faa7ad9db164c7a5847e76b6b1/src/rulesync/.rulesync/skills/text-humanize-korean/SKILL.md",
+      "sourceSection": "text-humanize-korean/SKILL.md @ cae542f1",
+      "path": "skills/text-humanize-korean-보존범위.md",
+      "guidance": "윤문 전에 바뀌면 안 되는 데이터값, 고유 식별자, 문자 그대로 유지해야 할 구간을 체크리스트로 만든다. 결과에서는 누락뿐 아니라 부정 여부, 주장 강도, 의무 수준, 조건 범위, 인과 방향이 달라졌는지 대조하고 하나라도 표류한 제안은 폐기한다.",
+      "score": 79
+    },
+    {
+      "id": "skill-humanize-korean-audit",
+      "title": "humanize-korean의 감사 기반 검증",
+      "kind": "skill-observation",
+      "authority": "community-skill",
+      "sourceUrl": "https://github.com/hashgraph-online/awesome-codex-plugins/blob/486ac208b3f40929c62a6954b5f58147b483a2f7/plugins/beefiker/superloopy/skills/humanize-korean/SKILL.md",
+      "sourceSection": "plugins/beefiker/superloopy/skills/humanize-korean/SKILL.md @ 486ac208",
+      "path": "skills/humanize-korean-감사기반-검증.md",
+      "guidance": "윤문 전 보호 대상인 숫자·날짜·단위·URL·코드·제품명·약어·인용을 식별한다. 결과에서 보호 대상이 모두 유지되는지 확인하고, 변경이 넓으면 문장별 의미 대조를 강화한다. 검증되지 않은 품질 등급이나 탐지기 통과율을 만들지 않는다.",
+      "score": 73
+    },
+    {
+      "id": "nikl-writing-ending-genre-consistency",
+      "title": "종결 어미와 장르 일관성",
+      "kind": "writing-guidance",
+      "authority": "국립국어원",
+      "sourceUrl": "https://www.korean.go.kr/common/download.do?c_file_name=84ced1e6-7ca7-4556-862a-e62d23ceca8f.pdf&file_path=reportData",
+      "sourceSection": "글쓰기 첨삭 지원을 위한 지시문 기반 생성 말뭉치 구축 연구 - 문체·관습 유형",
+      "path": "규범/글쓰기-종결어미와-장르일관성.md",
+      "guidance": "원문의 장르와 선택한 높임 단계를 기준으로 종결 어미를 통일한다. 인용·대화·의도적 전환은 보존하고, 보고서·논증문에서 우연히 섞인 구어체만 제안 대상으로 삼는다. 문법상 가능한 표현을 장르상 덜 적합하다는 이유만으로 오류라고 부르지 않는다.",
+      "score": 33
+    },
+    {
+      "id": "nikl-relative-honorific-endings",
+      "title": "상대 높임 등급과 종결 어미",
+      "kind": "grammar",
+      "authority": "국립국어원",
+      "sourceUrl": "https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=27&pageIndex=1&qna_seq=332328",
+      "sourceSection": "상대 높임 표현과 비격식체",
+      "path": "규범/상대높임-종결어미.md",
+      "guidance": "선택한 높임 단계에 맞는 종결 어미를 문단 안에서 일관되게 쓴다. 해체·해라체·해요체·하십시오체를 임의로 섞지 않는다. 청자 상대 높임과 문장 속 인물에 대한 주체·객체 높임을 구분하고, 인물 관계와 직함은 원문대로 보존한다.",
+      "score": 28
+    },
+    {
+      "id": "nikl-subject-predicate-agreement",
+      "title": "주어와 서술어 호응",
+      "kind": "writing-guidance",
+      "authority": "국립국어원",
+      "sourceUrl": "https://www.korean.go.kr/common/download.do?c_file_name=4b822627-0996-4319-abe8-833b1248da4e.pdf&file_path=reportData",
+      "sourceSection": "행정문서 표현 개선 및 쉬운 공공언어 쓰기 지침 개발 - 문장 성분 간 호응",
+      "path": "규범/문장성분-주어와-서술어-호응.md",
+      "guidance": "각 문장의 핵심 서술어를 먼저 찾고 주어·목적어·부사어가 그 서술어와 의미상 호응하는지 확인한다. 주체가 빠져 책임 관계가 모호하면 원문 근거 안에서만 복원하고, 누구인지 확정할 수 없으면 질문 또는 후보로 남긴다.",
+      "score": 27
+    },
+    {
+      "id": "nikl-punctuation-terminal",
+      "title": "마침표·물음표·느낌표",
+      "kind": "norm",
+      "authority": "국립국어원",
+      "sourceUrl": "https://www.korean.go.kr/kornorms/m/m_regltn.do",
+      "sourceSection": "문장 부호 제1항~제3항",
+      "path": "규범/문장부호-종결부호.md",
+      "guidance": "문장의 기능에 맞춰 종결 부호를 고른다. 평서문을 과도한 느낌표로 강화하거나 약한 의문을 임의로 강한 질문으로 바꾸지 않는다. 제목·표어·개조식의 기존 문서 관습은 보존한다.",
+      "score": 26
+    }
+  ]
+}

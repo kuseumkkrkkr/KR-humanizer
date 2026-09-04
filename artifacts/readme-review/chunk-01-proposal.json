@@ -1,0 +1,5808 @@
+{
+  "original": "<p align=\"center\"><img src=\"site/assets/mark.svg\" width=\"72\" height=\"72\" alt=\"KR-humanizer 교정 표시\"></p>\n<h1 align=\"center\">KR-humanizer</h1>\n<p align=\"center\"><strong>고친 문장을 먼저 보여줍니다.</strong><br>뜻은 지키고, 읽는 부담만 덜어내는 로컬 우선 한국어 윤문 도구</p>\n<p align=\"center\"><a href=\"https://kuseumkkrkkr.github.io/KR-humanizer/\">웹사이트</a> · <a href=\"https://kuseumkkrkkr.github.io/KR-humanizer/guide/\">설치 가이드</a> · <a href=\"https://kuseumkkrkkr.github.io/KR-humanizer/knowledge/\">윤문 지식 저장소</a> · <a href=\"https://github.com/kuseumkkrkkr/KR-humanizer/releases/latest\">최신 릴리스</a></p>\n\nKR-humanizer는 한국어 글을 더 자연스럽고 편안하게 읽도록 돕는 로컬 우선 윤문 도구입니다. 문단 구성과 오탈자를 먼저 점검하고 국립국어원의 근거 자료를 검색해, 글의 의미와 수치를 보존하면서 어색한 표현을 다듬습니다. 사용자는 바뀐 단어와 어순을 문장별로 비교한 뒤 원하는 수정만 수락할 수 있습니다. 별도의 모델 API 대신 로그인된 Codex 또는 Claude Code를 실행하며, npm CLI와 로컬 GUI, 각 도구에 맞는 플러그인으로 사용할 수 있습니다.\n\n> 이 설명문은 순수 AI로 작성 후 해당 툴로 윤문한 것입니다.\n\n> 이 도구는 AI 판별기 회피나 출처 위장을 보장하지 않습니다. `sanitize`는 비가시 Unicode, BOM, 제어문자처럼 실제로 확인 가능한 텍스트 이상만 보여 주고 정리합니다.\n\n## 현재 제공 범위\n\n- 문단·문장 길이, 중복 표현, 기본 오탈자, 비가시 문자 진단\n- Codex CLI 또는 Claude Code CLI를 통한 API 키 없는 윤문 제안\n- 문장/단어 단위 전후 비교, 어순 변경 표식, 선택 수락\n- 평어체부터 경어체까지 5단계 말투 높임 슬라이더와 4가지 윤문 방식\n- 국립국어원 규범과 공개 윤문 Skill 관찰을 정리한 Obsidian Markdown 지식 저장소\n- 입력·윤문 방식·높임 단계에 맞는 지식 카드를 로컬 검색해 프롬프트에 자동 주입\n- 글의 의미 흐름 그래프\n- 로컬 결정 메모리와 선택적 self-hosted mem0 연동\n- npm CLI와 로컬 브라우저 GUI\n- Codex 및 Claude Code 공용 플러그인\n\n## 설치와 실행\n\nNode.js 20 이상이 필요합니다.\n\n```bash\nnpm install\nnpm test\nnpm link\nkr-humanizer analyze draft.txt\nkr-humanizer knowledge draft.txt --mode strict --honorific 75\nkr-humanizer rewrite draft.txt --engine codex --mode balanced --honorific 75 --out proposal.json\nkr-humanizer cv --samples 3 --folds 3\nkr-humanizer gui\n```\n\n공개 저장소에서 바로 설치하려면:\n\n```bash\nnpm install -g github:kuseumkkrkkr/KR-humanizer\n```\n\nGitHub Release의 `kr-humanizer-0.6.0.tgz` 파일도 동일한 npm 설치물입니다. npm registry에는 아직 게시하지 않았습니다.\n\nClaude Code가 설치되어 있으면 `--engine claude`를 사용할 수 있습니다. 외부 모델 API를 직접 호출하지 않으며, 사용자가 로그인한 CLI 프로세스만 실행합니다.\n\n## 플러그인 설치\n\nCodex:\n\n```bash\ncodex plugin marketplace add kuseumkkrkkr/KR-humanizer\ncodex plugin add kr-humanizer@kr-humanizer\n```\n\nClaude Code:\n\n```bash\nclaude plugin marketplace add kuseumkkrkkr/KR-humanizer\nclaude plugin install kr-humanizer@kr-humanizer\n```\n\n## 개인정보와 보안\n\n- GUI 서버는 `127.0.0.1`에만 바인딩됩니다.\n- 입력은 기본적으로 외부 서버에 저장하거나 전송하지 않습니다.\n- CLI 실행은 셸 문자열이 아닌 인자 배열을 사용합니다.\n- mem0는 localhost 주소만 허용하며 기본값은 비활성입니다.\n- 원문은 200,000자, 요청 본문은 1 MiB로 제한됩니다.\n\n자세한 제품 범위와 근거는 [docs/PLAN.md](docs/PLAN.md), [docs/RESEARCH.md](docs/RESEARCH.md)를 참고하세요.\n\n## 합성 CV\n\n`cv` 명령은 정치·경제·사회 주제별 최소 프롬프트 원문과 윤문문을 pair 단위 3-fold로 나눕니다. 설명 가능한 문체 지표, A/B 위치를 무작위화한 모델 평가, 원문/윤문 문체 구분 실험을 함께 저장합니다. 사람이 쓴 기준 글이나 실제 독자 평가는 포함하지 않으므로 사람다움 정확도로 해석하면 안 됩니다.\n\n최종 실행은 `experiments/runs/2026-09-04T06-22-37-885Z/`에 기준문 9개, EXEC 윤문 9개, 평가 의견 9개로 분리 저장했습니다. 실제 GUI 동작 캡처는 `artifacts/screenshots/`에서 확인할 수 있습니다.\n\n프롬프트 조건과 9개 원문·윤문을 글별로 연속 비교하려면 [A/B 글 비교 보고서](experiments/runs/2026-09-04T06-22-37-885Z/ab-comparison.md)를 확인하세요.\n\n## 전체 구조\n\n```mermaid\nflowchart LR\n  Writer[작성자] --> Skill[Codex·Claude Skill]\n  Writer --> CLI[npm CLI]\n  Writer --> GUI[로컬 브라우저 GUI]\n\n  Skill --> CLI\n  CLI --> Analyze[규칙 기반 분석]\n  CLI --> Diff[문장·단어 Diff]\n  CLI --> CV[합성 CV]\n  CLI --> Server[127.0.0.1 HTTP 서버]\n  GUI -->|세션 토큰 포함 요청| Server\n\n  Server --> Analyze\n  Server --> Diff\n  Server --> Memory{메모리 공급자}\n  Memory --> Local[로컬 JSON]\n  Memory --> Mem0[localhost mem0]\n\n  Server --> Runner[엔진 실행기]\n  CLI --> Runner\n  Runner -->|spawn, shell false| Codex[Codex CLI]\n  Runner -->|spawn, plan mode| Claude[Claude Code CLI]\n  Vault[Obsidian Markdown 지식 저장소] --> Retriever[결정적 로컬 검색]\n  Retriever --> Runner\n  Codex --> Schema[JSON Schema 응답]\n  Claude --> Schema\n  Schema --> Diff\n  Diff --> Review[변경 필터·전후 비교·선택 수락]\n  Review --> Result[확정 결과]\n```\n\n사용자 입력은 CLI 또는 `127.0.0.1` GUI에서 시작합니다. 맞춤법 후보와 문단 통계는 로컬 규칙으로 계산하고, 윤문이 필요할 때만 사용자가 로그인한 Codex CLI 또는 Claude Code CLI 프로세스를 실행합니다. 별도 모델 API 키를 읽거나 외부 LLM HTTP API를 직접 호출하지 않습니다.\n\n",
+  "rewritten": "<p align=\"center\"><img src=\"site/assets/mark.svg\" width=\"72\" height=\"72\" alt=\"KR-humanizer 교정 표시\"></p>\n<h1 align=\"center\">KR-humanizer</h1>\n<p align=\"center\"><strong>고친 문장을 먼저 보여줍니다.</strong><br>뜻은 지키고, 읽는 부담만 덜어내는 로컬 우선 한국어 윤문 도구</p>\n<p align=\"center\"><a href=\"https://kuseumkkrkkr.github.io/KR-humanizer/\">웹사이트</a> · <a href=\"https://kuseumkkrkkr.github.io/KR-humanizer/guide/\">설치 가이드</a> · <a href=\"https://kuseumkkrkkr.github.io/KR-humanizer/knowledge/\">윤문 지식 저장소</a> · <a href=\"https://github.com/kuseumkkrkkr/KR-humanizer/releases/latest\">최신 릴리스</a></p>\n\nKR-humanizer는 한국어 글을 더 자연스럽고 편안하게 읽을 수 있도록 돕는 로컬 우선 윤문 도구입니다. 문단 구성과 오탈자를 먼저 점검하고 국립국어원의 근거 자료를 검색합니다. 글의 의미와 수치를 보존하면서 어색한 표현을 다듬습니다. 사용자는 바뀐 단어와 어순을 문장별로 비교한 뒤 원하는 수정만 수락할 수 있습니다. 별도의 모델 API 대신 로그인된 Codex 또는 Claude Code를 실행합니다. npm CLI와 로컬 GUI, 각 도구에 맞는 플러그인으로 사용할 수 있습니다.\n\n> 이 설명문은 순수 AI로 작성한 뒤 해당 툴로 윤문한 것입니다.\n\n> 이 도구는 AI 판별기 회피나 출처 위장을 보장하지 않습니다. `sanitize`는 비가시 Unicode, BOM, 제어문자처럼 실제로 확인할 수 있는 텍스트 이상만 보여 주고 정리합니다.\n\n## 현재 제공 범위\n\n- 문단·문장 길이, 중복 표현, 기본 오탈자, 비가시 문자 진단\n- Codex CLI 또는 Claude Code CLI를 통한 API 키 없는 윤문 제안\n- 문장·단어 단위의 전후 비교, 어순 변경 표식, 선택 수락\n- 평어체부터 경어체까지 5단계 말투 높임 슬라이더와 4가지 윤문 방식\n- 국립국어원 규범과 공개 윤문 Skill 관찰을 정리한 Obsidian Markdown 지식 저장소\n- 입력·윤문 방식·높임 단계에 맞는 지식 카드를 로컬에서 검색해 프롬프트에 자동 주입\n- 글의 의미 흐름 그래프\n- 로컬 결정 메모리와 선택적 self-hosted mem0 연동\n- npm CLI와 로컬 브라우저 GUI\n- Codex 및 Claude Code 공용 플러그인\n\n## 설치와 실행\n\nNode.js 20 이상이 필요합니다.\n\n```bash\nnpm install\nnpm test\nnpm link\nkr-humanizer analyze draft.txt\nkr-humanizer knowledge draft.txt --mode strict --honorific 75\nkr-humanizer rewrite draft.txt --engine codex --mode balanced --honorific 75 --out proposal.json\nkr-humanizer cv --samples 3 --folds 3\nkr-humanizer gui\n```\n\n공개 저장소에서 바로 설치하려면 다음 명령을 실행하세요.\n\n```bash\nnpm install -g github:kuseumkkrkkr/KR-humanizer\n```\n\nGitHub Release의 `kr-humanizer-0.6.0.tgz` 파일도 같은 npm 설치물입니다. npm registry에는 아직 게시하지 않았습니다.\n\nClaude Code가 설치되어 있으면 `--engine claude`를 사용할 수 있습니다. 외부 모델 API를 직접 호출하지 않고, 사용자가 로그인한 CLI 프로세스만 실행합니다.\n\n## 플러그인 설치\n\nCodex:\n\n```bash\ncodex plugin marketplace add kuseumkkrkkr/KR-humanizer\ncodex plugin add kr-humanizer@kr-humanizer\n```\n\nClaude Code:\n\n```bash\nclaude plugin marketplace add kuseumkkrkkr/KR-humanizer\nclaude plugin install kr-humanizer@kr-humanizer\n```\n\n## 개인정보와 보안\n\n- GUI 서버는 `127.0.0.1`에만 바인딩됩니다.\n- 입력은 기본적으로 외부 서버에 저장하거나 전송하지 않습니다.\n- CLI 실행에는 셸 문자열이 아닌 인자 배열을 사용합니다.\n- mem0는 localhost 주소만 허용하며 기본값은 비활성입니다.\n- 원문은 200,000자, 요청 본문은 1 MiB로 제한됩니다.\n\n자세한 제품 범위와 근거는 [docs/PLAN.md](docs/PLAN.md)와 [docs/RESEARCH.md](docs/RESEARCH.md)를 참고하세요.\n\n## 합성 CV\n\n`cv` 명령은 정치·경제·사회 주제별 최소 프롬프트 원문과 윤문문을 pair 단위로 3-fold로 나눕니다. 설명 가능한 문체 지표, A/B 위치를 무작위화한 모델 평가, 원문과 윤문의 문체 구분 실험을 함께 저장합니다. 사람이 쓴 기준 글이나 실제 독자 평가는 포함하지 않으므로 사람다움 정확도로 해석하면 안 됩니다.\n\n최종 실행 결과는 `experiments/runs/2026-09-04T06-22-37-885Z/`에 기준문 9개, EXEC 윤문 9개, 평가 의견 9개로 나누어 저장했습니다. 실제 GUI 동작 캡처는 `artifacts/screenshots/`에서 확인할 수 있습니다.\n\n프롬프트 조건과 9개 원문·윤문을 글별로 이어서 비교하려면 [A/B 글 비교 보고서](experiments/runs/2026-09-04T06-22-37-885Z/ab-comparison.md)를 확인하세요.\n\n## 전체 구조\n\n```mermaid\nflowchart LR\n  Writer[작성자] --> Skill[Codex·Claude Skill]\n  Writer --> CLI[npm CLI]\n  Writer --> GUI[로컬 브라우저 GUI]\n\n  Skill --> CLI\n  CLI --> Analyze[규칙 기반 분석]\n  CLI --> Diff[문장·단어 Diff]\n  CLI --> CV[합성 CV]\n  CLI --> Server[127.0.0.1 HTTP 서버]\n  GUI -->|세션 토큰 포함 요청| Server\n\n  Server --> Analyze\n  Server --> Diff\n  Server --> Memory{메모리 공급자}\n  Memory --> Local[로컬 JSON]\n  Memory --> Mem0[localhost mem0]\n\n  Server --> Runner[엔진 실행기]\n  CLI --> Runner\n  Runner -->|spawn, shell false| Codex[Codex CLI]\n  Runner -->|spawn, plan mode| Claude[Claude Code CLI]\n  Vault[Obsidian Markdown 지식 저장소] --> Retriever[결정적 로컬 검색]\n  Retriever --> Runner\n  Codex --> Schema[JSON Schema 응답]\n  Claude --> Schema\n  Schema --> Diff\n  Diff --> Review[변경 필터·전후 비교·선택 수락]\n  Review --> Result[확정 결과]\n```\n\n사용자 입력은 CLI 또는 `127.0.0.1` GUI에서 시작합니다. 맞춤법 후보와 문단 통계는 로컬 규칙으로 계산합니다. 윤문이 필요할 때만 사용자가 로그인한 Codex CLI 또는 Claude Code CLI 프로세스를 실행합니다. 별도의 모델 API 키를 읽거나 외부 LLM HTTP API를 직접 호출하지 않습니다.",
+  "originalSentences": [
+    "<p align=\"center\"><img src=\"site/assets/mark.svg\" width=\"72\" height=\"72\" alt=\"KR-humanizer 교정 표시\"></p>",
+    "<h1 align=\"center\">KR-humanizer</h1>",
+    "<p align=\"center\"><strong>고친 문장을 먼저 보여줍니다.</strong><br>뜻은 지키고, 읽는 부담만 덜어내는 로컬 우선 한국어 윤문 도구</p>",
+    "<p align=\"center\"><a href=\"https://kuseumkkrkkr.github.io/KR-humanizer/\">웹사이트</a> · <a href=\"https://kuseumkkrkkr.github.io/KR-humanizer/guide/\">설치 가이드</a> · <a href=\"https://kuseumkkrkkr.github.io/KR-humanizer/knowledge/\">윤문 지식 저장소</a> · <a href=\"https://github.com/kuseumkkrkkr/KR-humanizer/releases/latest\">최신 릴리스</a></p>",
+    "KR-humanizer는 한국어 글을 더 자연스럽고 편안하게 읽도록 돕는 로컬 우선 윤문 도구입니다.",
+    "문단 구성과 오탈자를 먼저 점검하고 국립국어원의 근거 자료를 검색해, 글의 의미와 수치를 보존하면서 어색한 표현을 다듬습니다.",
+    "사용자는 바뀐 단어와 어순을 문장별로 비교한 뒤 원하는 수정만 수락할 수 있습니다.",
+    "별도의 모델 API 대신 로그인된 Codex 또는 Claude Code를 실행하며, npm CLI와 로컬 GUI, 각 도구에 맞는 플러그인으로 사용할 수 있습니다.",
+    "> 이 설명문은 순수 AI로 작성 후 해당 툴로 윤문한 것입니다.",
+    "> 이 도구는 AI 판별기 회피나 출처 위장을 보장하지 않습니다. `sanitize`는 비가시 Unicode, BOM, 제어문자처럼 실제로 확인 가능한 텍스트 이상만 보여 주고 정리합니다.",
+    "## 현재 제공 범위",
+    "- 문단·문장 길이, 중복 표현, 기본 오탈자, 비가시 문자 진단",
+    "- Codex CLI 또는 Claude Code CLI를 통한 API 키 없는 윤문 제안",
+    "- 문장/단어 단위 전후 비교, 어순 변경 표식, 선택 수락",
+    "- 평어체부터 경어체까지 5단계 말투 높임 슬라이더와 4가지 윤문 방식",
+    "- 국립국어원 규범과 공개 윤문 Skill 관찰을 정리한 Obsidian Markdown 지식 저장소",
+    "- 입력·윤문 방식·높임 단계에 맞는 지식 카드를 로컬 검색해 프롬프트에 자동 주입",
+    "- 글의 의미 흐름 그래프",
+    "- 로컬 결정 메모리와 선택적 self-hosted mem0 연동",
+    "- npm CLI와 로컬 브라우저 GUI",
+    "- Codex 및 Claude Code 공용 플러그인",
+    "## 설치와 실행",
+    "Node.js 20 이상이 필요합니다.",
+    "```bash",
+    "npm install",
+    "npm test",
+    "npm link",
+    "kr-humanizer analyze draft.txt",
+    "kr-humanizer knowledge draft.txt --mode strict --honorific 75",
+    "kr-humanizer rewrite draft.txt --engine codex --mode balanced --honorific 75 --out proposal.json",
+    "kr-humanizer cv --samples 3 --folds 3",
+    "kr-humanizer gui",
+    "```",
+    "공개 저장소에서 바로 설치하려면:",
+    "```bash",
+    "npm install -g github:kuseumkkrkkr/KR-humanizer",
+    "```",
+    "GitHub Release의 `kr-humanizer-0.6.0.tgz` 파일도 동일한 npm 설치물입니다. npm registry에는 아직 게시하지 않았습니다.",
+    "Claude Code가 설치되어 있으면 `--engine claude`를 사용할 수 있습니다.",
+    "외부 모델 API를 직접 호출하지 않으며, 사용자가 로그인한 CLI 프로세스만 실행합니다.",
+    "## 플러그인 설치",
+    "Codex:",
+    "```bash",
+    "codex plugin marketplace add kuseumkkrkkr/KR-humanizer",
+    "codex plugin add kr-humanizer@kr-humanizer",
+    "```",
+    "Claude Code:",
+    "```bash",
+    "claude plugin marketplace add kuseumkkrkkr/KR-humanizer",
+    "claude plugin install kr-humanizer@kr-humanizer",
+    "```",
+    "## 개인정보와 보안",
+    "- GUI 서버는 `127.0.0.1`에만 바인딩됩니다.",
+    "- 입력은 기본적으로 외부 서버에 저장하거나 전송하지 않습니다.",
+    "- CLI 실행은 셸 문자열이 아닌 인자 배열을 사용합니다.",
+    "- mem0는 localhost 주소만 허용하며 기본값은 비활성입니다.",
+    "- 원문은 200,000자, 요청 본문은 1 MiB로 제한됩니다.",
+    "자세한 제품 범위와 근거는 [docs/PLAN.md](docs/PLAN.md), [docs/RESEARCH.md](docs/RESEARCH.md)를 참고하세요.",
+    "## 합성 CV",
+    "`cv` 명령은 정치·경제·사회 주제별 최소 프롬프트 원문과 윤문문을 pair 단위 3-fold로 나눕니다.",
+    "설명 가능한 문체 지표, A/B 위치를 무작위화한 모델 평가, 원문/윤문 문체 구분 실험을 함께 저장합니다.",
+    "사람이 쓴 기준 글이나 실제 독자 평가는 포함하지 않으므로 사람다움 정확도로 해석하면 안 됩니다.",
+    "최종 실행은 `experiments/runs/2026-09-04T06-22-37-885Z/`에 기준문 9개, EXEC 윤문 9개, 평가 의견 9개로 분리 저장했습니다.",
+    "실제 GUI 동작 캡처는 `artifacts/screenshots/`에서 확인할 수 있습니다.",
+    "프롬프트 조건과 9개 원문·윤문을 글별로 연속 비교하려면 [A/B 글 비교 보고서](experiments/runs/2026-09-04T06-22-37-885Z/ab-comparison.md)를 확인하세요.",
+    "## 전체 구조",
+    "```mermaid",
+    "flowchart LR",
+    "Writer[작성자] --> Skill[Codex·Claude Skill]",
+    "Writer --> CLI[npm CLI]",
+    "Writer --> GUI[로컬 브라우저 GUI]",
+    "Skill --> CLI",
+    "CLI --> Analyze[규칙 기반 분석]",
+    "CLI --> Diff[문장·단어 Diff]",
+    "CLI --> CV[합성 CV]",
+    "CLI --> Server[127.0.0.1 HTTP 서버]",
+    "GUI -->|세션 토큰 포함 요청| Server",
+    "Server --> Analyze",
+    "Server --> Diff",
+    "Server --> Memory{메모리 공급자}",
+    "Memory --> Local[로컬 JSON]",
+    "Memory --> Mem0[localhost mem0]",
+    "Server --> Runner[엔진 실행기]",
+    "CLI --> Runner",
+    "Runner -->|spawn, shell false| Codex[Codex CLI]",
+    "Runner -->|spawn, plan mode| Claude[Claude Code CLI]",
+    "Vault[Obsidian Markdown 지식 저장소] --> Retriever[결정적 로컬 검색]",
+    "Retriever --> Runner",
+    "Codex --> Schema[JSON Schema 응답]",
+    "Claude --> Schema",
+    "Schema --> Diff",
+    "Diff --> Review[변경 필터·전후 비교·선택 수락]",
+    "Review --> Result[확정 결과]",
+    "```",
+    "사용자 입력은 CLI 또는 `127.0.0.1` GUI에서 시작합니다.",
+    "맞춤법 후보와 문단 통계는 로컬 규칙으로 계산하고, 윤문이 필요할 때만 사용자가 로그인한 Codex CLI 또는 Claude Code CLI 프로세스를 실행합니다.",
+    "별도 모델 API 키를 읽거나 외부 LLM HTTP API를 직접 호출하지 않습니다."
+  ],
+  "rewrittenSentences": [
+    "<p align=\"center\"><img src=\"site/assets/mark.svg\" width=\"72\" height=\"72\" alt=\"KR-humanizer 교정 표시\"></p>",
+    "<h1 align=\"center\">KR-humanizer</h1>",
+    "<p align=\"center\"><strong>고친 문장을 먼저 보여줍니다.</strong><br>뜻은 지키고, 읽는 부담만 덜어내는 로컬 우선 한국어 윤문 도구</p>",
+    "<p align=\"center\"><a href=\"https://kuseumkkrkkr.github.io/KR-humanizer/\">웹사이트</a> · <a href=\"https://kuseumkkrkkr.github.io/KR-humanizer/guide/\">설치 가이드</a> · <a href=\"https://kuseumkkrkkr.github.io/KR-humanizer/knowledge/\">윤문 지식 저장소</a> · <a href=\"https://github.com/kuseumkkrkkr/KR-humanizer/releases/latest\">최신 릴리스</a></p>",
+    "KR-humanizer는 한국어 글을 더 자연스럽고 편안하게 읽을 수 있도록 돕는 로컬 우선 윤문 도구입니다.",
+    "문단 구성과 오탈자를 먼저 점검하고 국립국어원의 근거 자료를 검색합니다.",
+    "글의 의미와 수치를 보존하면서 어색한 표현을 다듬습니다.",
+    "사용자는 바뀐 단어와 어순을 문장별로 비교한 뒤 원하는 수정만 수락할 수 있습니다.",
+    "별도의 모델 API 대신 로그인된 Codex 또는 Claude Code를 실행합니다. npm CLI와 로컬 GUI, 각 도구에 맞는 플러그인으로 사용할 수 있습니다.",
+    "> 이 설명문은 순수 AI로 작성한 뒤 해당 툴로 윤문한 것입니다.",
+    "> 이 도구는 AI 판별기 회피나 출처 위장을 보장하지 않습니다. `sanitize`는 비가시 Unicode, BOM, 제어문자처럼 실제로 확인할 수 있는 텍스트 이상만 보여 주고 정리합니다.",
+    "## 현재 제공 범위",
+    "- 문단·문장 길이, 중복 표현, 기본 오탈자, 비가시 문자 진단",
+    "- Codex CLI 또는 Claude Code CLI를 통한 API 키 없는 윤문 제안",
+    "- 문장·단어 단위의 전후 비교, 어순 변경 표식, 선택 수락",
+    "- 평어체부터 경어체까지 5단계 말투 높임 슬라이더와 4가지 윤문 방식",
+    "- 국립국어원 규범과 공개 윤문 Skill 관찰을 정리한 Obsidian Markdown 지식 저장소",
+    "- 입력·윤문 방식·높임 단계에 맞는 지식 카드를 로컬에서 검색해 프롬프트에 자동 주입",
+    "- 글의 의미 흐름 그래프",
+    "- 로컬 결정 메모리와 선택적 self-hosted mem0 연동",
+    "- npm CLI와 로컬 브라우저 GUI",
+    "- Codex 및 Claude Code 공용 플러그인",
+    "## 설치와 실행",
+    "Node.js 20 이상이 필요합니다.",
+    "```bash",
+    "npm install",
+    "npm test",
+    "npm link",
+    "kr-humanizer analyze draft.txt",
+    "kr-humanizer knowledge draft.txt --mode strict --honorific 75",
+    "kr-humanizer rewrite draft.txt --engine codex --mode balanced --honorific 75 --out proposal.json",
+    "kr-humanizer cv --samples 3 --folds 3",
+    "kr-humanizer gui",
+    "```",
+    "공개 저장소에서 바로 설치하려면 다음 명령을 실행하세요.",
+    "```bash",
+    "npm install -g github:kuseumkkrkkr/KR-humanizer",
+    "```",
+    "GitHub Release의 `kr-humanizer-0.6.0.tgz` 파일도 같은 npm 설치물입니다. npm registry에는 아직 게시하지 않았습니다.",
+    "Claude Code가 설치되어 있으면 `--engine claude`를 사용할 수 있습니다.",
+    "외부 모델 API를 직접 호출하지 않고, 사용자가 로그인한 CLI 프로세스만 실행합니다.",
+    "## 플러그인 설치",
+    "Codex:",
+    "```bash",
+    "codex plugin marketplace add kuseumkkrkkr/KR-humanizer",
+    "codex plugin add kr-humanizer@kr-humanizer",
+    "```",
+    "Claude Code:",
+    "```bash",
+    "claude plugin marketplace add kuseumkkrkkr/KR-humanizer",
+    "claude plugin install kr-humanizer@kr-humanizer",
+    "```",
+    "## 개인정보와 보안",
+    "- GUI 서버는 `127.0.0.1`에만 바인딩됩니다.",
+    "- 입력은 기본적으로 외부 서버에 저장하거나 전송하지 않습니다.",
+    "- CLI 실행에는 셸 문자열이 아닌 인자 배열을 사용합니다.",
+    "- mem0는 localhost 주소만 허용하며 기본값은 비활성입니다.",
+    "- 원문은 200,000자, 요청 본문은 1 MiB로 제한됩니다.",
+    "자세한 제품 범위와 근거는 [docs/PLAN.md](docs/PLAN.md)와 [docs/RESEARCH.md](docs/RESEARCH.md)를 참고하세요.",
+    "## 합성 CV",
+    "`cv` 명령은 정치·경제·사회 주제별 최소 프롬프트 원문과 윤문문을 pair 단위로 3-fold로 나눕니다.",
+    "설명 가능한 문체 지표, A/B 위치를 무작위화한 모델 평가, 원문과 윤문의 문체 구분 실험을 함께 저장합니다.",
+    "사람이 쓴 기준 글이나 실제 독자 평가는 포함하지 않으므로 사람다움 정확도로 해석하면 안 됩니다.",
+    "최종 실행 결과는 `experiments/runs/2026-09-04T06-22-37-885Z/`에 기준문 9개, EXEC 윤문 9개, 평가 의견 9개로 나누어 저장했습니다.",
+    "실제 GUI 동작 캡처는 `artifacts/screenshots/`에서 확인할 수 있습니다.",
+    "프롬프트 조건과 9개 원문·윤문을 글별로 이어서 비교하려면 [A/B 글 비교 보고서](experiments/runs/2026-09-04T06-22-37-885Z/ab-comparison.md)를 확인하세요.",
+    "## 전체 구조",
+    "```mermaid",
+    "flowchart LR",
+    "Writer[작성자] --> Skill[Codex·Claude Skill]",
+    "Writer --> CLI[npm CLI]",
+    "Writer --> GUI[로컬 브라우저 GUI]",
+    "Skill --> CLI",
+    "CLI --> Analyze[규칙 기반 분석]",
+    "CLI --> Diff[문장·단어 Diff]",
+    "CLI --> CV[합성 CV]",
+    "CLI --> Server[127.0.0.1 HTTP 서버]",
+    "GUI -->|세션 토큰 포함 요청| Server",
+    "Server --> Analyze",
+    "Server --> Diff",
+    "Server --> Memory{메모리 공급자}",
+    "Memory --> Local[로컬 JSON]",
+    "Memory --> Mem0[localhost mem0]",
+    "Server --> Runner[엔진 실행기]",
+    "CLI --> Runner",
+    "Runner -->|spawn, shell false| Codex[Codex CLI]",
+    "Runner -->|spawn, plan mode| Claude[Claude Code CLI]",
+    "Vault[Obsidian Markdown 지식 저장소] --> Retriever[결정적 로컬 검색]",
+    "Retriever --> Runner",
+    "Codex --> Schema[JSON Schema 응답]",
+    "Claude --> Schema",
+    "Schema --> Diff",
+    "Diff --> Review[변경 필터·전후 비교·선택 수락]",
+    "Review --> Result[확정 결과]",
+    "```",
+    "사용자 입력은 CLI 또는 `127.0.0.1` GUI에서 시작합니다.",
+    "맞춤법 후보와 문단 통계는 로컬 규칙으로 계산합니다.",
+    "윤문이 필요할 때만 사용자가 로그인한 Codex CLI 또는 Claude Code CLI 프로세스를 실행합니다.",
+    "별도의 모델 API 키를 읽거나 외부 LLM HTTP API를 직접 호출하지 않습니다."
+  ],
+  "units": [
+    {
+      "id": "s5",
+      "index": 4,
+      "start": 561,
+      "end": 617,
+      "before": "KR-humanizer는 한국어 글을 더 자연스럽고 편안하게 읽도록 돕는 로컬 우선 윤문 도구입니다.",
+      "after": "KR-humanizer는 한국어 글을 더 자연스럽고 편안하게 읽을 수 있도록 돕는 로컬 우선 윤문 도구입니다.",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "KR-humanizer는 한국어 글을 더 자연스럽고 편안하게 "
+        },
+        {
+          "type": "remove",
+          "text": "읽도록"
+        },
+        {
+          "type": "add",
+          "text": "읽을"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "add",
+          "text": "수 있도록 "
+        },
+        {
+          "type": "same",
+          "text": "돕는 로컬 우선 윤문 도구입니다."
+        }
+      ]
+    },
+    {
+      "id": "s6",
+      "index": 5,
+      "start": 618,
+      "end": 688,
+      "before": "문단 구성과 오탈자를 먼저 점검하고 국립국어원의 근거 자료를 검색해, 글의 의미와 수치를 보존하면서 어색한 표현을 다듬습니다.",
+      "after": "문단 구성과 오탈자를 먼저 점검하고 국립국어원의 근거 자료를 검색합니다.",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "문단 구성과 오탈자를 먼저 점검하고 국립국어원의 근거 자료를 "
+        },
+        {
+          "type": "remove",
+          "text": "검색해, 글의 의미와 수치를 보존하면서 어색한 표현을 다듬습니다"
+        },
+        {
+          "type": "add",
+          "text": "검색합니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s7",
+      "index": 6,
+      "start": 689,
+      "end": 735,
+      "before": "사용자는 바뀐 단어와 어순을 문장별로 비교한 뒤 원하는 수정만 수락할 수 있습니다.",
+      "after": "글의 의미와 수치를 보존하면서 어색한 표현을 다듬습니다.",
+      "kind": "order",
+      "movedTo": 7,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "사용자는 바뀐 단어와 어순을 문장별로 비교한"
+        },
+        {
+          "type": "add",
+          "text": "글의"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "뒤"
+        },
+        {
+          "type": "add",
+          "text": "의미와"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "원하는"
+        },
+        {
+          "type": "add",
+          "text": "수치를"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "수정만"
+        },
+        {
+          "type": "add",
+          "text": "보존하면서"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "수락할"
+        },
+        {
+          "type": "add",
+          "text": "어색한"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "수"
+        },
+        {
+          "type": "add",
+          "text": "표현을"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "있습니다"
+        },
+        {
+          "type": "add",
+          "text": "다듬습니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s8",
+      "index": 7,
+      "start": 736,
+      "end": 827,
+      "before": "별도의 모델 API 대신 로그인된 Codex 또는 Claude Code를 실행하며, npm CLI와 로컬 GUI, 각 도구에 맞는 플러그인으로 사용할 수 있습니다.",
+      "after": "사용자는 바뀐 단어와 어순을 문장별로 비교한 뒤 원하는 수정만 수락할 수 있습니다.",
+      "kind": "order",
+      "movedTo": 8,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "별도의 모델 API 대신 로그인된 Codex 또는 Claude Code를 실행하며,"
+        },
+        {
+          "type": "add",
+          "text": "사용자는"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "npm"
+        },
+        {
+          "type": "add",
+          "text": "바뀐"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "CLI와"
+        },
+        {
+          "type": "add",
+          "text": "단어와"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "로컬"
+        },
+        {
+          "type": "add",
+          "text": "어순을"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "GUI,"
+        },
+        {
+          "type": "add",
+          "text": "문장별로"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "각"
+        },
+        {
+          "type": "add",
+          "text": "비교한"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "도구에"
+        },
+        {
+          "type": "add",
+          "text": "뒤"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "맞는"
+        },
+        {
+          "type": "add",
+          "text": "원하는"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "플러그인으로"
+        },
+        {
+          "type": "add",
+          "text": "수정만"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "사용할"
+        },
+        {
+          "type": "add",
+          "text": "수락할"
+        },
+        {
+          "type": "same",
+          "text": " 수 있습니다."
+        }
+      ]
+    },
+    {
+      "id": "s9",
+      "index": 8,
+      "start": 829,
+      "end": 865,
+      "before": "> 이 설명문은 순수 AI로 작성 후 해당 툴로 윤문한 것입니다.",
+      "after": "별도의 모델 API 대신 로그인된 Codex 또는 Claude Code를 실행합니다. npm CLI와 로컬 GUI, 각 도구에 맞는 플러그인으로 사용할 수 있습니다.",
+      "kind": "order",
+      "movedTo": 9,
+      "diff": [
+        {
+          "type": "remove",
+          "text": ">"
+        },
+        {
+          "type": "add",
+          "text": "별도의"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "이"
+        },
+        {
+          "type": "add",
+          "text": "모델"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "설명문은"
+        },
+        {
+          "type": "add",
+          "text": "API"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "순수"
+        },
+        {
+          "type": "add",
+          "text": "대신"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "AI로"
+        },
+        {
+          "type": "add",
+          "text": "로그인된"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "작성"
+        },
+        {
+          "type": "add",
+          "text": "Codex"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "후"
+        },
+        {
+          "type": "add",
+          "text": "또는"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "해당"
+        },
+        {
+          "type": "add",
+          "text": "Claude"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "툴로"
+        },
+        {
+          "type": "add",
+          "text": "Code를"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "윤문한"
+        },
+        {
+          "type": "add",
+          "text": "실행합니다."
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "것입니다"
+        },
+        {
+          "type": "add",
+          "text": "npm CLI와 로컬 GUI, 각 도구에 맞는 플러그인으로 사용할 수 있습니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s10",
+      "index": 9,
+      "start": 867,
+      "end": 972,
+      "before": "> 이 도구는 AI 판별기 회피나 출처 위장을 보장하지 않습니다. `sanitize`는 비가시 Unicode, BOM, 제어문자처럼 실제로 확인 가능한 텍스트 이상만 보여 주고 정리합니다.",
+      "after": "> 이 설명문은 순수 AI로 작성한 뒤 해당 툴로 윤문한 것입니다.",
+      "kind": "order",
+      "movedTo": 10,
+      "diff": [
+        {
+          "type": "same",
+          "text": "> 이 "
+        },
+        {
+          "type": "remove",
+          "text": "도구는 AI 판별기 회피나 출처 위장을 보장하지 않습니다. `sanitize`는 비가시 Unicode, BOM, 제어문자처럼"
+        },
+        {
+          "type": "add",
+          "text": "설명문은"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "실제로"
+        },
+        {
+          "type": "add",
+          "text": "순수"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "확인"
+        },
+        {
+          "type": "add",
+          "text": "AI로"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "가능한"
+        },
+        {
+          "type": "add",
+          "text": "작성한"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "텍스트"
+        },
+        {
+          "type": "add",
+          "text": "뒤"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "이상만"
+        },
+        {
+          "type": "add",
+          "text": "해당"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "보여"
+        },
+        {
+          "type": "add",
+          "text": "툴로"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "주고"
+        },
+        {
+          "type": "add",
+          "text": "윤문한"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "정리합니다"
+        },
+        {
+          "type": "add",
+          "text": "것입니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s11",
+      "index": 10,
+      "start": 974,
+      "end": 985,
+      "before": "## 현재 제공 범위",
+      "after": "> 이 도구는 AI 판별기 회피나 출처 위장을 보장하지 않습니다. `sanitize`는 비가시 Unicode, BOM, 제어문자처럼 실제로 확인할 수 있는 텍스트 이상만 보여 주고 정리합니다.",
+      "kind": "order",
+      "movedTo": 11,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "##"
+        },
+        {
+          "type": "add",
+          "text": ">"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "현재"
+        },
+        {
+          "type": "add",
+          "text": "이"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "제공"
+        },
+        {
+          "type": "add",
+          "text": "도구는"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "범위"
+        },
+        {
+          "type": "add",
+          "text": "AI 판별기 회피나 출처 위장을 보장하지 않습니다. `sanitize`는 비가시 Unicode, BOM, 제어문자처럼 실제로 확인할 수 있는 텍스트 이상만 보여 주고 정리합니다."
+        }
+      ]
+    },
+    {
+      "id": "s12",
+      "index": 11,
+      "start": 987,
+      "end": 1023,
+      "before": "- 문단·문장 길이, 중복 표현, 기본 오탈자, 비가시 문자 진단",
+      "after": "## 현재 제공 범위",
+      "kind": "order",
+      "movedTo": 12,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "- 문단·문장 길이, 중복 표현, 기본 오탈자,"
+        },
+        {
+          "type": "add",
+          "text": "##"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "비가시"
+        },
+        {
+          "type": "add",
+          "text": "현재"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "문자"
+        },
+        {
+          "type": "add",
+          "text": "제공"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "진단"
+        },
+        {
+          "type": "add",
+          "text": "범위"
+        }
+      ]
+    },
+    {
+      "id": "s13",
+      "index": 12,
+      "start": 1024,
+      "end": 1073,
+      "before": "- Codex CLI 또는 Claude Code CLI를 통한 API 키 없는 윤문 제안",
+      "after": "- 문단·문장 길이, 중복 표현, 기본 오탈자, 비가시 문자 진단",
+      "kind": "order",
+      "movedTo": 13,
+      "diff": [
+        {
+          "type": "same",
+          "text": "- "
+        },
+        {
+          "type": "remove",
+          "text": "Codex CLI 또는 Claude"
+        },
+        {
+          "type": "add",
+          "text": "문단·문장"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "Code"
+        },
+        {
+          "type": "add",
+          "text": "길이,"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "CLI를"
+        },
+        {
+          "type": "add",
+          "text": "중복"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "통한"
+        },
+        {
+          "type": "add",
+          "text": "표현,"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "API"
+        },
+        {
+          "type": "add",
+          "text": "기본"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "키"
+        },
+        {
+          "type": "add",
+          "text": "오탈자,"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "없는"
+        },
+        {
+          "type": "add",
+          "text": "비가시"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "윤문"
+        },
+        {
+          "type": "add",
+          "text": "문자"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "제안"
+        },
+        {
+          "type": "add",
+          "text": "진단"
+        }
+      ]
+    },
+    {
+      "id": "s14",
+      "index": 13,
+      "start": 1074,
+      "end": 1107,
+      "before": "- 문장/단어 단위 전후 비교, 어순 변경 표식, 선택 수락",
+      "after": "- Codex CLI 또는 Claude Code CLI를 통한 API 키 없는 윤문 제안",
+      "kind": "order",
+      "movedTo": 14,
+      "diff": [
+        {
+          "type": "same",
+          "text": "- "
+        },
+        {
+          "type": "remove",
+          "text": "문장/단어"
+        },
+        {
+          "type": "add",
+          "text": "Codex"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "단위"
+        },
+        {
+          "type": "add",
+          "text": "CLI"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "전후"
+        },
+        {
+          "type": "add",
+          "text": "또는"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "비교,"
+        },
+        {
+          "type": "add",
+          "text": "Claude"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "어순"
+        },
+        {
+          "type": "add",
+          "text": "Code"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "변경"
+        },
+        {
+          "type": "add",
+          "text": "CLI를"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "표식,"
+        },
+        {
+          "type": "add",
+          "text": "통한"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "선택"
+        },
+        {
+          "type": "add",
+          "text": "API"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "수락"
+        },
+        {
+          "type": "add",
+          "text": "키 없는 윤문 제안"
+        }
+      ]
+    },
+    {
+      "id": "s15",
+      "index": 14,
+      "start": 1108,
+      "end": 1147,
+      "before": "- 평어체부터 경어체까지 5단계 말투 높임 슬라이더와 4가지 윤문 방식",
+      "after": "- 문장·단어 단위의 전후 비교, 어순 변경 표식, 선택 수락",
+      "kind": "order",
+      "movedTo": 15,
+      "diff": [
+        {
+          "type": "same",
+          "text": "- "
+        },
+        {
+          "type": "remove",
+          "text": "평어체부터"
+        },
+        {
+          "type": "add",
+          "text": "문장·단어"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "경어체까지"
+        },
+        {
+          "type": "add",
+          "text": "단위의"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "5단계"
+        },
+        {
+          "type": "add",
+          "text": "전후"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "말투"
+        },
+        {
+          "type": "add",
+          "text": "비교,"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "높임"
+        },
+        {
+          "type": "add",
+          "text": "어순"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "슬라이더와"
+        },
+        {
+          "type": "add",
+          "text": "변경"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "4가지"
+        },
+        {
+          "type": "add",
+          "text": "표식,"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "윤문"
+        },
+        {
+          "type": "add",
+          "text": "선택"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "방식"
+        },
+        {
+          "type": "add",
+          "text": "수락"
+        }
+      ]
+    },
+    {
+      "id": "s16",
+      "index": 15,
+      "start": 1148,
+      "end": 1204,
+      "before": "- 국립국어원 규범과 공개 윤문 Skill 관찰을 정리한 Obsidian Markdown 지식 저장소",
+      "after": "- 평어체부터 경어체까지 5단계 말투 높임 슬라이더와 4가지 윤문 방식",
+      "kind": "order",
+      "movedTo": 16,
+      "diff": [
+        {
+          "type": "same",
+          "text": "- "
+        },
+        {
+          "type": "remove",
+          "text": "국립국어원 규범과 공개"
+        },
+        {
+          "type": "add",
+          "text": "평어체부터"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "윤문"
+        },
+        {
+          "type": "add",
+          "text": "경어체까지"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "Skill"
+        },
+        {
+          "type": "add",
+          "text": "5단계"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "관찰을"
+        },
+        {
+          "type": "add",
+          "text": "말투"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "정리한"
+        },
+        {
+          "type": "add",
+          "text": "높임"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "Obsidian"
+        },
+        {
+          "type": "add",
+          "text": "슬라이더와"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "Markdown"
+        },
+        {
+          "type": "add",
+          "text": "4가지"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "지식"
+        },
+        {
+          "type": "add",
+          "text": "윤문"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "저장소"
+        },
+        {
+          "type": "add",
+          "text": "방식"
+        }
+      ]
+    },
+    {
+      "id": "s17",
+      "index": 16,
+      "start": 1205,
+      "end": 1251,
+      "before": "- 입력·윤문 방식·높임 단계에 맞는 지식 카드를 로컬 검색해 프롬프트에 자동 주입",
+      "after": "- 국립국어원 규범과 공개 윤문 Skill 관찰을 정리한 Obsidian Markdown 지식 저장소",
+      "kind": "order",
+      "movedTo": 17,
+      "diff": [
+        {
+          "type": "same",
+          "text": "- "
+        },
+        {
+          "type": "remove",
+          "text": "입력·윤문"
+        },
+        {
+          "type": "add",
+          "text": "국립국어원"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "방식·높임"
+        },
+        {
+          "type": "add",
+          "text": "규범과"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "단계에"
+        },
+        {
+          "type": "add",
+          "text": "공개"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "맞는"
+        },
+        {
+          "type": "add",
+          "text": "윤문"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "지식"
+        },
+        {
+          "type": "add",
+          "text": "Skill"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "카드를"
+        },
+        {
+          "type": "add",
+          "text": "관찰을"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "로컬"
+        },
+        {
+          "type": "add",
+          "text": "정리한"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "검색해"
+        },
+        {
+          "type": "add",
+          "text": "Obsidian"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "프롬프트에"
+        },
+        {
+          "type": "add",
+          "text": "Markdown"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "자동"
+        },
+        {
+          "type": "add",
+          "text": "지식"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "주입"
+        },
+        {
+          "type": "add",
+          "text": "저장소"
+        }
+      ]
+    },
+    {
+      "id": "s18",
+      "index": 17,
+      "start": 1252,
+      "end": 1266,
+      "before": "- 글의 의미 흐름 그래프",
+      "after": "- 입력·윤문 방식·높임 단계에 맞는 지식 카드를 로컬에서 검색해 프롬프트에 자동 주입",
+      "kind": "order",
+      "movedTo": 18,
+      "diff": [
+        {
+          "type": "same",
+          "text": "- "
+        },
+        {
+          "type": "remove",
+          "text": "글의"
+        },
+        {
+          "type": "add",
+          "text": "입력·윤문"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "의미"
+        },
+        {
+          "type": "add",
+          "text": "방식·높임"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "흐름"
+        },
+        {
+          "type": "add",
+          "text": "단계에"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "그래프"
+        },
+        {
+          "type": "add",
+          "text": "맞는 지식 카드를 로컬에서 검색해 프롬프트에 자동 주입"
+        }
+      ]
+    },
+    {
+      "id": "s19",
+      "index": 18,
+      "start": 1267,
+      "end": 1303,
+      "before": "- 로컬 결정 메모리와 선택적 self-hosted mem0 연동",
+      "after": "- 글의 의미 흐름 그래프",
+      "kind": "order",
+      "movedTo": 19,
+      "diff": [
+        {
+          "type": "same",
+          "text": "- "
+        },
+        {
+          "type": "remove",
+          "text": "로컬 결정 메모리와 선택적"
+        },
+        {
+          "type": "add",
+          "text": "글의"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "self-hosted"
+        },
+        {
+          "type": "add",
+          "text": "의미"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "mem0"
+        },
+        {
+          "type": "add",
+          "text": "흐름"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "연동"
+        },
+        {
+          "type": "add",
+          "text": "그래프"
+        }
+      ]
+    },
+    {
+      "id": "s20",
+      "index": 19,
+      "start": 1304,
+      "end": 1326,
+      "before": "- npm CLI와 로컬 브라우저 GUI",
+      "after": "- 로컬 결정 메모리와 선택적 self-hosted mem0 연동",
+      "kind": "order",
+      "movedTo": 20,
+      "diff": [
+        {
+          "type": "same",
+          "text": "- "
+        },
+        {
+          "type": "remove",
+          "text": "npm"
+        },
+        {
+          "type": "add",
+          "text": "로컬"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "CLI와"
+        },
+        {
+          "type": "add",
+          "text": "결정"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "로컬"
+        },
+        {
+          "type": "add",
+          "text": "메모리와"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "브라우저"
+        },
+        {
+          "type": "add",
+          "text": "선택적"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "GUI"
+        },
+        {
+          "type": "add",
+          "text": "self-hosted mem0 연동"
+        }
+      ]
+    },
+    {
+      "id": "s21",
+      "index": 20,
+      "start": 1327,
+      "end": 1356,
+      "before": "- Codex 및 Claude Code 공용 플러그인",
+      "after": "- npm CLI와 로컬 브라우저 GUI",
+      "kind": "order",
+      "movedTo": 21,
+      "diff": [
+        {
+          "type": "same",
+          "text": "- "
+        },
+        {
+          "type": "remove",
+          "text": "Codex 및"
+        },
+        {
+          "type": "add",
+          "text": "npm"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "Claude"
+        },
+        {
+          "type": "add",
+          "text": "CLI와"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "Code"
+        },
+        {
+          "type": "add",
+          "text": "로컬"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "공용"
+        },
+        {
+          "type": "add",
+          "text": "브라우저"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "플러그인"
+        },
+        {
+          "type": "add",
+          "text": "GUI"
+        }
+      ]
+    },
+    {
+      "id": "s22",
+      "index": 21,
+      "start": 1358,
+      "end": 1367,
+      "before": "## 설치와 실행",
+      "after": "- Codex 및 Claude Code 공용 플러그인",
+      "kind": "order",
+      "movedTo": 22,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "##"
+        },
+        {
+          "type": "add",
+          "text": "-"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "설치와"
+        },
+        {
+          "type": "add",
+          "text": "Codex"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "실행"
+        },
+        {
+          "type": "add",
+          "text": "및 Claude Code 공용 플러그인"
+        }
+      ]
+    },
+    {
+      "id": "s23",
+      "index": 22,
+      "start": 1369,
+      "end": 1390,
+      "before": "Node.js 20 이상이 필요합니다.",
+      "after": "## 설치와 실행",
+      "kind": "order",
+      "movedTo": 23,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Node.js 20"
+        },
+        {
+          "type": "add",
+          "text": "##"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "이상이"
+        },
+        {
+          "type": "add",
+          "text": "설치와"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "필요합니다."
+        },
+        {
+          "type": "add",
+          "text": "실행"
+        }
+      ]
+    },
+    {
+      "id": "s24",
+      "index": 23,
+      "start": 1392,
+      "end": 1399,
+      "before": "```bash",
+      "after": "Node.js 20 이상이 필요합니다.",
+      "kind": "order",
+      "movedTo": 24,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "```bash"
+        },
+        {
+          "type": "add",
+          "text": "Node.js 20 이상이 필요합니다."
+        }
+      ]
+    },
+    {
+      "id": "s25",
+      "index": 24,
+      "start": 1400,
+      "end": 1411,
+      "before": "npm install",
+      "after": "```bash",
+      "kind": "order",
+      "movedTo": 25,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "npm install"
+        },
+        {
+          "type": "add",
+          "text": "```bash"
+        }
+      ]
+    },
+    {
+      "id": "s26",
+      "index": 25,
+      "start": 1412,
+      "end": 1420,
+      "before": "npm test",
+      "after": "npm install",
+      "kind": "order",
+      "movedTo": 26,
+      "diff": [
+        {
+          "type": "same",
+          "text": "npm "
+        },
+        {
+          "type": "remove",
+          "text": "test"
+        },
+        {
+          "type": "add",
+          "text": "install"
+        }
+      ]
+    },
+    {
+      "id": "s27",
+      "index": 26,
+      "start": 1421,
+      "end": 1429,
+      "before": "npm link",
+      "after": "npm test",
+      "kind": "order",
+      "movedTo": 27,
+      "diff": [
+        {
+          "type": "same",
+          "text": "npm "
+        },
+        {
+          "type": "remove",
+          "text": "link"
+        },
+        {
+          "type": "add",
+          "text": "test"
+        }
+      ]
+    },
+    {
+      "id": "s28",
+      "index": 27,
+      "start": 1430,
+      "end": 1460,
+      "before": "kr-humanizer analyze draft.txt",
+      "after": "npm link",
+      "kind": "order",
+      "movedTo": 28,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "kr-humanizer analyze"
+        },
+        {
+          "type": "add",
+          "text": "npm"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "draft.txt"
+        },
+        {
+          "type": "add",
+          "text": "link"
+        }
+      ]
+    },
+    {
+      "id": "s29",
+      "index": 28,
+      "start": 1461,
+      "end": 1522,
+      "before": "kr-humanizer knowledge draft.txt --mode strict --honorific 75",
+      "after": "kr-humanizer analyze draft.txt",
+      "kind": "order",
+      "movedTo": 29,
+      "diff": [
+        {
+          "type": "same",
+          "text": "kr-humanizer "
+        },
+        {
+          "type": "remove",
+          "text": "knowledge"
+        },
+        {
+          "type": "add",
+          "text": "analyze"
+        },
+        {
+          "type": "same",
+          "text": " draft.txt"
+        },
+        {
+          "type": "remove",
+          "text": " --mode strict --honorific 75"
+        }
+      ]
+    },
+    {
+      "id": "s30",
+      "index": 29,
+      "start": 1523,
+      "end": 1619,
+      "before": "kr-humanizer rewrite draft.txt --engine codex --mode balanced --honorific 75 --out proposal.json",
+      "after": "kr-humanizer knowledge draft.txt --mode strict --honorific 75",
+      "kind": "order",
+      "movedTo": 30,
+      "diff": [
+        {
+          "type": "same",
+          "text": "kr-humanizer "
+        },
+        {
+          "type": "remove",
+          "text": "rewrite"
+        },
+        {
+          "type": "add",
+          "text": "knowledge"
+        },
+        {
+          "type": "same",
+          "text": " draft.txt --"
+        },
+        {
+          "type": "remove",
+          "text": "engine codex --"
+        },
+        {
+          "type": "same",
+          "text": "mode "
+        },
+        {
+          "type": "remove",
+          "text": "balanced"
+        },
+        {
+          "type": "add",
+          "text": "strict"
+        },
+        {
+          "type": "same",
+          "text": " --honorific 75"
+        },
+        {
+          "type": "remove",
+          "text": " --out proposal.json"
+        }
+      ]
+    },
+    {
+      "id": "s31",
+      "index": 30,
+      "start": 1620,
+      "end": 1657,
+      "before": "kr-humanizer cv --samples 3 --folds 3",
+      "after": "kr-humanizer rewrite draft.txt --engine codex --mode balanced --honorific 75 --out proposal.json",
+      "kind": "order",
+      "movedTo": 31,
+      "diff": [
+        {
+          "type": "same",
+          "text": "kr-humanizer "
+        },
+        {
+          "type": "remove",
+          "text": "cv"
+        },
+        {
+          "type": "add",
+          "text": "rewrite"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "add",
+          "text": "draft.txt "
+        },
+        {
+          "type": "same",
+          "text": "--"
+        },
+        {
+          "type": "remove",
+          "text": "samples"
+        },
+        {
+          "type": "add",
+          "text": "engine"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "3"
+        },
+        {
+          "type": "add",
+          "text": "codex"
+        },
+        {
+          "type": "same",
+          "text": " --"
+        },
+        {
+          "type": "remove",
+          "text": "folds"
+        },
+        {
+          "type": "add",
+          "text": "mode"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "3"
+        },
+        {
+          "type": "add",
+          "text": "balanced --honorific 75 --out proposal.json"
+        }
+      ]
+    },
+    {
+      "id": "s32",
+      "index": 31,
+      "start": 1658,
+      "end": 1674,
+      "before": "kr-humanizer gui",
+      "after": "kr-humanizer cv --samples 3 --folds 3",
+      "kind": "order",
+      "movedTo": 32,
+      "diff": [
+        {
+          "type": "same",
+          "text": "kr-humanizer "
+        },
+        {
+          "type": "remove",
+          "text": "gui"
+        },
+        {
+          "type": "add",
+          "text": "cv --samples 3 --folds 3"
+        }
+      ]
+    },
+    {
+      "id": "s33",
+      "index": 32,
+      "start": 1675,
+      "end": 1678,
+      "before": "```",
+      "after": "kr-humanizer gui",
+      "kind": "order",
+      "movedTo": 33,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "```"
+        },
+        {
+          "type": "add",
+          "text": "kr-humanizer gui"
+        }
+      ]
+    },
+    {
+      "id": "s34",
+      "index": 33,
+      "start": 1680,
+      "end": 1698,
+      "before": "공개 저장소에서 바로 설치하려면:",
+      "after": "```",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "공개 저장소에서 바로 설치하려면:"
+        },
+        {
+          "type": "add",
+          "text": "```"
+        }
+      ]
+    },
+    {
+      "id": "s35",
+      "index": 34,
+      "start": 1700,
+      "end": 1707,
+      "before": "```bash",
+      "after": "공개 저장소에서 바로 설치하려면 다음 명령을 실행하세요.",
+      "kind": "order",
+      "movedTo": 24,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "```bash"
+        },
+        {
+          "type": "add",
+          "text": "공개 저장소에서 바로 설치하려면 다음 명령을 실행하세요."
+        }
+      ]
+    },
+    {
+      "id": "s36",
+      "index": 35,
+      "start": 1708,
+      "end": 1755,
+      "before": "npm install -g github:kuseumkkrkkr/KR-humanizer",
+      "after": "```bash",
+      "kind": "order",
+      "movedTo": 36,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "npm install -g github:kuseumkkrkkr/KR-humanizer"
+        },
+        {
+          "type": "add",
+          "text": "```bash"
+        }
+      ]
+    },
+    {
+      "id": "s37",
+      "index": 36,
+      "start": 1756,
+      "end": 1759,
+      "before": "```",
+      "after": "npm install -g github:kuseumkkrkkr/KR-humanizer",
+      "kind": "order",
+      "movedTo": 33,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "```"
+        },
+        {
+          "type": "add",
+          "text": "npm install -g github:kuseumkkrkkr/KR-humanizer"
+        }
+      ]
+    },
+    {
+      "id": "s38",
+      "index": 37,
+      "start": 1761,
+      "end": 1851,
+      "before": "GitHub Release의 `kr-humanizer-0.6.0.tgz` 파일도 동일한 npm 설치물입니다. npm registry에는 아직 게시하지 않았습니다.",
+      "after": "```",
+      "kind": "order",
+      "movedTo": 38,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "GitHub Release의 "
+        },
+        {
+          "type": "same",
+          "text": "`"
+        },
+        {
+          "type": "remove",
+          "text": "kr-humanizer-0.6.0.tgz"
+        },
+        {
+          "type": "same",
+          "text": "`"
+        },
+        {
+          "type": "remove",
+          "text": " 파일도 동일한 npm 설치물입니다. npm registry에는 아직 게시하지 않았습니다."
+        },
+        {
+          "type": "add",
+          "text": "`"
+        }
+      ]
+    },
+    {
+      "id": "s39",
+      "index": 38,
+      "start": 1853,
+      "end": 1905,
+      "before": "Claude Code가 설치되어 있으면 `--engine claude`를 사용할 수 있습니다.",
+      "after": "GitHub Release의 `kr-humanizer-0.6.0.tgz` 파일도 같은 npm 설치물입니다. npm registry에는 아직 게시하지 않았습니다.",
+      "kind": "order",
+      "movedTo": 39,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Claude Code가 설치되어"
+        },
+        {
+          "type": "add",
+          "text": "GitHub"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "있으면"
+        },
+        {
+          "type": "add",
+          "text": "Release의"
+        },
+        {
+          "type": "same",
+          "text": " `"
+        },
+        {
+          "type": "add",
+          "text": "kr"
+        },
+        {
+          "type": "same",
+          "text": "-"
+        },
+        {
+          "type": "add",
+          "text": "humanizer"
+        },
+        {
+          "type": "same",
+          "text": "-"
+        },
+        {
+          "type": "remove",
+          "text": "engine claude"
+        },
+        {
+          "type": "add",
+          "text": "0.6.0.tgz"
+        },
+        {
+          "type": "same",
+          "text": "`"
+        },
+        {
+          "type": "remove",
+          "text": "를"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "사용할"
+        },
+        {
+          "type": "add",
+          "text": "파일도"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "수"
+        },
+        {
+          "type": "add",
+          "text": "같은"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "있습니다"
+        },
+        {
+          "type": "add",
+          "text": "npm 설치물입니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        },
+        {
+          "type": "add",
+          "text": " npm registry에는 아직 게시하지 않았습니다."
+        }
+      ]
+    },
+    {
+      "id": "s40",
+      "index": 39,
+      "start": 1906,
+      "end": 1956,
+      "before": "외부 모델 API를 직접 호출하지 않으며, 사용자가 로그인한 CLI 프로세스만 실행합니다.",
+      "after": "Claude Code가 설치되어 있으면 `--engine claude`를 사용할 수 있습니다.",
+      "kind": "order",
+      "movedTo": 40,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "외부 모델 API를"
+        },
+        {
+          "type": "add",
+          "text": "Claude"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "직접"
+        },
+        {
+          "type": "add",
+          "text": "Code가"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "호출하지"
+        },
+        {
+          "type": "add",
+          "text": "설치되어"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "않으며,"
+        },
+        {
+          "type": "add",
+          "text": "있으면"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "사용자가"
+        },
+        {
+          "type": "add",
+          "text": "`--engine"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "로그인한"
+        },
+        {
+          "type": "add",
+          "text": "claude`를"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "CLI"
+        },
+        {
+          "type": "add",
+          "text": "사용할"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "프로세스만"
+        },
+        {
+          "type": "add",
+          "text": "수"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "실행합니다"
+        },
+        {
+          "type": "add",
+          "text": "있습니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s41",
+      "index": 40,
+      "start": 1958,
+      "end": 1968,
+      "before": "## 플러그인 설치",
+      "after": "외부 모델 API를 직접 호출하지 않고, 사용자가 로그인한 CLI 프로세스만 실행합니다.",
+      "kind": "order",
+      "movedTo": 41,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "##"
+        },
+        {
+          "type": "add",
+          "text": "외부"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "플러그인"
+        },
+        {
+          "type": "add",
+          "text": "모델"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "설치"
+        },
+        {
+          "type": "add",
+          "text": "API를 직접 호출하지 않고, 사용자가 로그인한 CLI 프로세스만 실행합니다."
+        }
+      ]
+    },
+    {
+      "id": "s42",
+      "index": 41,
+      "start": 1970,
+      "end": 1976,
+      "before": "Codex:",
+      "after": "## 플러그인 설치",
+      "kind": "order",
+      "movedTo": 42,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Codex:"
+        },
+        {
+          "type": "add",
+          "text": "## 플러그인 설치"
+        }
+      ]
+    },
+    {
+      "id": "s43",
+      "index": 42,
+      "start": 1978,
+      "end": 1985,
+      "before": "```bash",
+      "after": "Codex:",
+      "kind": "order",
+      "movedTo": 24,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "```bash"
+        },
+        {
+          "type": "add",
+          "text": "Codex:"
+        }
+      ]
+    },
+    {
+      "id": "s44",
+      "index": 43,
+      "start": 1986,
+      "end": 2040,
+      "before": "codex plugin marketplace add kuseumkkrkkr/KR-humanizer",
+      "after": "```bash",
+      "kind": "order",
+      "movedTo": 44,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "codex plugin marketplace add kuseumkkrkkr/KR-humanizer"
+        },
+        {
+          "type": "add",
+          "text": "```bash"
+        }
+      ]
+    },
+    {
+      "id": "s45",
+      "index": 44,
+      "start": 2041,
+      "end": 2083,
+      "before": "codex plugin add kr-humanizer@kr-humanizer",
+      "after": "codex plugin marketplace add kuseumkkrkkr/KR-humanizer",
+      "kind": "order",
+      "movedTo": 45,
+      "diff": [
+        {
+          "type": "same",
+          "text": "codex plugin "
+        },
+        {
+          "type": "add",
+          "text": "marketplace "
+        },
+        {
+          "type": "same",
+          "text": "add "
+        },
+        {
+          "type": "remove",
+          "text": "kr-humanizer@kr"
+        },
+        {
+          "type": "add",
+          "text": "kuseumkkrkkr/KR"
+        },
+        {
+          "type": "same",
+          "text": "-humanizer"
+        }
+      ]
+    },
+    {
+      "id": "s46",
+      "index": 45,
+      "start": 2084,
+      "end": 2087,
+      "before": "```",
+      "after": "codex plugin add kr-humanizer@kr-humanizer",
+      "kind": "order",
+      "movedTo": 33,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "```"
+        },
+        {
+          "type": "add",
+          "text": "codex plugin add kr-humanizer@kr-humanizer"
+        }
+      ]
+    },
+    {
+      "id": "s47",
+      "index": 46,
+      "start": 2089,
+      "end": 2101,
+      "before": "Claude Code:",
+      "after": "```",
+      "kind": "order",
+      "movedTo": 47,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Claude Code:"
+        },
+        {
+          "type": "add",
+          "text": "```"
+        }
+      ]
+    },
+    {
+      "id": "s48",
+      "index": 47,
+      "start": 2103,
+      "end": 2110,
+      "before": "```bash",
+      "after": "Claude Code:",
+      "kind": "order",
+      "movedTo": 24,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "```bash"
+        },
+        {
+          "type": "add",
+          "text": "Claude Code:"
+        }
+      ]
+    },
+    {
+      "id": "s49",
+      "index": 48,
+      "start": 2111,
+      "end": 2166,
+      "before": "claude plugin marketplace add kuseumkkrkkr/KR-humanizer",
+      "after": "```bash",
+      "kind": "order",
+      "movedTo": 49,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "claude plugin marketplace add kuseumkkrkkr/KR-humanizer"
+        },
+        {
+          "type": "add",
+          "text": "```bash"
+        }
+      ]
+    },
+    {
+      "id": "s50",
+      "index": 49,
+      "start": 2167,
+      "end": 2214,
+      "before": "claude plugin install kr-humanizer@kr-humanizer",
+      "after": "claude plugin marketplace add kuseumkkrkkr/KR-humanizer",
+      "kind": "order",
+      "movedTo": 50,
+      "diff": [
+        {
+          "type": "same",
+          "text": "claude plugin "
+        },
+        {
+          "type": "remove",
+          "text": "install"
+        },
+        {
+          "type": "add",
+          "text": "marketplace"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "kr-humanizer@kr"
+        },
+        {
+          "type": "add",
+          "text": "add kuseumkkrkkr/KR"
+        },
+        {
+          "type": "same",
+          "text": "-humanizer"
+        }
+      ]
+    },
+    {
+      "id": "s51",
+      "index": 50,
+      "start": 2215,
+      "end": 2218,
+      "before": "```",
+      "after": "claude plugin install kr-humanizer@kr-humanizer",
+      "kind": "order",
+      "movedTo": 33,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "```"
+        },
+        {
+          "type": "add",
+          "text": "claude plugin install kr-humanizer@kr-humanizer"
+        }
+      ]
+    },
+    {
+      "id": "s52",
+      "index": 51,
+      "start": 2220,
+      "end": 2231,
+      "before": "## 개인정보와 보안",
+      "after": "```",
+      "kind": "order",
+      "movedTo": 52,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "## 개인정보와 보안"
+        },
+        {
+          "type": "add",
+          "text": "```"
+        }
+      ]
+    },
+    {
+      "id": "s53",
+      "index": 52,
+      "start": 2233,
+      "end": 2264,
+      "before": "- GUI 서버는 `127.0.0.1`에만 바인딩됩니다.",
+      "after": "## 개인정보와 보안",
+      "kind": "order",
+      "movedTo": 53,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "- GUI 서버는"
+        },
+        {
+          "type": "add",
+          "text": "##"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "`127.0.0.1`에만"
+        },
+        {
+          "type": "add",
+          "text": "개인정보와"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "바인딩됩니다."
+        },
+        {
+          "type": "add",
+          "text": "보안"
+        }
+      ]
+    },
+    {
+      "id": "s54",
+      "index": 53,
+      "start": 2265,
+      "end": 2300,
+      "before": "- 입력은 기본적으로 외부 서버에 저장하거나 전송하지 않습니다.",
+      "after": "- GUI 서버는 `127.0.0.1`에만 바인딩됩니다.",
+      "kind": "order",
+      "movedTo": 54,
+      "diff": [
+        {
+          "type": "same",
+          "text": "- "
+        },
+        {
+          "type": "remove",
+          "text": "입력은 기본적으로 외부 서버에"
+        },
+        {
+          "type": "add",
+          "text": "GUI"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "저장하거나"
+        },
+        {
+          "type": "add",
+          "text": "서버는"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "전송하지"
+        },
+        {
+          "type": "add",
+          "text": "`127.0.0.1`에만"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "않습니다"
+        },
+        {
+          "type": "add",
+          "text": "바인딩됩니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s55",
+      "index": 54,
+      "start": 2301,
+      "end": 2334,
+      "before": "- CLI 실행은 셸 문자열이 아닌 인자 배열을 사용합니다.",
+      "after": "- 입력은 기본적으로 외부 서버에 저장하거나 전송하지 않습니다.",
+      "kind": "order",
+      "movedTo": 55,
+      "diff": [
+        {
+          "type": "same",
+          "text": "- "
+        },
+        {
+          "type": "remove",
+          "text": "CLI 실행은"
+        },
+        {
+          "type": "add",
+          "text": "입력은"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "셸"
+        },
+        {
+          "type": "add",
+          "text": "기본적으로"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "문자열이"
+        },
+        {
+          "type": "add",
+          "text": "외부"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "아닌"
+        },
+        {
+          "type": "add",
+          "text": "서버에"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "인자"
+        },
+        {
+          "type": "add",
+          "text": "저장하거나"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "배열을"
+        },
+        {
+          "type": "add",
+          "text": "전송하지"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "사용합니다"
+        },
+        {
+          "type": "add",
+          "text": "않습니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s56",
+      "index": 55,
+      "start": 2335,
+      "end": 2374,
+      "before": "- mem0는 localhost 주소만 허용하며 기본값은 비활성입니다.",
+      "after": "- CLI 실행에는 셸 문자열이 아닌 인자 배열을 사용합니다.",
+      "kind": "order",
+      "movedTo": 56,
+      "diff": [
+        {
+          "type": "same",
+          "text": "- "
+        },
+        {
+          "type": "remove",
+          "text": "mem0는"
+        },
+        {
+          "type": "add",
+          "text": "CLI"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "localhost"
+        },
+        {
+          "type": "add",
+          "text": "실행에는"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "주소만"
+        },
+        {
+          "type": "add",
+          "text": "셸"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "허용하며"
+        },
+        {
+          "type": "add",
+          "text": "문자열이"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "기본값은"
+        },
+        {
+          "type": "add",
+          "text": "아닌"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "비활성입니다"
+        },
+        {
+          "type": "add",
+          "text": "인자 배열을 사용합니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s57",
+      "index": 56,
+      "start": 2375,
+      "end": 2411,
+      "before": "- 원문은 200,000자, 요청 본문은 1 MiB로 제한됩니다.",
+      "after": "- mem0는 localhost 주소만 허용하며 기본값은 비활성입니다.",
+      "kind": "order",
+      "movedTo": 57,
+      "diff": [
+        {
+          "type": "same",
+          "text": "- "
+        },
+        {
+          "type": "remove",
+          "text": "원문은 200,000자,"
+        },
+        {
+          "type": "add",
+          "text": "mem0는"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "요청"
+        },
+        {
+          "type": "add",
+          "text": "localhost"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "본문은"
+        },
+        {
+          "type": "add",
+          "text": "주소만"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "1"
+        },
+        {
+          "type": "add",
+          "text": "허용하며"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "MiB로"
+        },
+        {
+          "type": "add",
+          "text": "기본값은"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "제한됩니다"
+        },
+        {
+          "type": "add",
+          "text": "비활성입니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s58",
+      "index": 57,
+      "start": 2413,
+      "end": 2502,
+      "before": "자세한 제품 범위와 근거는 [docs/PLAN.md](docs/PLAN.md), [docs/RESEARCH.md](docs/RESEARCH.md)를 참고하세요.",
+      "after": "- 원문은 200,000자, 요청 본문은 1 MiB로 제한됩니다.",
+      "kind": "order",
+      "movedTo": 58,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "자세한"
+        },
+        {
+          "type": "add",
+          "text": "-"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "제품"
+        },
+        {
+          "type": "add",
+          "text": "원문은"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "범위와"
+        },
+        {
+          "type": "add",
+          "text": "200,000자,"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "근거는"
+        },
+        {
+          "type": "add",
+          "text": "요청"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "[docs/PLAN.md](docs/PLAN.md),"
+        },
+        {
+          "type": "add",
+          "text": "본문은"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "[docs/RESEARCH.md](docs/RESEARCH.md)를"
+        },
+        {
+          "type": "add",
+          "text": "1"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "참고하세요"
+        },
+        {
+          "type": "add",
+          "text": "MiB로 제한됩니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s59",
+      "index": 58,
+      "start": 2504,
+      "end": 2512,
+      "before": "## 합성 CV",
+      "after": "자세한 제품 범위와 근거는 [docs/PLAN.md](docs/PLAN.md)와 [docs/RESEARCH.md](docs/RESEARCH.md)를 참고하세요.",
+      "kind": "order",
+      "movedTo": 59,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "##"
+        },
+        {
+          "type": "add",
+          "text": "자세한"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "합성"
+        },
+        {
+          "type": "add",
+          "text": "제품"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "CV"
+        },
+        {
+          "type": "add",
+          "text": "범위와 근거는 [docs/PLAN.md](docs/PLAN.md)와 [docs/RESEARCH.md](docs/RESEARCH.md)를 참고하세요."
+        }
+      ]
+    },
+    {
+      "id": "s60",
+      "index": 59,
+      "start": 2514,
+      "end": 2574,
+      "before": "`cv` 명령은 정치·경제·사회 주제별 최소 프롬프트 원문과 윤문문을 pair 단위 3-fold로 나눕니다.",
+      "after": "## 합성 CV",
+      "kind": "order",
+      "movedTo": 60,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "`cv` 명령은 정치·경제·사회 주제별 최소 프롬프트 원문과 윤문문을 pair 단위"
+        },
+        {
+          "type": "add",
+          "text": "##"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "3-fold로"
+        },
+        {
+          "type": "add",
+          "text": "합성"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "나눕니다."
+        },
+        {
+          "type": "add",
+          "text": "CV"
+        }
+      ]
+    },
+    {
+      "id": "s61",
+      "index": 60,
+      "start": 2575,
+      "end": 2635,
+      "before": "설명 가능한 문체 지표, A/B 위치를 무작위화한 모델 평가, 원문/윤문 문체 구분 실험을 함께 저장합니다.",
+      "after": "`cv` 명령은 정치·경제·사회 주제별 최소 프롬프트 원문과 윤문문을 pair 단위로 3-fold로 나눕니다.",
+      "kind": "order",
+      "movedTo": 61,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "설명 가능한 문체 지표,"
+        },
+        {
+          "type": "add",
+          "text": "`cv`"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "A/B"
+        },
+        {
+          "type": "add",
+          "text": "명령은"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "위치를"
+        },
+        {
+          "type": "add",
+          "text": "정치·경제·사회"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "무작위화한"
+        },
+        {
+          "type": "add",
+          "text": "주제별"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "모델"
+        },
+        {
+          "type": "add",
+          "text": "최소"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "평가,"
+        },
+        {
+          "type": "add",
+          "text": "프롬프트"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "원문/윤문"
+        },
+        {
+          "type": "add",
+          "text": "원문과"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "문체"
+        },
+        {
+          "type": "add",
+          "text": "윤문문을"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "구분"
+        },
+        {
+          "type": "add",
+          "text": "pair"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "실험을"
+        },
+        {
+          "type": "add",
+          "text": "단위로"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "함께"
+        },
+        {
+          "type": "add",
+          "text": "3-fold로"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "저장합니다"
+        },
+        {
+          "type": "add",
+          "text": "나눕니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s62",
+      "index": 61,
+      "start": 2636,
+      "end": 2690,
+      "before": "사람이 쓴 기준 글이나 실제 독자 평가는 포함하지 않으므로 사람다움 정확도로 해석하면 안 됩니다.",
+      "after": "설명 가능한 문체 지표, A/B 위치를 무작위화한 모델 평가, 원문과 윤문의 문체 구분 실험을 함께 저장합니다.",
+      "kind": "order",
+      "movedTo": 62,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "사람이"
+        },
+        {
+          "type": "add",
+          "text": "설명"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "쓴"
+        },
+        {
+          "type": "add",
+          "text": "가능한"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "기준"
+        },
+        {
+          "type": "add",
+          "text": "문체"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "글이나"
+        },
+        {
+          "type": "add",
+          "text": "지표,"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "실제"
+        },
+        {
+          "type": "add",
+          "text": "A/B"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "독자"
+        },
+        {
+          "type": "add",
+          "text": "위치를"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "평가는"
+        },
+        {
+          "type": "add",
+          "text": "무작위화한"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "포함하지"
+        },
+        {
+          "type": "add",
+          "text": "모델"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "않으므로"
+        },
+        {
+          "type": "add",
+          "text": "평가,"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "사람다움"
+        },
+        {
+          "type": "add",
+          "text": "원문과"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "정확도로"
+        },
+        {
+          "type": "add",
+          "text": "윤문의"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "해석하면"
+        },
+        {
+          "type": "add",
+          "text": "문체"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "안"
+        },
+        {
+          "type": "add",
+          "text": "구분"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "됩니다"
+        },
+        {
+          "type": "add",
+          "text": "실험을 함께 저장합니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s63",
+      "index": 62,
+      "start": 2692,
+      "end": 2785,
+      "before": "최종 실행은 `experiments/runs/2026-09-04T06-22-37-885Z/`에 기준문 9개, EXEC 윤문 9개, 평가 의견 9개로 분리 저장했습니다.",
+      "after": "사람이 쓴 기준 글이나 실제 독자 평가는 포함하지 않으므로 사람다움 정확도로 해석하면 안 됩니다.",
+      "kind": "order",
+      "movedTo": 63,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "최종"
+        },
+        {
+          "type": "add",
+          "text": "사람이"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "실행은"
+        },
+        {
+          "type": "add",
+          "text": "쓴"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "`experiments/runs/2026-09-04T06-22-37-885Z/`에"
+        },
+        {
+          "type": "add",
+          "text": "기준"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "기준문"
+        },
+        {
+          "type": "add",
+          "text": "글이나"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "9개,"
+        },
+        {
+          "type": "add",
+          "text": "실제"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "EXEC"
+        },
+        {
+          "type": "add",
+          "text": "독자"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "윤문"
+        },
+        {
+          "type": "add",
+          "text": "평가는"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "9개,"
+        },
+        {
+          "type": "add",
+          "text": "포함하지"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "평가"
+        },
+        {
+          "type": "add",
+          "text": "않으므로"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "의견"
+        },
+        {
+          "type": "add",
+          "text": "사람다움"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "9개로"
+        },
+        {
+          "type": "add",
+          "text": "정확도로"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "분리"
+        },
+        {
+          "type": "add",
+          "text": "해석하면"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "저장했습니다"
+        },
+        {
+          "type": "add",
+          "text": "안 됩니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s64",
+      "index": 63,
+      "start": 2786,
+      "end": 2838,
+      "before": "실제 GUI 동작 캡처는 `artifacts/screenshots/`에서 확인할 수 있습니다.",
+      "after": "최종 실행 결과는 `experiments/runs/2026-09-04T06-22-37-885Z/`에 기준문 9개, EXEC 윤문 9개, 평가 의견 9개로 나누어 저장했습니다.",
+      "kind": "order",
+      "movedTo": 64,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "실제 GUI"
+        },
+        {
+          "type": "add",
+          "text": "최종"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "동작"
+        },
+        {
+          "type": "add",
+          "text": "실행"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "캡처는"
+        },
+        {
+          "type": "add",
+          "text": "결과는"
+        },
+        {
+          "type": "same",
+          "text": " `"
+        },
+        {
+          "type": "remove",
+          "text": "artifacts"
+        },
+        {
+          "type": "add",
+          "text": "experiments"
+        },
+        {
+          "type": "same",
+          "text": "/"
+        },
+        {
+          "type": "remove",
+          "text": "screenshots"
+        },
+        {
+          "type": "add",
+          "text": "runs"
+        },
+        {
+          "type": "same",
+          "text": "/"
+        },
+        {
+          "type": "add",
+          "text": "2026-09-04T06-22-37-885Z/"
+        },
+        {
+          "type": "same",
+          "text": "`"
+        },
+        {
+          "type": "remove",
+          "text": "에서"
+        },
+        {
+          "type": "add",
+          "text": "에"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "확인할"
+        },
+        {
+          "type": "add",
+          "text": "기준문"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "수"
+        },
+        {
+          "type": "add",
+          "text": "9개,"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "있습니다"
+        },
+        {
+          "type": "add",
+          "text": "EXEC 윤문 9개, 평가 의견 9개로 나누어 저장했습니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s65",
+      "index": 64,
+      "start": 2840,
+      "end": 2954,
+      "before": "프롬프트 조건과 9개 원문·윤문을 글별로 연속 비교하려면 [A/B 글 비교 보고서](experiments/runs/2026-09-04T06-22-37-885Z/ab-comparison.md)를 확인하세요.",
+      "after": "실제 GUI 동작 캡처는 `artifacts/screenshots/`에서 확인할 수 있습니다.",
+      "kind": "order",
+      "movedTo": 65,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "프롬프트 조건과 9개 원문·윤문을"
+        },
+        {
+          "type": "add",
+          "text": "실제"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "글별로"
+        },
+        {
+          "type": "add",
+          "text": "GUI"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "연속"
+        },
+        {
+          "type": "add",
+          "text": "동작"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "비교하려면"
+        },
+        {
+          "type": "add",
+          "text": "캡처는"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "[A"
+        },
+        {
+          "type": "add",
+          "text": "`artifacts"
+        },
+        {
+          "type": "same",
+          "text": "/"
+        },
+        {
+          "type": "remove",
+          "text": "B 글"
+        },
+        {
+          "type": "add",
+          "text": "screenshots/`에서"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "비교"
+        },
+        {
+          "type": "add",
+          "text": "확인할"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "보고서](experiments/runs/2026-09-04T06-22-37-885Z/ab-comparison.md)를"
+        },
+        {
+          "type": "add",
+          "text": "수"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "확인하세요"
+        },
+        {
+          "type": "add",
+          "text": "있습니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s66",
+      "index": 65,
+      "start": 2956,
+      "end": 2964,
+      "before": "## 전체 구조",
+      "after": "프롬프트 조건과 9개 원문·윤문을 글별로 이어서 비교하려면 [A/B 글 비교 보고서](experiments/runs/2026-09-04T06-22-37-885Z/ab-comparison.md)를 확인하세요.",
+      "kind": "order",
+      "movedTo": 66,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "##"
+        },
+        {
+          "type": "add",
+          "text": "프롬프트"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "전체"
+        },
+        {
+          "type": "add",
+          "text": "조건과"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "구조"
+        },
+        {
+          "type": "add",
+          "text": "9개 원문·윤문을 글별로 이어서 비교하려면 [A/B 글 비교 보고서](experiments/runs/2026-09-04T06-22-37-885Z/ab-comparison.md)를 확인하세요."
+        }
+      ]
+    },
+    {
+      "id": "s67",
+      "index": 66,
+      "start": 2966,
+      "end": 2976,
+      "before": "```mermaid",
+      "after": "## 전체 구조",
+      "kind": "order",
+      "movedTo": 67,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "```mermaid"
+        },
+        {
+          "type": "add",
+          "text": "## 전체 구조"
+        }
+      ]
+    },
+    {
+      "id": "s68",
+      "index": 67,
+      "start": 2977,
+      "end": 2989,
+      "before": "flowchart LR",
+      "after": "```mermaid",
+      "kind": "order",
+      "movedTo": 68,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "flowchart LR"
+        },
+        {
+          "type": "add",
+          "text": "```mermaid"
+        }
+      ]
+    },
+    {
+      "id": "s69",
+      "index": 68,
+      "start": 2992,
+      "end": 3033,
+      "before": "Writer[작성자] --> Skill[Codex·Claude Skill]",
+      "after": "flowchart LR",
+      "kind": "order",
+      "movedTo": 69,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Writer[작성자] --> Skill[Codex·Claude"
+        },
+        {
+          "type": "add",
+          "text": "flowchart"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "Skill]"
+        },
+        {
+          "type": "add",
+          "text": "LR"
+        }
+      ]
+    },
+    {
+      "id": "s70",
+      "index": 69,
+      "start": 3036,
+      "end": 3059,
+      "before": "Writer --> CLI[npm CLI]",
+      "after": "Writer[작성자] --> Skill[Codex·Claude Skill]",
+      "kind": "order",
+      "movedTo": 70,
+      "diff": [
+        {
+          "type": "same",
+          "text": "Writer"
+        },
+        {
+          "type": "add",
+          "text": "[작성자]"
+        },
+        {
+          "type": "same",
+          "text": " --> "
+        },
+        {
+          "type": "remove",
+          "text": "CLI"
+        },
+        {
+          "type": "add",
+          "text": "Skill"
+        },
+        {
+          "type": "same",
+          "text": "["
+        },
+        {
+          "type": "remove",
+          "text": "npm"
+        },
+        {
+          "type": "add",
+          "text": "Codex·Claude"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "CLI"
+        },
+        {
+          "type": "add",
+          "text": "Skill"
+        },
+        {
+          "type": "same",
+          "text": "]"
+        }
+      ]
+    },
+    {
+      "id": "s71",
+      "index": 70,
+      "start": 3062,
+      "end": 3089,
+      "before": "Writer --> GUI[로컬 브라우저 GUI]",
+      "after": "Writer --> CLI[npm CLI]",
+      "kind": "order",
+      "movedTo": 71,
+      "diff": [
+        {
+          "type": "same",
+          "text": "Writer --> "
+        },
+        {
+          "type": "remove",
+          "text": "GUI"
+        },
+        {
+          "type": "add",
+          "text": "CLI"
+        },
+        {
+          "type": "same",
+          "text": "["
+        },
+        {
+          "type": "remove",
+          "text": "로컬 브라우저"
+        },
+        {
+          "type": "add",
+          "text": "npm"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "GUI"
+        },
+        {
+          "type": "add",
+          "text": "CLI"
+        },
+        {
+          "type": "same",
+          "text": "]"
+        }
+      ]
+    },
+    {
+      "id": "s72",
+      "index": 71,
+      "start": 3093,
+      "end": 3106,
+      "before": "Skill --> CLI",
+      "after": "Writer --> GUI[로컬 브라우저 GUI]",
+      "kind": "order",
+      "movedTo": 72,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Skill"
+        },
+        {
+          "type": "add",
+          "text": "Writer"
+        },
+        {
+          "type": "same",
+          "text": " --> "
+        },
+        {
+          "type": "remove",
+          "text": "CLI"
+        },
+        {
+          "type": "add",
+          "text": "GUI[로컬 브라우저 GUI]"
+        }
+      ]
+    },
+    {
+      "id": "s73",
+      "index": 72,
+      "start": 3109,
+      "end": 3134,
+      "before": "CLI --> Analyze[규칙 기반 분석]",
+      "after": "Skill --> CLI",
+      "kind": "order",
+      "movedTo": 73,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "CLI"
+        },
+        {
+          "type": "add",
+          "text": "Skill"
+        },
+        {
+          "type": "same",
+          "text": " --> "
+        },
+        {
+          "type": "remove",
+          "text": "Analyze[규칙 기반 분석]"
+        },
+        {
+          "type": "add",
+          "text": "CLI"
+        }
+      ]
+    },
+    {
+      "id": "s74",
+      "index": 73,
+      "start": 3137,
+      "end": 3161,
+      "before": "CLI --> Diff[문장·단어 Diff]",
+      "after": "CLI --> Analyze[규칙 기반 분석]",
+      "kind": "order",
+      "movedTo": 74,
+      "diff": [
+        {
+          "type": "same",
+          "text": "CLI --> "
+        },
+        {
+          "type": "remove",
+          "text": "Diff"
+        },
+        {
+          "type": "add",
+          "text": "Analyze"
+        },
+        {
+          "type": "same",
+          "text": "["
+        },
+        {
+          "type": "remove",
+          "text": "문장·단어"
+        },
+        {
+          "type": "add",
+          "text": "규칙"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "Diff"
+        },
+        {
+          "type": "add",
+          "text": "기반 분석"
+        },
+        {
+          "type": "same",
+          "text": "]"
+        }
+      ]
+    },
+    {
+      "id": "s75",
+      "index": 74,
+      "start": 3164,
+      "end": 3181,
+      "before": "CLI --> CV[합성 CV]",
+      "after": "CLI --> Diff[문장·단어 Diff]",
+      "kind": "order",
+      "movedTo": 75,
+      "diff": [
+        {
+          "type": "same",
+          "text": "CLI --> "
+        },
+        {
+          "type": "remove",
+          "text": "CV"
+        },
+        {
+          "type": "add",
+          "text": "Diff"
+        },
+        {
+          "type": "same",
+          "text": "["
+        },
+        {
+          "type": "remove",
+          "text": "합성"
+        },
+        {
+          "type": "add",
+          "text": "문장·단어"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "CV"
+        },
+        {
+          "type": "add",
+          "text": "Diff"
+        },
+        {
+          "type": "same",
+          "text": "]"
+        }
+      ]
+    },
+    {
+      "id": "s76",
+      "index": 75,
+      "start": 3184,
+      "end": 3217,
+      "before": "CLI --> Server[127.0.0.1 HTTP 서버]",
+      "after": "CLI --> CV[합성 CV]",
+      "kind": "order",
+      "movedTo": 76,
+      "diff": [
+        {
+          "type": "same",
+          "text": "CLI --> "
+        },
+        {
+          "type": "remove",
+          "text": "Server"
+        },
+        {
+          "type": "add",
+          "text": "CV"
+        },
+        {
+          "type": "same",
+          "text": "["
+        },
+        {
+          "type": "remove",
+          "text": "127.0.0.1 HTTP"
+        },
+        {
+          "type": "add",
+          "text": "합성"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "서버"
+        },
+        {
+          "type": "add",
+          "text": "CV"
+        },
+        {
+          "type": "same",
+          "text": "]"
+        }
+      ]
+    },
+    {
+      "id": "s77",
+      "index": 76,
+      "start": 3220,
+      "end": 3247,
+      "before": "GUI -->|세션 토큰 포함 요청| Server",
+      "after": "CLI --> Server[127.0.0.1 HTTP 서버]",
+      "kind": "order",
+      "movedTo": 77,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "GUI"
+        },
+        {
+          "type": "add",
+          "text": "CLI"
+        },
+        {
+          "type": "same",
+          "text": " -->"
+        },
+        {
+          "type": "remove",
+          "text": "|세션"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "토큰 포함"
+        },
+        {
+          "type": "add",
+          "text": "Server[127.0.0.1"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "요청|"
+        },
+        {
+          "type": "add",
+          "text": "HTTP"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "Server"
+        },
+        {
+          "type": "add",
+          "text": "서버]"
+        }
+      ]
+    },
+    {
+      "id": "s78",
+      "index": 77,
+      "start": 3251,
+      "end": 3269,
+      "before": "Server --> Analyze",
+      "after": "GUI -->|세션 토큰 포함 요청| Server",
+      "kind": "order",
+      "movedTo": 78,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Server"
+        },
+        {
+          "type": "add",
+          "text": "GUI"
+        },
+        {
+          "type": "same",
+          "text": " -->"
+        },
+        {
+          "type": "add",
+          "text": "|세션"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "Analyze"
+        },
+        {
+          "type": "add",
+          "text": "토큰 포함 요청| Server"
+        }
+      ]
+    },
+    {
+      "id": "s79",
+      "index": 78,
+      "start": 3272,
+      "end": 3287,
+      "before": "Server --> Diff",
+      "after": "Server --> Analyze",
+      "kind": "order",
+      "movedTo": 79,
+      "diff": [
+        {
+          "type": "same",
+          "text": "Server --> "
+        },
+        {
+          "type": "remove",
+          "text": "Diff"
+        },
+        {
+          "type": "add",
+          "text": "Analyze"
+        }
+      ]
+    },
+    {
+      "id": "s80",
+      "index": 79,
+      "start": 3290,
+      "end": 3316,
+      "before": "Server --> Memory{메모리 공급자}",
+      "after": "Server --> Diff",
+      "kind": "order",
+      "movedTo": 80,
+      "diff": [
+        {
+          "type": "same",
+          "text": "Server --> "
+        },
+        {
+          "type": "remove",
+          "text": "Memory{메모리 공급자}"
+        },
+        {
+          "type": "add",
+          "text": "Diff"
+        }
+      ]
+    },
+    {
+      "id": "s81",
+      "index": 80,
+      "start": 3319,
+      "end": 3344,
+      "before": "Memory --> Local[로컬 JSON]",
+      "after": "Server --> Memory{메모리 공급자}",
+      "kind": "order",
+      "movedTo": 81,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Memory"
+        },
+        {
+          "type": "add",
+          "text": "Server"
+        },
+        {
+          "type": "same",
+          "text": " --> "
+        },
+        {
+          "type": "remove",
+          "text": "Local[로컬"
+        },
+        {
+          "type": "add",
+          "text": "Memory{메모리"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "JSON]"
+        },
+        {
+          "type": "add",
+          "text": "공급자}"
+        }
+      ]
+    },
+    {
+      "id": "s82",
+      "index": 81,
+      "start": 3347,
+      "end": 3378,
+      "before": "Memory --> Mem0[localhost mem0]",
+      "after": "Memory --> Local[로컬 JSON]",
+      "kind": "order",
+      "movedTo": 82,
+      "diff": [
+        {
+          "type": "same",
+          "text": "Memory --> "
+        },
+        {
+          "type": "remove",
+          "text": "Mem0"
+        },
+        {
+          "type": "add",
+          "text": "Local"
+        },
+        {
+          "type": "same",
+          "text": "["
+        },
+        {
+          "type": "remove",
+          "text": "localhost"
+        },
+        {
+          "type": "add",
+          "text": "로컬"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "mem0"
+        },
+        {
+          "type": "add",
+          "text": "JSON"
+        },
+        {
+          "type": "same",
+          "text": "]"
+        }
+      ]
+    },
+    {
+      "id": "s83",
+      "index": 82,
+      "start": 3382,
+      "end": 3407,
+      "before": "Server --> Runner[엔진 실행기]",
+      "after": "Memory --> Mem0[localhost mem0]",
+      "kind": "order",
+      "movedTo": 83,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Server"
+        },
+        {
+          "type": "add",
+          "text": "Memory"
+        },
+        {
+          "type": "same",
+          "text": " --> "
+        },
+        {
+          "type": "remove",
+          "text": "Runner"
+        },
+        {
+          "type": "add",
+          "text": "Mem0"
+        },
+        {
+          "type": "same",
+          "text": "["
+        },
+        {
+          "type": "remove",
+          "text": "엔진"
+        },
+        {
+          "type": "add",
+          "text": "localhost"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "실행기"
+        },
+        {
+          "type": "add",
+          "text": "mem0"
+        },
+        {
+          "type": "same",
+          "text": "]"
+        }
+      ]
+    },
+    {
+      "id": "s84",
+      "index": 83,
+      "start": 3410,
+      "end": 3424,
+      "before": "CLI --> Runner",
+      "after": "Server --> Runner[엔진 실행기]",
+      "kind": "order",
+      "movedTo": 84,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "CLI"
+        },
+        {
+          "type": "add",
+          "text": "Server"
+        },
+        {
+          "type": "same",
+          "text": " --> Runner"
+        },
+        {
+          "type": "add",
+          "text": "[엔진 실행기]"
+        }
+      ]
+    },
+    {
+      "id": "s85",
+      "index": 84,
+      "start": 3427,
+      "end": 3474,
+      "before": "Runner -->|spawn, shell false| Codex[Codex CLI]",
+      "after": "CLI --> Runner",
+      "kind": "order",
+      "movedTo": 85,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Runner"
+        },
+        {
+          "type": "add",
+          "text": "CLI"
+        },
+        {
+          "type": "same",
+          "text": " -->"
+        },
+        {
+          "type": "remove",
+          "text": "|spawn,"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "shell false| Codex[Codex CLI]"
+        },
+        {
+          "type": "add",
+          "text": "Runner"
+        }
+      ]
+    },
+    {
+      "id": "s86",
+      "index": 85,
+      "start": 3477,
+      "end": 3529,
+      "before": "Runner -->|spawn, plan mode| Claude[Claude Code CLI]",
+      "after": "Runner -->|spawn, shell false| Codex[Codex CLI]",
+      "kind": "order",
+      "movedTo": 86,
+      "diff": [
+        {
+          "type": "same",
+          "text": "Runner -->|spawn, "
+        },
+        {
+          "type": "remove",
+          "text": "plan"
+        },
+        {
+          "type": "add",
+          "text": "shell"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "mode"
+        },
+        {
+          "type": "add",
+          "text": "false"
+        },
+        {
+          "type": "same",
+          "text": "| "
+        },
+        {
+          "type": "remove",
+          "text": "Claude"
+        },
+        {
+          "type": "add",
+          "text": "Codex"
+        },
+        {
+          "type": "same",
+          "text": "["
+        },
+        {
+          "type": "remove",
+          "text": "Claude Code"
+        },
+        {
+          "type": "add",
+          "text": "Codex"
+        },
+        {
+          "type": "same",
+          "text": " CLI]"
+        }
+      ]
+    },
+    {
+      "id": "s87",
+      "index": 86,
+      "start": 3532,
+      "end": 3588,
+      "before": "Vault[Obsidian Markdown 지식 저장소] --> Retriever[결정적 로컬 검색]",
+      "after": "Runner -->|spawn, plan mode| Claude[Claude Code CLI]",
+      "kind": "order",
+      "movedTo": 87,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Vault[Obsidian Markdown 지식 저장소]"
+        },
+        {
+          "type": "add",
+          "text": "Runner"
+        },
+        {
+          "type": "same",
+          "text": " -->"
+        },
+        {
+          "type": "add",
+          "text": "|spawn,"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "Retriever"
+        },
+        {
+          "type": "add",
+          "text": "plan mode| Claude"
+        },
+        {
+          "type": "same",
+          "text": "["
+        },
+        {
+          "type": "remove",
+          "text": "결정적"
+        },
+        {
+          "type": "add",
+          "text": "Claude"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "로컬"
+        },
+        {
+          "type": "add",
+          "text": "Code"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "검색"
+        },
+        {
+          "type": "add",
+          "text": "CLI"
+        },
+        {
+          "type": "same",
+          "text": "]"
+        }
+      ]
+    },
+    {
+      "id": "s88",
+      "index": 87,
+      "start": 3591,
+      "end": 3611,
+      "before": "Retriever --> Runner",
+      "after": "Vault[Obsidian Markdown 지식 저장소] --> Retriever[결정적 로컬 검색]",
+      "kind": "order",
+      "movedTo": 88,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Retriever"
+        },
+        {
+          "type": "add",
+          "text": "Vault[Obsidian"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "add",
+          "text": "Markdown 지식 저장소] "
+        },
+        {
+          "type": "same",
+          "text": "--> "
+        },
+        {
+          "type": "remove",
+          "text": "Runner"
+        },
+        {
+          "type": "add",
+          "text": "Retriever[결정적 로컬 검색]"
+        }
+      ]
+    },
+    {
+      "id": "s89",
+      "index": 88,
+      "start": 3614,
+      "end": 3646,
+      "before": "Codex --> Schema[JSON Schema 응답]",
+      "after": "Retriever --> Runner",
+      "kind": "order",
+      "movedTo": 89,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Codex"
+        },
+        {
+          "type": "add",
+          "text": "Retriever"
+        },
+        {
+          "type": "same",
+          "text": " --> "
+        },
+        {
+          "type": "remove",
+          "text": "Schema[JSON Schema 응답]"
+        },
+        {
+          "type": "add",
+          "text": "Runner"
+        }
+      ]
+    },
+    {
+      "id": "s90",
+      "index": 89,
+      "start": 3649,
+      "end": 3666,
+      "before": "Claude --> Schema",
+      "after": "Codex --> Schema[JSON Schema 응답]",
+      "kind": "order",
+      "movedTo": 90,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Claude"
+        },
+        {
+          "type": "add",
+          "text": "Codex"
+        },
+        {
+          "type": "same",
+          "text": " --> Schema"
+        },
+        {
+          "type": "add",
+          "text": "[JSON Schema 응답]"
+        }
+      ]
+    },
+    {
+      "id": "s91",
+      "index": 90,
+      "start": 3669,
+      "end": 3684,
+      "before": "Schema --> Diff",
+      "after": "Claude --> Schema",
+      "kind": "order",
+      "movedTo": 91,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Schema"
+        },
+        {
+          "type": "add",
+          "text": "Claude"
+        },
+        {
+          "type": "same",
+          "text": " --> "
+        },
+        {
+          "type": "remove",
+          "text": "Diff"
+        },
+        {
+          "type": "add",
+          "text": "Schema"
+        }
+      ]
+    },
+    {
+      "id": "s92",
+      "index": 91,
+      "start": 3687,
+      "end": 3721,
+      "before": "Diff --> Review[변경 필터·전후 비교·선택 수락]",
+      "after": "Schema --> Diff",
+      "kind": "order",
+      "movedTo": 92,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Diff"
+        },
+        {
+          "type": "add",
+          "text": "Schema"
+        },
+        {
+          "type": "same",
+          "text": " --> "
+        },
+        {
+          "type": "remove",
+          "text": "Review[변경 필터·전후 비교·선택 수락]"
+        },
+        {
+          "type": "add",
+          "text": "Diff"
+        }
+      ]
+    },
+    {
+      "id": "s93",
+      "index": 92,
+      "start": 3724,
+      "end": 3748,
+      "before": "Review --> Result[확정 결과]",
+      "after": "Diff --> Review[변경 필터·전후 비교·선택 수락]",
+      "kind": "order",
+      "movedTo": 93,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "Review"
+        },
+        {
+          "type": "add",
+          "text": "Diff"
+        },
+        {
+          "type": "same",
+          "text": " --> "
+        },
+        {
+          "type": "remove",
+          "text": "Result"
+        },
+        {
+          "type": "add",
+          "text": "Review"
+        },
+        {
+          "type": "same",
+          "text": "["
+        },
+        {
+          "type": "remove",
+          "text": "확정"
+        },
+        {
+          "type": "add",
+          "text": "변경"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "결과"
+        },
+        {
+          "type": "add",
+          "text": "필터·전후 비교·선택 수락"
+        },
+        {
+          "type": "same",
+          "text": "]"
+        }
+      ]
+    },
+    {
+      "id": "s94",
+      "index": 93,
+      "start": 3749,
+      "end": 3752,
+      "before": "```",
+      "after": "Review --> Result[확정 결과]",
+      "kind": "order",
+      "movedTo": 33,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "```"
+        },
+        {
+          "type": "add",
+          "text": "Review --> Result[확정 결과]"
+        }
+      ]
+    },
+    {
+      "id": "s95",
+      "index": 94,
+      "start": 3754,
+      "end": 3793,
+      "before": "사용자 입력은 CLI 또는 `127.0.0.1` GUI에서 시작합니다.",
+      "after": "```",
+      "kind": "order",
+      "movedTo": 95,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "사용자 입력은 CLI 또는 "
+        },
+        {
+          "type": "same",
+          "text": "`"
+        },
+        {
+          "type": "remove",
+          "text": "127.0.0.1"
+        },
+        {
+          "type": "same",
+          "text": "`"
+        },
+        {
+          "type": "remove",
+          "text": " GUI에서 시작합니다."
+        },
+        {
+          "type": "add",
+          "text": "`"
+        }
+      ]
+    },
+    {
+      "id": "s96",
+      "index": 95,
+      "start": 3794,
+      "end": 3885,
+      "before": "맞춤법 후보와 문단 통계는 로컬 규칙으로 계산하고, 윤문이 필요할 때만 사용자가 로그인한 Codex CLI 또는 Claude Code CLI 프로세스를 실행합니다.",
+      "after": "사용자 입력은 CLI 또는 `127.0.0.1` GUI에서 시작합니다.",
+      "kind": "order",
+      "movedTo": 97,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "맞춤법 후보와 문단 통계는 로컬 규칙으로 계산하고, 윤문이 필요할 때만 사용자가 로그인한"
+        },
+        {
+          "type": "add",
+          "text": "사용자"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "Codex"
+        },
+        {
+          "type": "add",
+          "text": "입력은"
+        },
+        {
+          "type": "same",
+          "text": " CLI 또는 "
+        },
+        {
+          "type": "remove",
+          "text": "Claude Code CLI"
+        },
+        {
+          "type": "add",
+          "text": "`127.0.0.1`"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "프로세스를"
+        },
+        {
+          "type": "add",
+          "text": "GUI에서"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "실행합니다"
+        },
+        {
+          "type": "add",
+          "text": "시작합니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s97",
+      "index": 96,
+      "start": 3886,
+      "end": 3933,
+      "before": "별도 모델 API 키를 읽거나 외부 LLM HTTP API를 직접 호출하지 않습니다.",
+      "after": "맞춤법 후보와 문단 통계는 로컬 규칙으로 계산합니다.",
+      "kind": "order",
+      "movedTo": 98,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "별도 모델 API 키를 읽거나 외부"
+        },
+        {
+          "type": "add",
+          "text": "맞춤법"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "LLM"
+        },
+        {
+          "type": "add",
+          "text": "후보와"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "HTTP"
+        },
+        {
+          "type": "add",
+          "text": "문단"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "API를"
+        },
+        {
+          "type": "add",
+          "text": "통계는"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "직접"
+        },
+        {
+          "type": "add",
+          "text": "로컬"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "호출하지"
+        },
+        {
+          "type": "add",
+          "text": "규칙으로"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "않습니다"
+        },
+        {
+          "type": "add",
+          "text": "계산합니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s98",
+      "index": 97,
+      "start": 3935,
+      "end": 3935,
+      "before": "",
+      "after": "윤문이 필요할 때만 사용자가 로그인한 Codex CLI 또는 Claude Code CLI 프로세스를 실행합니다.",
+      "kind": "order",
+      "movedTo": 33,
+      "diff": [
+        {
+          "type": "add",
+          "text": "윤문이 필요할 때만 사용자가 로그인한 Codex CLI 또는 Claude Code CLI 프로세스를 실행합니다."
+        }
+      ]
+    },
+    {
+      "id": "s99",
+      "index": 98,
+      "start": 3935,
+      "end": 3935,
+      "before": "",
+      "after": "별도의 모델 API 키를 읽거나 외부 LLM HTTP API를 직접 호출하지 않습니다.",
+      "kind": "order",
+      "movedTo": 33,
+      "diff": [
+        {
+          "type": "add",
+          "text": "별도의 모델 API 키를 읽거나 외부 LLM HTTP API를 직접 호출하지 않습니다."
+        }
+      ]
+    }
+  ],
+  "summary": "HTML, URL, 명령어, 버전, 날짜, 수치와 기술적 주장을 유지했습니다. 긴 문장을 나누고 일부 조사와 어순을 다듬어 설명문의 흐름을 자연스럽게 정리했습니다.",
+  "flow": {
+    "nodes": [
+      {
+        "id": "p1",
+        "label": "KR-humanizer의 핵심 가치와 관련 링크를 제시합니다.",
+        "role": "도입"
+      },
+      {
+        "id": "p2",
+        "label": "도구의 윤문 방식, 검토 절차, 실행 환경을 설명합니다.",
+        "role": "제품 개요"
+      },
+      {
+        "id": "p3",
+        "label": "설명문의 작성·윤문 방식과 AI 판별 관련 한계를 밝힙니다.",
+        "role": "고지"
+      },
+      {
+        "id": "p4",
+        "label": "분석, 비교, 말투 조절, 지식 검색, 메모리, GUI와 플러그인 기능을 열거합니다.",
+        "role": "기능 범위"
+      },
+      {
+        "id": "p5",
+        "label": "Node.js 요구 사항과 기본 CLI 실행 명령을 안내합니다.",
+        "role": "설치·실행"
+      },
+      {
+        "id": "p6",
+        "label": "공개 저장소와 GitHub Release 설치물의 배포 상태를 설명합니다.",
+        "role": "배포 안내"
+      },
+      {
+        "id": "p7",
+        "label": "Claude Code 엔진의 사용 조건과 외부 API 호출 범위를 밝힙니다.",
+        "role": "엔진 안내"
+      },
+      {
+        "id": "p8",
+        "label": "Codex와 Claude Code 플러그인 설치 명령을 제공합니다.",
+        "role": "플러그인 설치"
+      },
+      {
+        "id": "p9",
+        "label": "로컬 바인딩, 입력 처리, 프로세스 실행, mem0와 용량 제한을 설명합니다.",
+        "role": "개인정보·보안"
+      },
+      {
+        "id": "p10",
+        "label": "제품 범위와 근거 문서의 위치를 안내합니다.",
+        "role": "참조"
+      },
+      {
+        "id": "p11",
+        "label": "합성 CV의 분할·평가 방식과 해석 한계를 설명합니다.",
+        "role": "평가 방법"
+      },
+      {
+        "id": "p12",
+        "label": "최종 실행 결과와 GUI 캡처, A/B 비교 보고서의 위치를 제시합니다.",
+        "role": "평가 결과"
+      },
+      {
+        "id": "p13",
+        "label": "입력부터 분석, 엔진 실행, 검토와 확정까지의 전체 구조를 도식화합니다.",
+        "role": "시스템 구조"
+      },
+      {
+        "id": "p14",
+        "label": "로컬 계산과 로그인된 CLI 실행의 경계를 다시 정리합니다.",
+        "role": "마무리"
+      }
+    ],
+    "edges": [
+      {
+        "from": "p1",
+        "to": "p2",
+        "relation": "핵심 가치 구체화"
+      },
+      {
+        "from": "p2",
+        "to": "p3",
+        "relation": "사용 범위와 한계 고지"
+      },
+      {
+        "from": "p3",
+        "to": "p4",
+        "relation": "제공 기능 제시"
+      },
+      {
+        "from": "p4",
+        "to": "p5",
+        "relation": "사용 방법 안내"
+      },
+      {
+        "from": "p5",
+        "to": "p6",
+        "relation": "설치 경로 보충"
+      },
+      {
+        "from": "p6",
+        "to": "p7",
+        "relation": "엔진 실행 조건 설명"
+      },
+      {
+        "from": "p7",
+        "to": "p8",
+        "relation": "플러그인 설치로 확장"
+      },
+      {
+        "from": "p8",
+        "to": "p9",
+        "relation": "운영 시 보안 조건 설명"
+      },
+      {
+        "from": "p9",
+        "to": "p10",
+        "relation": "상세 근거 연결"
+      },
+      {
+        "from": "p10",
+        "to": "p11",
+        "relation": "평가 범위 설명"
+      },
+      {
+        "from": "p11",
+        "to": "p12",
+        "relation": "실행 결과와 자료 제시"
+      },
+      {
+        "from": "p12",
+        "to": "p13",
+        "relation": "제품 구조로 전환"
+      },
+      {
+        "from": "p13",
+        "to": "p14",
+        "relation": "실행 경계 요약"
+      }
+    ]
+  },
+  "knowledge": [
+    {
+      "id": "skill-humanize-korean-audit",
+      "title": "humanize-korean의 감사 기반 검증",
+      "kind": "skill-observation",
+      "authority": "community-skill",
+      "sourceUrl": "https://github.com/hashgraph-online/awesome-codex-plugins/blob/486ac208b3f40929c62a6954b5f58147b483a2f7/plugins/beefiker/superloopy/skills/humanize-korean/SKILL.md",
+      "sourceSection": "plugins/beefiker/superloopy/skills/humanize-korean/SKILL.md @ 486ac208",
+      "path": "skills/humanize-korean-감사기반-검증.md",
+      "guidance": "윤문 전 보호 대상인 숫자·날짜·단위·URL·코드·제품명·약어·인용을 식별한다. 결과에서 보호 대상이 모두 유지되는지 확인하고, 변경이 넓으면 문장별 의미 대조를 강화한다. 검증되지 않은 품질 등급이나 탐지기 통과율을 만들지 않는다.",
+      "score": 63
+    },
+    {
+      "id": "nikl-writing-ending-genre-consistency",
+      "title": "종결 어미와 장르 일관성",
+      "kind": "writing-guidance",
+      "authority": "국립국어원",
+      "sourceUrl": "https://www.korean.go.kr/common/download.do?c_file_name=84ced1e6-7ca7-4556-862a-e62d23ceca8f.pdf&file_path=reportData",
+      "sourceSection": "글쓰기 첨삭 지원을 위한 지시문 기반 생성 말뭉치 구축 연구 - 문체·관습 유형",
+      "path": "규범/글쓰기-종결어미와-장르일관성.md",
+      "guidance": "원문의 장르와 선택한 높임 단계를 기준으로 종결 어미를 통일한다. 인용·대화·의도적 전환은 보존하고, 보고서·논증문에서 우연히 섞인 구어체만 제안 대상으로 삼는다. 문법상 가능한 표현을 장르상 덜 적합하다는 이유만으로 오류라고 부르지 않는다.",
+      "score": 53
+    },
+    {
+      "id": "nikl-relative-honorific-endings",
+      "title": "상대 높임 등급과 종결 어미",
+      "kind": "grammar",
+      "authority": "국립국어원",
+      "sourceUrl": "https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=27&pageIndex=1&qna_seq=332328",
+      "sourceSection": "상대 높임 표현과 비격식체",
+      "path": "규범/상대높임-종결어미.md",
+      "guidance": "선택한 높임 단계에 맞는 종결 어미를 문단 안에서 일관되게 쓴다. 해체·해라체·해요체·하십시오체를 임의로 섞지 않는다. 청자 상대 높임과 문장 속 인물에 대한 주체·객체 높임을 구분하고, 인물 관계와 직함은 원문대로 보존한다.",
+      "score": 47
+    },
+    {
+      "id": "skill-text-humanize-korean-protected-scope",
+      "title": "text-humanize-korean의 보존 범위",
+      "kind": "skill-observation",
+      "authority": "community-skill",
+      "sourceUrl": "https://github.com/mols3131d/mols-agent-assets/blob/cae542f1dd4b80faa7ad9db164c7a5847e76b6b1/src/rulesync/.rulesync/skills/text-humanize-korean/SKILL.md",
+      "sourceSection": "text-humanize-korean/SKILL.md @ cae542f1",
+      "path": "skills/text-humanize-korean-보존범위.md",
+      "guidance": "윤문 전에 바뀌면 안 되는 데이터값, 고유 식별자, 문자 그대로 유지해야 할 구간을 체크리스트로 만든다. 결과에서는 누락뿐 아니라 부정 여부, 주장 강도, 의무 수준, 조건 범위, 인과 방향이 달라졌는지 대조하고 하나라도 표류한 제안은 폐기한다.",
+      "score": 36
+    },
+    {
+      "id": "nikl-spacing-particle-dependent-noun",
+      "title": "조사와 의존 명사 띄어쓰기",
+      "kind": "norm",
+      "authority": "국립국어원",
+      "sourceUrl": "https://www.korean.go.kr/kornorms/m/m_regltn.do",
+      "sourceSection": "한글 맞춤법 제41항·제42항",
+      "path": "규범/띄어쓰기-조사와-의존명사.md",
+      "guidance": "조사는 앞말에 붙이고 의존 명사는 띄어 쓴다. `할수`는 `할 수`로, 체언 뒤 조사 `만큼·뿐`은 붙이고 관형형 뒤 의존 명사 `만큼·뿐`은 띄운다. 품사를 문맥으로 확정할 수 없으면 후보로만 제시한다.",
+      "score": 29
+    },
+    {
+      "id": "skill-korean-polish-meaning-first",
+      "title": "korean-polish의 의미 복원 우선 원칙",
+      "kind": "skill-observation",
+      "authority": "community-skill",
+      "sourceUrl": "https://github.com/huskyhoochu/dotfiles/blob/e68af2c8c1c1ae0200217bdec1d312f02b67be26/claude/.claude/skills/korean-polish/SKILL.md",
+      "sourceSection": "claude/.claude/skills/korean-polish/SKILL.md @ e68af2c8",
+      "path": "skills/korean-polish-의미복원.md",
+      "guidance": "기술·작업 문서의 모호한 번역투나 은유적 서술어는 단어끼리 치환하지 않는다. 먼저 문장이 주장하는 사실, 행위 주체, 결과 방향을 확인하고 그 사실에 맞는 한국어 동사를 고른다. 뜻을 확정할 근거가 없으면 원문을 보존하고 위험을 보고한다.",
+      "score": 29
+    }
+  ]
+}
