@@ -1,6 +1,6 @@
 {
   "name": "kr-humanizer",
-  "version": "0.2.0+codex.20260904064418",
+  "version": "0.3.0+codex.20260904073757",
   "description": "Review and rewrite Korean text with explicit, user-approved changes",
   "author": {
     "name": "kuseumkkrkkr"
@@ -15,6 +15,8 @@
     "capabilities": [
       "Korean proofreading",
       "rewrite review",
+      "change filtering",
+      "side-by-side comparison",
       "local GUI"
     ],
     "defaultPrompt": "Use KR-humanizer to review this Korean text and show every proposed change before applying it."

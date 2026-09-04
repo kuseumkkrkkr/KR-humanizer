@@ -14,7 +14,7 @@ Preserve the writer's facts, numbers, proper nouns, stance, and intended audienc
 3. Ask the user to choose a tone only when their request does not imply one. Otherwise infer the least-transformative suitable tone.
 4. For a visual review, run `npx --yes github:kuseumkkrkkr/KR-humanizer gui`. Tell the user it opens a localhost interface.
 5. For a CLI proposal, run `npx --yes github:kuseumkkrkkr/KR-humanizer rewrite <file> --engine codex --out <proposal.json>` in Codex, or use `--engine claude` in Claude Code.
-6. Present changes without overwriting the source. Mark `order` changes clearly and apply only the sentence IDs the user accepts.
+6. Present changes without overwriting the source. Let the user filter change types, switch between highlighted and side-by-side comparison, and select individual or currently visible sentences. Mark `order` changes clearly and apply only the sentence IDs the user accepts.
 7. Use `sanitize` only after showing the detected code points. Explain that these are verifiable text-control characters, not proof of an AI watermark.
 
 ## Synthetic CV

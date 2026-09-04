@@ -42,8 +42,25 @@
     <section id="review" class="result-panel hidden">
       <div class="section-head"><div><span class="step">03</span><h2>바뀐 문장 비교</h2></div><span id="summary"></span></div>
       <div class="legend"><span><i class="removed"></i>삭제</span><span><i class="added"></i>추가</span><span><i class="moved"></i>어순 변경</span></div>
+      <div class="review-toolbar">
+        <div class="filter-group" role="group" aria-label="변경 유형 필터">
+          <button class="filter-button active" data-filter="all" aria-pressed="true">전체 <span>0</span></button>
+          <button class="filter-button" data-filter="rewrite" aria-pressed="false">문장 수정 <span>0</span></button>
+          <button class="filter-button" data-filter="order" aria-pressed="false">어순 변경 <span>0</span></button>
+          <button class="filter-button" data-filter="structural" aria-pressed="false">추가·삭제 <span>0</span></button>
+        </div>
+        <div class="view-group" role="group" aria-label="비교 보기 방식">
+          <button class="view-button active" data-view="inline" aria-pressed="true">변경 강조</button>
+          <button class="view-button" data-view="split" aria-pressed="false">전후 나란히</button>
+        </div>
+      </div>
+      <div class="selection-tools">
+        <button id="select-visible" class="text-button">보이는 항목 전체 선택</button>
+        <button id="clear-selection" class="text-button">선택 해제</button>
+        <span id="review-state" role="status" aria-live="polite">변경을 검토한 뒤 수락할 문장을 선택하세요.</span>
+      </div>
       <div id="changes" class="changes"></div>
-      <div class="accept-bar"><span id="selection-count">0개 선택</span><button id="accept" class="primary">선택한 변경 수락</button></div>
+      <div class="accept-bar"><span id="selection-count">선택 0/0</span><button id="accept" class="primary" disabled>변경을 선택하세요</button></div>
     </section>
 
     <section id="flow-section" class="result-panel hidden">

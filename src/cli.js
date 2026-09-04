@@ -7,7 +7,7 @@ import { createMemoryStore } from './memory/index.js';
 import { startGui } from './gui/server.js';
 import { runCv } from './benchmark/run.js';
 
-const help = `KR-humanizer 0.2.0
+const help = `KR-humanizer 0.3.0
 
 사용법:
   kr-humanizer analyze <file|-> [--json]

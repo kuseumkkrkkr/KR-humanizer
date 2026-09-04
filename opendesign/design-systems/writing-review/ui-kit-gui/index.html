@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KR-humanizer review controls</title>
+  <link rel="stylesheet" href="../tokens/colors_and_type.css">
+  <style>
+    *{box-sizing:border-box}body{margin:0;padding:32px;background:var(--surface-canvas);color:var(--text-primary);font-family:var(--font-sans)}main{max-width:920px;margin:auto;background:var(--surface-primary);border:1px solid var(--border-subtle);border-radius:var(--radius-panel);padding:24px;box-shadow:var(--shadow-panel)}h1{font-family:var(--font-display);margin-top:0}.toolbar,.actions{display:flex;gap:8px;flex-wrap:wrap}.control{min-height:44px;padding:9px 13px;border:1px solid var(--border-subtle);border-radius:var(--radius-control);background:#fff;font:inherit;font-weight:700}.control.active,.primary{border-color:var(--action-primary);background:var(--action-primary);color:#fff}.change{margin-top:16px;border:1px solid var(--border-subtle);border-radius:var(--radius-card);padding:16px}.compare{display:grid;grid-template-columns:1fr 1fr;gap:12px}.compare section{padding:12px;background:#f8f8f5;border-radius:9px}.compare strong{display:block;margin-bottom:6px;color:var(--text-muted);font-size:var(--size-caption)}.actions{justify-content:space-between;align-items:center;margin-top:16px}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>문장 수정 검토</h1>
+    <div class="toolbar" aria-label="변경 필터">
+      <button class="control active">전체 12</button><button class="control">문장 수정 9</button><button class="control">어순 변경 2</button><button class="control">추가·삭제 1</button>
+    </div>
+    <article class="change">
+      <label><input type="checkbox"> 문장 4</label>
+      <div class="compare"><section><strong>원문</strong>제도의 성장과 별개로 정치에 대한 신뢰는 충분하지 않다.</section><section><strong>제안</strong>제도가 성장했지만 정치에 대한 신뢰는 여전히 충분하지 않다.</section></div>
+    </article>
+    <div class="actions"><span>선택 1/12</span><button class="control primary">선택한 1개 변경 수락</button></div>
+  </main>
+</body>
+</html>

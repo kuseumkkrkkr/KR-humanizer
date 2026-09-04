@@ -14,6 +14,7 @@ function run(command, args, input, timeoutMs = 180_000) {
     const child = spawn(command, args, { shell: false, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
     let stdout = '';
     let stderr = '';
+    let exceededStream = '';
     const timer = setTimeout(() => {
       child.kill();
       reject(new Error(`${command} timed out after ${timeoutMs}ms`));
@@ -22,13 +23,16 @@ function run(command, args, input, timeoutMs = 180_000) {
     child.stderr.setEncoding('utf8');
     child.stdout.on('data', (chunk) => {
       stdout += chunk;
-      if (stdout.length > MAX_OUTPUT) child.kill();
+      if (Buffer.byteLength(stdout) > MAX_OUTPUT) { exceededStream = 'stdout'; child.kill(); }
     });
-    child.stderr.on('data', (chunk) => { stderr += chunk; });
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk;
+      if (Buffer.byteLength(stderr) > MAX_OUTPUT) { exceededStream = 'stderr'; child.kill(); }
+    });
     child.on('error', (error) => { clearTimeout(timer); reject(new Error(`${command} 실행 실패: ${error.message}`)); });
     child.on('close', (code) => {
       clearTimeout(timer);
-      if (stdout.length > MAX_OUTPUT) return reject(new Error(`${command} output exceeded ${MAX_OUTPUT} bytes`));
+      if (exceededStream) return reject(new Error(`${command} ${exceededStream} exceeded ${MAX_OUTPUT} bytes`));
       if (code !== 0) return reject(new Error(`${command} exited with ${code}: ${stderr.trim().slice(-1200)}`));
       resolve({ stdout, stderr });
     });

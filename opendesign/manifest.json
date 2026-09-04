@@ -1,0 +1,27 @@
+{
+  "generated": "2026-09-04T07:32:39.651Z",
+  "sections": [
+    {
+      "id": "mockups",
+      "label": "Mockups",
+      "groups": []
+    },
+    {
+      "id": "design-systems",
+      "label": "Design Systems",
+      "groups": [
+        {
+          "slug": "writing-review",
+          "files": [
+            {"label": "README", "path": "design-systems/writing-review/README.md"},
+            {"label": "Skill", "path": "design-systems/writing-review/SKILL.md"},
+            {"label": "Color and type tokens", "path": "design-systems/writing-review/tokens/colors_and_type.css"},
+            {"label": "Style notes", "path": "design-systems/writing-review/brand/style-notes.md"},
+            {"label": "Voice and tone", "path": "design-systems/writing-review/brand/voice-and-tone.md"},
+            {"label": "GUI UI kit", "path": "design-systems/writing-review/ui-kit-gui/index.html"}
+          ]
+        }
+      ]
+    }
+  ]
+}

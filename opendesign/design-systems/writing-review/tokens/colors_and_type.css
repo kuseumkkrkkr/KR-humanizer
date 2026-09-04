@@ -1,0 +1,33 @@
+:root {
+  --fg-1: #18201c;
+  --fg-2: #65706a;
+  --bg-1: #f6f5f0;
+  --bg-2: #ffffff;
+  --accent-1: #146c43;
+  --accent-soft: #e7f3ec;
+  --danger-1: #a43d31;
+  --danger-soft: #fbeae7;
+  --warning-1: #a4630b;
+  --warning-soft: #fff0cc;
+  --line-1: #d9ddd8;
+  --font-sans: Pretendard, "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+  --font-display: Georgia, "Noto Serif KR", serif;
+  --weight-regular: 400;
+  --weight-bold: 700;
+  --weight-heavy: 800;
+  --size-caption: 0.75rem;
+  --size-body: 1rem;
+  --size-heading: 1.25rem;
+  --size-display: clamp(2rem, 5vw, 3.625rem);
+  --surface-primary: var(--bg-2);
+  --surface-canvas: var(--bg-1);
+  --text-primary: var(--fg-1);
+  --text-muted: var(--fg-2);
+  --border-subtle: var(--line-1);
+  --action-primary: var(--accent-1);
+  --focus-ring: rgba(20, 108, 67, 0.16);
+  --radius-control: 9px;
+  --radius-card: 12px;
+  --radius-panel: 18px;
+  --shadow-panel: 0 12px 36px rgba(24, 32, 28, 0.08);
+}

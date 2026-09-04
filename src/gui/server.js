@@ -17,10 +17,12 @@ const assets = {
 
 async function readBody(request) {
   let body = '';
+  let bytes = 0;
   request.setEncoding('utf8');
   for await (const chunk of request) {
+    bytes += Buffer.byteLength(chunk);
+    if (bytes > MAX_BODY) throw Object.assign(new Error('요청이 너무 큽니다.'), { status: 413 });
     body += chunk;
-    if (body.length > MAX_BODY) throw Object.assign(new Error('요청이 너무 큽니다.'), { status: 413 });
   }
   return JSON.parse(body || '{}');
 }

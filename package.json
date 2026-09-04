@@ -1,13 +1,13 @@
 {
   "name": "kr-humanizer",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Local-first Korean writing review and humanization CLI with Codex and Claude Code adapters",
   "type": "module",
   "bin": {"kr-humanizer": "./bin/kr-humanizer.js"},
   "scripts": {
     "start": "node ./bin/kr-humanizer.js",
     "test": "node --test",
-    "check": "node --check ./bin/kr-humanizer.js && node --check ./src/cli.js && node --check ./src/gui/server.js && node --check ./src/benchmark/run.js && node --check ./scripts/capture-gui.cjs",
+    "check": "node --check ./bin/kr-humanizer.js && node --check ./src/cli.js && node --check ./src/gui/app.js && node --check ./src/gui/server.js && node --check ./src/benchmark/run.js && node --check ./scripts/capture-gui.cjs && node --check ./scripts/build-ab-report.cjs",
     "pack:dry": "npm pack --dry-run",
     "capture:gui": "node ./scripts/capture-gui.cjs",
     "report:ab": "node ./scripts/build-ab-report.cjs"
