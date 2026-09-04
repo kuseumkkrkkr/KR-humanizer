@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { buildAutocompletePrompt, buildDraftPrompt, buildPlanPrompt, buildRewritePrompt } from '../core/prompt.js';
 import { activeContextGraph, normalizeContextGraph } from '../core/context-graph.js';
 import { searchVault } from '../knowledge/vault.js';
+import { buildKnowledgeAgentReport } from '../knowledge/nikl-agent.js';
 
 const rewriteSchemaPath = fileURLToPath(new URL('../../schemas/rewrite.schema.json', import.meta.url));
 const planSchemaPath = fileURLToPath(new URL('../../schemas/plan.schema.json', import.meta.url));
@@ -95,14 +96,14 @@ export async function draftWithEngine({ engine = 'codex', brief, contextGraph, t
   const knowledge = await searchVault({ text: brief, editMode, honorificLevel, vaultPath });
   const prompt = buildDraftPrompt({ brief, contextGraph: graph, tone, editMode, honorificLevel, explanationLevel, memories, knowledge });
   const result = await structuredWithEngine({ engine, prompt, schemaPath: rewriteSchemaPath, validate: assertResult, timeoutMs, isolated });
-  return { ...result, knowledge };
+  return { ...result, knowledge, knowledgeAgent: buildKnowledgeAgentReport(knowledge) };
 }
 
 export async function rewriteWithEngine({ engine = 'codex', text, brief = '', contextGraph, tone, editMode = 'balanced', honorificLevel = 50, explanationLevel = 'balanced', memories = [], vaultPath, timeoutMs, isolated = false }) {
   const knowledge = await searchVault({ text, editMode, honorificLevel, vaultPath });
   const prompt = buildRewritePrompt({ text, brief, contextGraph: activeContextGraph(contextGraph), tone, editMode, honorificLevel, explanationLevel, memories, knowledge });
   const result = await structuredWithEngine({ engine, prompt, schemaPath: rewriteSchemaPath, validate: assertResult, timeoutMs, isolated });
-  return { ...result, knowledge };
+  return { ...result, knowledge, knowledgeAgent: buildKnowledgeAgentReport(knowledge) };
 }
 
 export async function autocompleteWithCodex({ text, contextGraph, tone, editMode = 'balanced', honorificLevel = 50, explanationLevel = 'balanced', timeoutMs = 60_000 }) {

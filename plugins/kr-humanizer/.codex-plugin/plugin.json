@@ -1,7 +1,7 @@
 {
   "name": "kr-humanizer",
-  "version": "0.9.0+codex.20260904181331",
-  "description": "Source-grounded Korean proofreading and explicit rewrite review",
+  "version": "0.10.0+codex.20260904183334",
+  "description": "Source-grounded Korean proofreading with a controlled NIKL reference agent",
   "author": {
     "name": "kuseumkkrkkr"
   },
@@ -9,7 +9,7 @@
   "interface": {
     "displayName": "KR-humanizer",
     "shortDescription": "\uad6d\ub9bd\uad6d\uc5b4\uc6d0 \uadfc\uac70\ub85c \uac80\ud1a0\ud558\ub294 \ud55c\uad6d\uc5b4 \uc724\ubb38.",
-    "longDescription": "Retrieve Korean spelling, spacing, grammar, sentence, and paragraph guidance with explicit source sections, application conditions, and boundaries. Compare every rewrite sentence by sentence and accept only chosen changes.",
+    "longDescription": "Automatically consult approved National Institute of Korean Language cards during proofreading, refresh registered official sources into a provenance-tracked local cache, compare every rewrite sentence by sentence, and accept only chosen changes.",
     "developerName": "kuseumkkrkkr",
     "category": "Productivity",
     "capabilities": [
@@ -23,6 +23,7 @@
       "Plan-first drafting",
       "explanation depth",
       "Obsidian knowledge retrieval",
+      "NIKL source refresh agent",
       "local GUI",
       "Codex Spark Tab completion"
     ],

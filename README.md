@@ -17,6 +17,7 @@ KR-humanizer는 한국어 글을 더 자연스럽고 편안하게 읽도록 돕�
 - 최저·중간·최대 3단계 설명률
 - 국립국어원 규범과 공개 윤문 Skill 관찰을 정리한 Obsidian Markdown 지식 저장소
 - 입력·윤문 방식·높임 단계에 맞는 지식 카드를 로컬 검색해 프롬프트에 자동 주입
+- 국립국어원 공식 자료의 출처·해시·갱신 시각을 관리하는 로컬 규범 참고 에이전트
 - Plan 모드의 선행 노드 생성과 내용·순서·포함 여부를 편집하는 맥락 그래프
 - 로컬 결정 메모리와 선택적 self-hosted mem0 연동
 - npm CLI와 로컬 브라우저 GUI
@@ -33,6 +34,7 @@ npm link
 kr-humanizer analyze draft.txt
 kr-humanizer complete draft.txt
 kr-humanizer knowledge draft.txt --mode strict --honorific 75
+kr-humanizer nikl status
 kr-humanizer plan brief.txt --explanation minimal --out graph.json
 kr-humanizer draft brief.txt --graph graph.json --out draft.json
 kr-humanizer rewrite draft.txt --engine codex --mode balanced --honorific 75 --explanation minimal --graph graph.json --out proposal.json
@@ -276,8 +278,12 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
+  Official[국립국어원 등록 자료] -->|명시적 nikl sync| Agent[규범 참고 에이전트]
+  Agent --> Cache[로컬 원문 + manifest + SHA-256]
+  Cache -->|사람이 조항·조건·예외 검토| Approved[승인 규범 카드]
   Text[입력 글] --> Query[원문 토큰 + 윤문 방식 + 높임 단계]
-  Query --> Scan[Markdown frontmatter 및 프롬프트 지침 읽기]
+  Approved --> Scan[Markdown frontmatter 및 프롬프트 지침 읽기]
+  Query --> Scan
   Scan --> Filter{retrieval true와 필수 필드}
   Filter --> Score[제목·태그·검색어·정확 구문 점수]
   Score --> Top[상위 8개 / 최대 6000자]
@@ -291,6 +297,7 @@ flowchart LR
 - 태그 일치: 토큰당 4점
 - 검색어 일치: 토큰당 7점
 - 입력에 정확 구문 포함: 12점
+- `trigger_terms` 정확 일치: 항목당 24점
 - 지침 본문 일치: 토큰당 1점
 
 점수는 관련도에 따라 정렬하는 데만 사용합니다. 규범의 권위를 나타내는 점수가 아니며, 프롬프트에서는 국립국어원 규범을 공개 Skill 관찰보다 우선합니다. 같은 입력과 저장소에서는 같은 결과가 나오도록 경로와 ID를 안정적으로 정렬합니다.
@@ -300,11 +307,30 @@ flowchart LR
 사용자가 추가한 Obsidian 저장소도 같은 카드 형식으로 검색할 수 있습니다.
 
 ```bash
-kr-humanizer knowledge draft.txt --vault D:\\my-writing-vault --limit 6
+kr-humanizer knowledge draft.txt --vault D:\\my-writing-vault --limit 8
 kr-humanizer rewrite draft.txt --engine codex --vault D:\\my-writing-vault --out proposal.json
 ```
 
 내장 카드 목록과 연결 관계는 [윤문 지식 지도](obsidian-vault/00-윤문-지식-지도.md), 새 카드 형식은 [지식 카드 템플릿](obsidian-vault/templates/지식-카드.md)에서 확인할 수 있습니다. 기준 자료는 [국립국어원 한국어 어문 규범](https://www.korean.go.kr/kornorms/m/m_regltn.do), [상대 높임 설명](https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=27&pageIndex=1&qna_seq=332328), 국립국어원 공공언어·글쓰기 연구 자료입니다.
+
+### 국립국어원 규범 참고 에이전트
+
+윤문과 초안 작성은 별도 설정 없이 승인된 국립국어원 Obsidian 카드를 자동 검색합니다. 매번 웹을 호출하지 않으므로 원문이 외부로 추가 전송되지 않고 국립국어원 사이트 장애가 윤문을 막지 않습니다.
+
+```powershell
+# 승인 카드와 로컬 자료 상태
+kr-humanizer nikl status
+
+# 등록된 공식 자료의 출처·해시·갱신 시각만 확인
+kr-humanizer nikl sync
+
+# 전문 원본도 로컬 캐시에 보관
+kr-humanizer nikl sync --raw --acknowledge-license
+```
+
+전문은 `.kr-humanizer/nikl/raw/`에만 저장되어 Git과 npm 패키지에서 제외됩니다. `manifest.json`에는 원본 URL, 최종 URL, 조회 시각, 크기, SHA-256과 저작권 정책 주소가 기록됩니다. 수집된 전문은 자동으로 윤문 프롬프트에 들어가지 않습니다. 조항·적용 조건·예외를 검토해 `obsidian-vault/규범/` 카드로 승인한 내용만 검색됩니다.
+
+수집 대상은 코드에 등록한 국립국어원 HTTPS 자료로 제한합니다. 사이트 전체 링크를 추적하지 않으며 개별 자료에 별도 공공누리 유형이 표시되어 있으면 그 조건이 [국립국어원 저작권 정책](https://www.korean.go.kr/front/nuri/pageView.do?mkn=3&page_id=P000189)보다 구체적인 조건으로 우선합니다. 확인 화면은 [저작권 정책 캡처](docs/screenshots/nikl-copyright-policy.png)에 남겼습니다. 한국어기초사전은 [공식 오픈 API](https://krdict.korean.go.kr/kor/openApi/openApiInfo)와 사용자가 발급받은 키가 필요한 별도 데이터원이며, 키 없이 크롤링으로 우회하지 않습니다.
 
 ### 엔진별 실행 차이
 

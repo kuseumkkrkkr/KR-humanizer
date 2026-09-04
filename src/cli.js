@@ -8,9 +8,10 @@ import { startGui } from './gui/server.js';
 import { runCv } from './benchmark/run.js';
 import { getEditModeInstruction, normalizeHonorificLevel } from './core/style.js';
 import { searchVault } from './knowledge/vault.js';
+import { getNiklStatus, syncNiklSources } from './knowledge/nikl-agent.js';
 import { getExplanationProfile } from './core/context-graph.js';
 
-const help = `KR-humanizer 0.8.1
+const help = `KR-humanizer 0.10.0
 
 사용법:
   kr-humanizer analyze <file|-> [--json]
@@ -19,7 +20,9 @@ const help = `KR-humanizer 0.8.1
   kr-humanizer plan <prompt|-> [--engine codex|claude] [--explanation minimal|balanced|maximal] [--out <file>]
   kr-humanizer draft <prompt|-> --graph <graph.json> [--engine codex|claude] [--explanation minimal|balanced|maximal] [--out <file>]
   kr-humanizer rewrite <file|-> [--engine codex|claude] [--tone <문체>] [--mode fluent|balanced|strict|concise] [--honorific 0-100] [--explanation minimal|balanced|maximal] [--graph <graph.json>] [--out <file>]
-  kr-humanizer knowledge <file|-> [--mode balanced] [--honorific 50] [--vault <Obsidian 폴더>] [--limit 6]
+  kr-humanizer knowledge <file|-> [--mode balanced] [--honorific 50] [--vault <Obsidian 폴더>] [--limit 8]
+  kr-humanizer nikl status [--store <폴더>] [--vault <Obsidian 폴더>]
+  kr-humanizer nikl sync [--store <폴더>] [--raw --acknowledge-license]
   kr-humanizer review <original> <rewritten> [--out <file>]
   kr-humanizer accept <proposal.json> --ids s1,s2 [--out <file>]
   kr-humanizer cv [--samples 3] [--folds 3] [--out-dir experiments/runs]
@@ -38,7 +41,7 @@ function option(args, name, fallback) {
 function positional(args) {
   const values = [];
   for (let index = 0; index < args.length; index += 1) {
-    if (args[index].startsWith('--')) { if (!['--json', '--no-open'].includes(args[index])) index += 1; }
+    if (args[index].startsWith('--')) { if (!['--json', '--no-open', '--raw', '--acknowledge-license'].includes(args[index])) index += 1; }
     else values.push(args[index]);
   }
   return values;
@@ -106,8 +109,15 @@ export async function main(args) {
     const editMode = option(rest, '--mode', 'balanced');
     getEditModeInstruction(editMode);
     const honorificLevel = normalizeHonorificLevel(option(rest, '--honorific', '50'));
-    const matches = await searchVault({ text, editMode, honorificLevel, vaultPath: option(rest, '--vault'), limit: option(rest, '--limit', '6') });
+    const matches = await searchVault({ text, editMode, honorificLevel, vaultPath: option(rest, '--vault'), limit: option(rest, '--limit', '8') });
     return emit(matches, option(rest, '--out'));
+  }
+  if (command === 'nikl') {
+    const action = paths[0] ?? 'status';
+    const storePath = option(rest, '--store');
+    if (action === 'status') return emit(await getNiklStatus({ storePath, vaultPath: option(rest, '--vault') }), option(rest, '--out'));
+    if (action === 'sync') return emit(await syncNiklSources({ storePath, raw: rest.includes('--raw'), acknowledgeLicense: rest.includes('--acknowledge-license') }), option(rest, '--out'));
+    throw new Error(`지원하지 않는 nikl 작업: ${action}`);
   }
   if (command === 'plan') {
     const brief = await readInput(paths[0]);
@@ -139,7 +149,7 @@ export async function main(args) {
     const memory = createMemoryStore({ provider: option(rest, '--memory', 'local'), baseUrl: option(rest, '--mem0-url'), userId: option(rest, '--user', 'default') });
     const memories = (await memory.search(text.slice(0, 500), 6)).map((item) => item.text);
     const result = await rewriteWithEngine({ engine: option(rest, '--engine', 'codex'), text, contextGraph, tone: option(rest, '--tone'), editMode, honorificLevel, explanationLevel, memories, vaultPath: option(rest, '--vault') });
-    const proposal = { ...buildProposal(text, result.rewrittenText), summary: result.summary, flow: { nodes: result.flow, edges: result.edges }, knowledge: result.knowledge };
+    const proposal = { ...buildProposal(text, result.rewrittenText), summary: result.summary, flow: { nodes: result.flow, edges: result.edges }, knowledge: result.knowledge, knowledgeAgent: result.knowledgeAgent };
     return emit(proposal, option(rest, '--out'));
   }
   if (command === 'cv') {

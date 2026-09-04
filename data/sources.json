@@ -3,6 +3,8 @@
   {"id":"claude-plugins","title":"Create plugins","url":"https://code.claude.com/docs/en/plugins","publisher":"Anthropic","usage":"architecture reference only"},
   {"id":"claude-cli","title":"CLI reference","url":"https://code.claude.com/docs/en/cli-usage","publisher":"Anthropic","usage":"command contract reference only"},
   {"id":"korean-rules","title":"한국어 어문 규범","url":"https://www.korean.go.kr/kornorms/main/main.do","publisher":"국립국어원","usage":"rule citation; no bulk text redistribution"},
+  {"id":"nikl-copyright-policy","title":"저작권 정책","url":"https://www.korean.go.kr/front/nuri/pageView.do?mkn=3&page_id=P000189","publisher":"국립국어원","usage":"source-specific KOGL conditions override the general site policy"},
+  {"id":"nikl-korean-basic-dictionary-api","title":"한국어기초사전 오픈 API","url":"https://krdict.korean.go.kr/kor/openApi/openApiInfo","publisher":"국립국어원","usage":"documented API only; user-issued key required"},
   {"id":"nikl-common-spelling-qna","title":"맞춤법에 맞게 쓴 문장","url":"https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=216&qna_seq=317387","publisher":"국립국어원","usage":"high-confidence spelling examples and provision pointers"},
   {"id":"nikl-doem-qna","title":"됨, 됌 맞춤법 질문","url":"https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=201&pageIndex=1&qna_seq=332063","publisher":"국립국어원","usage":"되- plus nominal ending evidence"},
   {"id":"nikl-wen-waen-qna","title":"웬/왠 맞춤법","url":"https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=216&pageIndex=1&qna_seq=326371","publisher":"국립국어원","usage":"context distinction reference"},

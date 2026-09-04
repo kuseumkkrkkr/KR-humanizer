@@ -1,0 +1,42 @@
+[
+  {
+    "id": "nikl-copyright-policy",
+    "title": "국립국어원 저작권 정책",
+    "url": "https://www.korean.go.kr/front/nuri/pageView.do?mkn=3&page_id=P000189",
+    "fileName": "copyright-policy.html",
+    "maxBytes": 2097152,
+    "expectedContentType": "text/html",
+    "requiredText": "저작권 정책",
+    "purpose": "이용 조건과 개별 공공누리 유형 우선 원칙 확인"
+  },
+  {
+    "id": "nikl-korean-norms",
+    "title": "한국어 어문 규범 본문",
+    "url": "https://www.korean.go.kr/kornorms/m/m_regltn.do",
+    "fileName": "korean-norms.html",
+    "maxBytes": 8388608,
+    "expectedContentType": "text/html",
+    "requiredText": "한글 맞춤법",
+    "purpose": "맞춤법·표준어·문장 부호 조항 확인"
+  },
+  {
+    "id": "nikl-korean-norms-downloads",
+    "title": "한국어 어문 규범 내려받기 목록",
+    "url": "https://www.korean.go.kr/kornorms/refr/refrList.do",
+    "fileName": "korean-norms-downloads.html",
+    "maxBytes": 4194304,
+    "expectedContentType": "text/html",
+    "requiredText": "한국어문규정집",
+    "purpose": "공식 규정집과 고시 자료의 배포 위치 확인"
+  },
+  {
+    "id": "nikl-public-language-handbook",
+    "title": "행정문서 표현 개선 및 쉬운 공공언어 쓰기 지침 개발",
+    "url": "https://www.korean.go.kr/front/reportData/reportDataView.do?mn_id=207&pageIndex=1&report_seq=1122&searchOrder=",
+    "fileName": "public-language-report.html",
+    "maxBytes": 4194304,
+    "expectedContentType": "text/html",
+    "requiredText": "행정문서 표현 개선",
+    "purpose": "문장·단락 윤문 지침 확인"
+  }
+]
