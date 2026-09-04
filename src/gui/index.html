@@ -19,9 +19,19 @@
   <main>
     <section class="editor-panel">
       <div class="section-head">
-        <div><span class="step">01</span><h2>원문 점검</h2></div>
+        <div><span class="step">01</span><h2>글 준비</h2></div>
         <span id="char-count">0자</span>
       </div>
+      <div class="brief-panel">
+        <div class="field-head"><label for="brief">글쓰기 프롬프트 <small>선택</small></label><span id="brief-count">0/4,000자</span></div>
+        <textarea id="brief" maxlength="4000" placeholder="무엇을 누구에게 설명할지 적으세요. 프롬프트가 있으면 Plan 모드를 사용할 수 있습니다."></textarea>
+        <div class="plan-controls">
+          <label class="plan-toggle"><input id="plan-mode" type="checkbox" disabled><span>Plan 모드</span></label>
+          <span id="plan-help">프롬프트를 입력하면 노드를 먼저 설계할 수 있습니다.</span>
+          <button id="plan" class="secondary" disabled>계획 노드 만들기</button>
+        </div>
+      </div>
+      <div class="field-head"><label for="source">초안 또는 원문</label><span>직접 쓰거나 그래프에서 생성</span></div>
       <textarea id="source" maxlength="200000" placeholder="점검할 한국어 글을 붙여 넣으세요."></textarea>
       <div class="controls">
         <button id="analyze" class="secondary">문단·오탈자 점검</button>
@@ -40,18 +50,38 @@
           <div class="range-ends" aria-hidden="true"><span>평어체</span><span>경어체</span></div>
           <p id="honorific-help">청자를 향한 종결 어미만 조절하며 인물·직함의 높임 관계는 보존합니다.</p>
         </div>
+        <fieldset class="explanation-control">
+          <legend>설명률</legend>
+          <div class="segmented" role="radiogroup" aria-describedby="explanation-help">
+            <label><input type="radio" name="explanation" value="minimal"><span>최저</span></label>
+            <label><input type="radio" name="explanation" value="balanced" checked><span>중간</span></label>
+            <label><input type="radio" name="explanation" value="maximal"><span>최대</span></label>
+          </div>
+          <p id="explanation-help">설명의 깊이만 바꾸며, 최대에서도 새 사실을 만들지 않습니다.</p>
+        </fieldset>
       </div>
       <p class="notice">AI 판별 회피를 보장하지 않습니다. 비가시 문자는 확인 가능한 텍스트 이상만 정리합니다.</p>
     </section>
 
+    <section id="flow-section" class="result-panel hidden">
+      <div class="section-head"><div><span class="step">02</span><h2>맥락 그래프</h2></div><span id="graph-state">활성 노드 0개</span></div>
+      <p class="section-copy">노드의 문구와 순서를 고치거나, 필요 없는 설명을 제외하세요. 활성 노드만 초안과 윤문에 반영됩니다.</p>
+      <div id="flow" class="flow" aria-label="활성 맥락 흐름"></div>
+      <div id="graph-nodes" class="graph-nodes"></div>
+      <div class="graph-actions">
+        <button id="add-node" class="text-button">노드 추가</button>
+        <button id="draft" class="primary" disabled>그래프로 초안 작성</button>
+      </div>
+    </section>
+
     <section id="diagnosis" class="result-panel hidden">
-      <div class="section-head"><div><span class="step">02</span><h2>먼저 확인할 부분</h2></div></div>
+      <div class="section-head"><div><span class="step">03</span><h2>먼저 확인할 부분</h2></div></div>
       <div id="stats" class="stats"></div>
       <div id="findings" class="findings"></div>
     </section>
 
     <section id="review" class="result-panel hidden">
-      <div class="section-head"><div><span class="step">03</span><h2>바뀐 문장 비교</h2></div><span id="summary"></span></div>
+      <div class="section-head"><div><span class="step">04</span><h2>바뀐 문장 비교</h2></div><span id="summary"></span></div>
       <div class="legend"><span><i class="removed"></i>삭제</span><span><i class="added"></i>추가</span><span><i class="moved"></i>어순 변경</span></div>
       <div class="review-toolbar">
         <div class="filter-group" role="group" aria-label="변경 유형 필터">
@@ -72,11 +102,6 @@
       </div>
       <div id="changes" class="changes"></div>
       <div class="accept-bar"><span id="selection-count">수락 0/0</span><button id="accept" class="primary" disabled>수락할 변경이 없습니다</button></div>
-    </section>
-
-    <section id="flow-section" class="result-panel hidden">
-      <div class="section-head"><div><span class="step">04</span><h2>의미 흐름</h2></div></div>
-      <div id="flow" class="flow"></div>
     </section>
 
     <section id="output-section" class="result-panel hidden">

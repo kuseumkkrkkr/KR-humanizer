@@ -5,7 +5,7 @@ import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { analyzeText, sanitizeText } from '../core/analyze.js';
 import { applyProposal, buildProposal } from '../core/diff.js';
-import { rewriteWithEngine } from '../engines/runner.js';
+import { draftWithEngine, planWithEngine, rewriteWithEngine } from '../engines/runner.js';
 import { createMemoryStore } from '../memory/index.js';
 
 const MAX_BODY = 1024 * 1024;
@@ -18,12 +18,14 @@ const assets = {
 async function readBody(request) {
   let body = '';
   let bytes = 0;
+  let exceeded = false;
   request.setEncoding('utf8');
   for await (const chunk of request) {
     bytes += Buffer.byteLength(chunk);
-    if (bytes > MAX_BODY) throw Object.assign(new Error('요청이 너무 큽니다.'), { status: 413 });
-    body += chunk;
+    if (bytes > MAX_BODY) exceeded = true;
+    else body += chunk;
   }
+  if (exceeded) throw Object.assign(new Error('요청이 너무 큽니다.'), { status: 413 });
   return JSON.parse(body || '{}');
 }
 
@@ -31,6 +33,12 @@ function send(response, status, value, type = 'application/json; charset=utf-8')
   const body = typeof value === 'string' ? value : JSON.stringify(value);
   response.writeHead(status, { 'content-type': type, 'content-length': Buffer.byteLength(body), 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer', 'content-security-policy': "default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'" });
   response.end(body);
+}
+
+function briefValue(value) {
+  const brief = String(value ?? '').trim();
+  if (brief.length > 4_000) throw Object.assign(new Error('글쓰기 프롬프트는 4,000자를 넘을 수 없습니다.'), { status: 400 });
+  return brief;
 }
 
 function openBrowser(url) {
@@ -56,10 +64,23 @@ export async function startGui({ port = 4317, open = true } = {}) {
       if (url.pathname === '/api/analyze') return send(response, 200, analyzeText(body.text ?? ''));
       if (url.pathname === '/api/sanitize') return send(response, 200, sanitizeText(body.text ?? ''));
       if (url.pathname === '/api/accept') return send(response, 200, { text: applyProposal(body.proposal, body.acceptedIds ?? []) });
+      if (url.pathname === '/api/plan') {
+        const brief = briefValue(body.brief);
+        if (!brief) throw Object.assign(new Error('Plan 모드에는 글쓰기 프롬프트가 필요합니다.'), { status: 400 });
+        return send(response, 200, await planWithEngine({ engine: body.engine ?? 'codex', brief, tone: body.tone, explanationLevel: body.explanationLevel }));
+      }
+      if (url.pathname === '/api/draft') {
+        const brief = briefValue(body.brief);
+        if (!brief) throw Object.assign(new Error('초안 작성에는 글쓰기 프롬프트가 필요합니다.'), { status: 400 });
+        const store = createMemoryStore({ provider: body.memory === 'mem0' ? 'mem0' : 'local', baseUrl: body.mem0Url, userId: body.userId ?? 'default' });
+        const memories = (await store.search(brief.slice(0, 500), 6)).map((item) => item.text);
+        const drafted = await draftWithEngine({ engine: body.engine ?? 'codex', brief, contextGraph: body.contextGraph, tone: body.tone, editMode: body.editMode, honorificLevel: body.honorificLevel, explanationLevel: body.explanationLevel, memories });
+        return send(response, 200, { ...drafted, flow: { nodes: drafted.flow, edges: drafted.edges } });
+      }
       if (url.pathname === '/api/rewrite') {
         const store = createMemoryStore({ provider: body.memory === 'mem0' ? 'mem0' : 'local', baseUrl: body.mem0Url, userId: body.userId ?? 'default' });
         const memories = (await store.search((body.text ?? '').slice(0, 500), 6)).map((item) => item.text);
-        const rewritten = await rewriteWithEngine({ engine: body.engine ?? 'codex', text: body.text ?? '', tone: body.tone, editMode: body.editMode, honorificLevel: body.honorificLevel, memories });
+        const rewritten = await rewriteWithEngine({ engine: body.engine ?? 'codex', text: body.text ?? '', brief: briefValue(body.brief), contextGraph: body.contextGraph, tone: body.tone, editMode: body.editMode, honorificLevel: body.honorificLevel, explanationLevel: body.explanationLevel, memories });
         const proposal = { ...buildProposal(body.text ?? '', rewritten.rewrittenText), summary: rewritten.summary, flow: { nodes: rewritten.flow, edges: rewritten.edges }, knowledge: rewritten.knowledge };
         return send(response, 200, proposal);
       }

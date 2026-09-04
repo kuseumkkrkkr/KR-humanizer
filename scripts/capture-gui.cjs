@@ -23,14 +23,51 @@ async function main() {
       const { buildProposal } = await import('../src/core/diff.js');
       const target = '다음 해결책을 제안합니다. 첫 원인을 설명합니다. 이 기능은 사용자가 글을 더 편하게 읽도록 돕습니다. 마지막으로 사용자가 변경을 확인합니다.';
       fixture = { ...buildProposal(source, target), summary: '어순 이동·문장 수정·추가 제안', flow: { nodes: [{ id: 'p1', role: '도입', label: '원인을 설명합니다.' }, { id: 'p2', role: '전개', label: '해결책과 확인 절차를 제안합니다.' }], edges: [{ from: 'p1', to: 'p2', relation: '다음 문단' }] } };
+      const planFixture = {
+        summary: '핵심 기능 중심의 설명 계획',
+        nodes: [
+          { id: 'n1', role: '도입', label: '글을 읽을 때 생기는 부담을 문제로 제시합니다.' },
+          { id: 'n2', role: '주장', label: '맥락 그래프로 필요한 설명만 남기는 방법을 소개합니다.' },
+          { id: 'n3', role: '예시', label: '이미 전달된 기능을 여러 표현으로 길게 반복 설명합니다.' }
+        ],
+        edges: [{ from: 'n1', to: 'n2', relation: '해결' }, { from: 'n2', to: 'n3', relation: '부연' }]
+      };
+      await page.route('**/api/plan', (route) => {
+        const request = route.request().postDataJSON();
+        if (!request.brief || request.explanationLevel !== 'maximal') throw new Error('Plan request is missing brief or explanation level');
+        return route.fulfill({ status: 200, contentType: 'application/json; charset=utf-8', body: JSON.stringify(planFixture) });
+      });
+      await page.route('**/api/draft', (route) => {
+        const request = route.request().postDataJSON();
+        if (request.contextGraph.nodes.filter((node) => node.included !== false).length !== 2) throw new Error('Excluded context node reached draft generation');
+        const body = { rewrittenText: source, summary: '활성 노드 기반 초안', flow: { nodes: planFixture.nodes.slice(0, 2), edges: [planFixture.edges[0]] }, edges: [planFixture.edges[0]], knowledge: [] };
+        return route.fulfill({ status: 200, contentType: 'application/json; charset=utf-8', body: JSON.stringify(body) });
+      });
       await page.route('**/api/rewrite', (route) => {
         const request = route.request().postDataJSON();
-        if (request.editMode !== 'strict' || request.honorificLevel !== 75) throw new Error('Style settings were not included in the rewrite request');
+        if (request.editMode !== 'strict' || request.honorificLevel !== 75 || request.explanationLevel !== 'maximal') throw new Error('Style settings were not included in the rewrite request');
+        if (request.contextGraph.nodes.length !== 2) throw new Error(`Edited context graph was not included in the rewrite request: ${request.contextGraph.nodes.length}`);
         return route.fulfill({ status: 200, contentType: 'application/json; charset=utf-8', body: JSON.stringify(fixture) });
       });
     }
     await page.goto(process.env.KR_HUMANIZER_GUI_URL || 'http://127.0.0.1:4317', { waitUntil: 'networkidle' });
     await page.locator('#source').fill(source);
+    if (fixture) {
+      await page.locator('#brief').fill('맥락 그래프로 과잉 설명을 줄이는 한국어 윤문 도구를 소개해 줘.');
+      if (!(await page.locator('#plan-mode').isEnabled()) || await page.locator('#plan').isEnabled()) throw new Error('Plan mode availability does not follow the brief');
+      await page.locator('#plan-mode').check();
+      await page.locator('input[name="explanation"][value="maximal"] + span').click();
+      await page.locator('#plan').click();
+      await page.locator('#graph-nodes .graph-node-row').nth(2).waitFor({ state: 'visible' });
+      if ((await page.locator('#graph-nodes .graph-node-row').count()) !== 3) throw new Error('Plan nodes were not rendered');
+      await page.locator('#flow-section').screenshot({ path: join(outputDir, '00-context-plan.png') });
+      await page.locator('#graph-nodes .graph-node-row').nth(2).locator('.node-include input').uncheck();
+      if ((await page.locator('#graph-state').textContent()) !== '활성 노드 2/3') throw new Error('Excluded node was not reflected in graph status');
+      await page.locator('#flow-section').screenshot({ path: join(outputDir, '00-context-edited.png') });
+      await Promise.all([page.waitForResponse((response) => response.url().endsWith('/api/draft')), page.locator('#draft').click()]);
+      await page.waitForFunction(() => document.querySelectorAll('#graph-nodes .graph-node-row').length === 2);
+      if ((await page.locator('#source').inputValue()) !== source) throw new Error('Graph draft did not populate the editor');
+    }
     await page.locator('#edit-mode').selectOption('strict');
     await page.locator('#honorific').fill('75');
     if ((await page.locator('#honorific-value').textContent()) !== '부드러운 경어 · 해요체') throw new Error('Honorific slider label did not update');
@@ -99,7 +136,7 @@ async function main() {
       await mobile.locator('#output-section').waitFor({ state: 'visible' });
       const width = await mobile.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth, body: document.body.scrollWidth }));
       if (width.document > width.viewport || width.body > width.viewport) throw new Error(`Mobile horizontal overflow: ${JSON.stringify(width)}`);
-      for (const selector of ['#select-visible', '#clear-selection', '#copy', '.change-select', '.decision-button']) {
+      for (const selector of ['#select-visible', '#clear-selection', '#copy', '.change-select', '.decision-button', '.segmented span', '.node-include', '.node-role', '.node-label', '.node-actions button', '#add-node']) {
         const heights = await mobile.locator(selector).evaluateAll((items) => items.map((item) => item.getBoundingClientRect().height));
         if (heights.some((height) => height < 44)) throw new Error(`Mobile target below 44px: ${selector} ${heights.join(',')}`);
       }

@@ -28,6 +28,21 @@ test('GUI enforces byte-sized request limit and security headers', async () => {
       body: JSON.stringify({ text: '가'.repeat(400_000) })
     });
     assert.equal(response.status, 413);
+
+    const missingBrief = await fetch(`http://127.0.0.1:${port}/api/plan`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-kr-humanizer-token': token },
+      body: JSON.stringify({ brief: '' })
+    });
+    assert.equal(missingBrief.status, 400);
+    assert.match((await missingBrief.json()).error, /프롬프트가 필요/);
+
+    const longBrief = await fetch(`http://127.0.0.1:${port}/api/plan`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-kr-humanizer-token': token },
+      body: JSON.stringify({ brief: '가'.repeat(4_001) })
+    });
+    assert.equal(longBrief.status, 400);
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }

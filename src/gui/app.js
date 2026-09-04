@@ -5,6 +5,7 @@ let proposal = null;
 let reviewFilter = 'all';
 let reviewView = 'unified';
 let appliedIds = new Set();
+let contextGraph = { nodes: [], edges: [] };
 
 const honorificLabels = {
   0: '평어 · 해체',
@@ -16,6 +17,12 @@ const honorificLabels = {
 
 const $ = (selector) => document.querySelector(selector);
 const show = (selector) => $(selector).classList.remove('hidden');
+const explanationLevel = () => document.querySelector('input[name="explanation"]:checked').value;
+const activeNodes = () => contextGraph.nodes.filter((node) => node.included !== false);
+const sequentialEdges = (nodes) => nodes.slice(1).map((node, index) => ({ from: nodes[index].id, to: node.id, relation: '다음 내용' }));
+function settingsPayload() {
+  return { engine: $('#engine').value, tone: $('#tone').value, editMode: $('#edit-mode').value, honorificLevel: Number($('#honorific').value), explanationLevel: explanationLevel() };
+}
 function updateHonorific() {
   const level = Number($('#honorific').value);
   $('#honorific-value').textContent = honorificLabels[level];
@@ -60,21 +67,65 @@ function renderAnalysis(result) {
     item.append(kind, text, confidence); return item;
   }) : [Object.assign(document.createElement('p'), { textContent: '현재 규칙에서 발견한 항목이 없습니다.' })];
   $('#findings').replaceChildren(...elements);
-  renderFlow(result.flow);
+  if (!contextGraph.nodes.length) renderGraph(result.flow);
 }
 
-function renderFlow(flow) {
-  if (!flow?.nodes?.length) return;
-  show('#flow-section');
+function renderGraphPreview() {
+  const nodes = activeNodes();
   const elements = [];
-  flow.nodes.forEach((node, index) => {
+  nodes.forEach((node, index) => {
     if (index) { const arrow = document.createElement('div'); arrow.className = 'flow-arrow'; arrow.textContent = '→'; elements.push(arrow); }
     const box = document.createElement('div'); box.className = 'flow-node';
     const role = document.createElement('strong'); role.textContent = node.role;
     const label = document.createElement('span'); label.textContent = node.label;
     box.append(role, label); elements.push(box);
   });
-  $('#flow').replaceChildren(...elements);
+  $('#flow').replaceChildren(...(elements.length ? elements : [Object.assign(document.createElement('p'), { textContent: '활성 노드가 없습니다.' })]));
+}
+
+function updateGraphControls() {
+  const active = activeNodes().length;
+  $('#graph-state').textContent = `활성 노드 ${active}/${contextGraph.nodes.length}`;
+  $('#draft').disabled = !$('#brief').value.trim() || active === 0;
+  renderGraphPreview();
+}
+
+function renderGraph(flow) {
+  const nodes = (flow?.nodes ?? []).slice(0, 32).map((node, index) => ({
+    id: String(node.id || `n${index + 1}`),
+    label: String(node.label ?? '').slice(0, 240),
+    role: String(node.role || '전개').slice(0, 32),
+    included: node.included !== false
+  })).filter((node) => node.label);
+  if (!nodes.length) return;
+  contextGraph = { nodes, edges: sequentialEdges(nodes) };
+  show('#flow-section');
+  const rows = nodes.map((node, index) => {
+    const row = document.createElement('div'); row.className = 'graph-node-row'; row.dataset.id = node.id; row.classList.toggle('excluded', !node.included);
+    const order = document.createElement('span'); order.className = 'node-order'; order.textContent = String(index + 1);
+    const includeLabel = document.createElement('label'); includeLabel.className = 'node-include';
+    const include = document.createElement('input'); include.type = 'checkbox'; include.checked = node.included; include.setAttribute('aria-label', `${index + 1}번 노드 포함`);
+    const includeText = document.createElement('span'); includeText.textContent = '포함'; includeLabel.append(include, includeText);
+    const role = document.createElement('select'); role.className = 'node-role'; role.setAttribute('aria-label', `${index + 1}번 노드 역할`);
+    ['도입', '주장', '근거', '예시', '반론', '전환', '전개', '결론', '마무리'].forEach((value) => role.append(Object.assign(document.createElement('option'), { value, textContent: value })));
+    if (![...role.options].some((option) => option.value === node.role)) role.append(Object.assign(document.createElement('option'), { value: node.role, textContent: node.role }));
+    role.value = node.role;
+    const label = document.createElement('input'); label.className = 'node-label'; label.type = 'text'; label.maxLength = 240; label.value = node.label; label.setAttribute('aria-label', `${index + 1}번 노드 내용`);
+    const actions = document.createElement('div'); actions.className = 'node-actions';
+    const up = document.createElement('button'); up.type = 'button'; up.className = 'node-move'; up.textContent = '↑'; up.title = '위로'; up.disabled = index === 0;
+    const down = document.createElement('button'); down.type = 'button'; down.className = 'node-move'; down.textContent = '↓'; down.title = '아래로'; down.disabled = index === nodes.length - 1;
+    const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'node-remove'; remove.textContent = '삭제';
+    include.addEventListener('change', () => { node.included = include.checked; row.classList.toggle('excluded', !node.included); updateGraphControls(); });
+    role.addEventListener('change', () => { node.role = role.value; renderGraphPreview(); });
+    label.addEventListener('input', () => { node.label = label.value; renderGraphPreview(); });
+    const move = (offset) => { const [item] = contextGraph.nodes.splice(index, 1); contextGraph.nodes.splice(index + offset, 0, item); renderGraph(contextGraph); };
+    up.addEventListener('click', () => move(-1)); down.addEventListener('click', () => move(1));
+    remove.addEventListener('click', () => { contextGraph.nodes.splice(index, 1); if (contextGraph.nodes.length) renderGraph(contextGraph); else { contextGraph = { nodes: [], edges: [] }; $('#graph-nodes').replaceChildren(); updateGraphControls(); } });
+    actions.append(up, down, remove); row.append(order, includeLabel, role, label, actions); return row;
+  });
+  $('#graph-nodes').replaceChildren(...rows);
+  contextGraph.edges = sequentialEdges(contextGraph.nodes);
+  updateGraphControls();
 }
 
 function diffLine(unit, side) {
@@ -147,7 +198,7 @@ function renderProposal(value) {
   });
   $('#changes').replaceChildren(...(elements.length ? elements : [Object.assign(document.createElement('p'), { textContent: '바뀐 문장이 없습니다.' })]));
   updateReviewControls();
-  renderFlow(value.flow);
+  if (!contextGraph.nodes.length) renderGraph(value.flow);
   updateSelection();
 }
 
@@ -209,7 +260,48 @@ $('#clear-selection').addEventListener('click', () => {
 $('#honorific').addEventListener('input', updateHonorific);
 updateHonorific();
 
+function updateBriefState() {
+  const length = $('#brief').value.length;
+  const available = length > 0;
+  $('#brief-count').textContent = `${length.toLocaleString()}/4,000자`;
+  $('#plan-mode').disabled = !available;
+  if (!available) $('#plan-mode').checked = false;
+  $('#plan').disabled = !available || !$('#plan-mode').checked;
+  $('#plan-help').textContent = !available ? '프롬프트를 입력하면 노드를 먼저 설계할 수 있습니다.' : $('#plan-mode').checked ? '초안보다 맥락 노드를 먼저 만듭니다.' : 'Plan 모드를 켜면 노드를 먼저 만들 수 있습니다.';
+  updateGraphControls();
+}
+
+$('#brief').addEventListener('input', updateBriefState);
+$('#plan-mode').addEventListener('change', updateBriefState);
+document.querySelectorAll('input[name="explanation"]').forEach((item) => item.addEventListener('change', updateGraphControls));
+updateBriefState();
+
 source.addEventListener('input', () => { $('#char-count').textContent = `${source.value.length.toLocaleString()}자`; });
+$('#plan').addEventListener('click', async (event) => {
+  const button = event.currentTarget;
+  try {
+    buttonBusy(button, true);
+    const result = await api('/api/plan', { brief: $('#brief').value, ...settingsPayload() });
+    renderGraph(result);
+    notify(`${result.nodes.length}개 계획 노드를 만들었습니다.`);
+  } catch (error) { notify(error.message, true); } finally { buttonBusy(button, false); updateBriefState(); }
+});
+$('#add-node').addEventListener('click', () => {
+  const next = contextGraph.nodes.length + 1;
+  contextGraph.nodes.push({ id: `manual-${Date.now()}-${next}`, role: '전개', label: '새 설명 노드', included: true });
+  renderGraph(contextGraph);
+});
+$('#draft').addEventListener('click', async (event) => {
+  const button = event.currentTarget;
+  try {
+    buttonBusy(button, true);
+    const result = await api('/api/draft', { brief: $('#brief').value, contextGraph, ...settingsPayload() });
+    source.value = result.rewrittenText;
+    source.dispatchEvent(new Event('input'));
+    if (result.flow?.nodes?.length) renderGraph(result.flow);
+    notify('활성 노드로 초안을 작성했습니다.');
+  } catch (error) { notify(error.message, true); } finally { buttonBusy(button, false); updateGraphControls(); }
+});
 $('#analyze').addEventListener('click', async (event) => {
   const button = event.currentTarget;
   try { buttonBusy(button, true); renderAnalysis(await api('/api/analyze', { text: source.value })); notify('점검을 마쳤습니다.'); }
@@ -222,7 +314,12 @@ $('#sanitize').addEventListener('click', async (event) => {
 });
 $('#rewrite').addEventListener('click', async (event) => {
   const button = event.currentTarget;
-  try { buttonBusy(button, true); renderProposal(await api('/api/rewrite', { text: source.value, engine: $('#engine').value, tone: $('#tone').value, editMode: $('#edit-mode').value, honorificLevel: Number($('#honorific').value) })); notify('윤문 제안을 만들었습니다.'); }
+  try {
+    if ($('#plan-mode').checked && !activeNodes().length) throw new Error('Plan 모드에서 계획 노드를 먼저 만드세요.');
+    buttonBusy(button, true);
+    renderProposal(await api('/api/rewrite', { text: source.value, brief: $('#brief').value, contextGraph, ...settingsPayload() }));
+    notify('윤문 제안을 만들었습니다.');
+  }
   catch (error) { notify(error.message, true); } finally { buttonBusy(button, false); }
 });
 $('#accept').addEventListener('click', async () => {

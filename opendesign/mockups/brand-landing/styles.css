@@ -101,6 +101,7 @@ h1 em { color: var(--green); font-style: italic; }
 .scale-line i { justify-self: center; width: 12px; height: 12px; border: 2px solid var(--paper); border-radius: 50%; background: #7f8983; box-shadow: 0 0 0 1px #7f8983; }
 .scale-line i.active { width: 18px; height: 18px; background: var(--green); box-shadow: 0 0 0 2px var(--green); }
 .scale-labels { display: grid; grid-template-columns: repeat(5, 1fr); margin-top: 16px; color: var(--muted); font-size: .72rem; text-align: center; }
+.tone-scale[aria-label="설명률 단계"] .scale-line,.tone-scale[aria-label="설명률 단계"] .scale-labels { grid-template-columns: repeat(3, 1fr); }
 .scale-labels strong { color: var(--green); }
 
 .screenshot-section { padding: 130px max(24px, calc((100% - 1180px)/2)); background: var(--ink); color: white; }
@@ -183,7 +184,7 @@ footer a { min-height: 44px; display: inline-flex; align-items: center; text-und
   .mode-grid article { min-height: 150px; border-right: 0; }
   .mode-grid h3 { margin-top: 28px; }
   .tone-scale { margin-inline: 0; }
-  .scale-labels span:nth-child(2), .scale-labels span:nth-child(4) { visibility: hidden; }
+  .tone-scale[aria-label="말투 높임 단계"] .scale-labels span:nth-child(2), .tone-scale[aria-label="말투 높임 단계"] .scale-labels span:nth-child(4) { visibility: hidden; }
   .terminal div { grid-template-columns: 18px 1fr; padding: 10px 13px; }
   .terminal button { grid-column: 2; width: 58px; }
   .card-list { grid-template-columns: 1fr; }

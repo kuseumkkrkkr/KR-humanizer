@@ -1,7 +1,7 @@
 {
   "name": "kr-humanizer",
-  "version": "0.6.1+codex.20260904160653",
-  "description": "Source-guided Korean writing review with explicit, user-approved changes",
+  "version": "0.7.0+codex.20260904165301",
+  "description": "Graph-guided Korean drafting and review with explicit, user-approved changes",
   "author": {
     "name": "kuseumkkrkkr"
   },
@@ -9,7 +9,7 @@
   "interface": {
     "displayName": "KR-humanizer",
     "shortDescription": "Source-guided Korean writing review.",
-    "longDescription": "Diagnose Korean prose, retrieve relevant National Institute of Korean Language guidance from an Obsidian-compatible vault, compare rewrites sentence by sentence, and accept only the changes the writer chooses.",
+    "longDescription": "Plan Korean writing as editable context nodes, control explanation depth, retrieve relevant National Institute of Korean Language guidance, compare rewrites sentence by sentence, and accept only chosen changes.",
     "developerName": "kuseumkkrkkr",
     "category": "Productivity",
     "capabilities": [
@@ -19,6 +19,9 @@
       "side-by-side comparison",
       "honorific intensity",
       "editing modes",
+      "editable context graph",
+      "Plan-first drafting",
+      "explanation depth",
       "Obsidian knowledge retrieval",
       "local GUI"
     ],

@@ -40,6 +40,12 @@ test('CLI rejects an unsupported editing mode before launching an engine', async
   assert.match(result.stderr, /지원하지 않는 윤문 방식/);
 });
 
+test('CLI rejects an unsupported explanation level before launching an engine', async () => {
+  const result = await invoke(['rewrite', '-', '--explanation', 'verbose'], '문장을 검토한다.');
+  assert.notEqual(result.code, 0);
+  assert.match(result.stderr, /지원하지 않는 설명률/);
+});
+
 test('CLI searches the bundled Obsidian vault without a model', async () => {
   const result = await invoke(['knowledge', '-', '--mode', 'strict'], '이 역할로써 할수 있다.');
   assert.equal(result.code, 0);

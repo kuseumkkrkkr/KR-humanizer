@@ -4,10 +4,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { buildRewritePrompt } from '../core/prompt.js';
+import { buildDraftPrompt, buildPlanPrompt, buildRewritePrompt } from '../core/prompt.js';
+import { activeContextGraph, normalizeContextGraph } from '../core/context-graph.js';
 import { searchVault } from '../knowledge/vault.js';
 
 const rewriteSchemaPath = fileURLToPath(new URL('../../schemas/rewrite.schema.json', import.meta.url));
+const planSchemaPath = fileURLToPath(new URL('../../schemas/plan.schema.json', import.meta.url));
 const MAX_OUTPUT = 2 * 1024 * 1024;
 
 function run(command, args, input, timeoutMs = 180_000) {
@@ -48,25 +50,50 @@ function assertResult(value) {
   return value;
 }
 
-function parseClaude(stdout) {
-  const outer = JSON.parse(stdout);
-  if (outer.structured_output) return assertResult(outer.structured_output);
-  if (typeof outer.result === 'string') return assertResult(JSON.parse(outer.result));
-  return assertResult(outer);
+function assertPlan(value) {
+  if (!value || !Array.isArray(value.nodes) || !Array.isArray(value.edges)) throw new Error('엔진이 예상한 계획 JSON을 반환하지 않았습니다.');
+  const graph = normalizeContextGraph(value);
+  if (!graph.nodes.length) throw new Error('계획에 사용할 노드가 없습니다.');
+  return { summary: String(value.summary ?? ''), ...graph };
 }
 
-export async function rewriteWithEngine({ engine = 'codex', text, tone, editMode = 'balanced', honorificLevel = 50, memories = [], vaultPath, timeoutMs, isolated = false }) {
-  const knowledge = await searchVault({ text, editMode, honorificLevel, vaultPath });
-  const prompt = buildRewritePrompt({ text, tone, editMode, honorificLevel, memories, knowledge });
-  if (engine === 'codex') {
-    return { ...assertResult(await runCodexStructured({ prompt, schemaPath: rewriteSchemaPath, timeoutMs, isolated })), knowledge };
-  }
+function parseClaude(stdout, validate) {
+  const outer = JSON.parse(stdout);
+  if (outer.structured_output) return validate(outer.structured_output);
+  if (typeof outer.result === 'string') return validate(JSON.parse(outer.result));
+  return validate(outer);
+}
+
+async function structuredWithEngine({ engine, prompt, schemaPath, validate, timeoutMs, isolated }) {
+  if (engine === 'codex') return validate(await runCodexStructured({ prompt, schemaPath, timeoutMs, isolated }));
   if (engine === 'claude') {
-    const schema = await readFile(rewriteSchemaPath, 'utf8');
+    const schema = await readFile(schemaPath, 'utf8');
     const { stdout } = await run('claude', ['-p', '--output-format', 'json', '--json-schema', schema, '--permission-mode', 'plan', '--no-session-persistence'], prompt, timeoutMs);
-    return { ...parseClaude(stdout), knowledge };
+    return parseClaude(stdout, validate);
   }
   throw new Error(`지원하지 않는 엔진: ${engine}`);
+}
+
+export async function planWithEngine({ engine = 'codex', brief, tone, explanationLevel = 'balanced', timeoutMs, isolated = false }) {
+  if (!String(brief ?? '').trim()) throw new Error('Plan 모드에는 글쓰기 프롬프트가 필요합니다.');
+  return structuredWithEngine({ engine, prompt: buildPlanPrompt({ brief, tone, explanationLevel }), schemaPath: planSchemaPath, validate: assertPlan, timeoutMs, isolated });
+}
+
+export async function draftWithEngine({ engine = 'codex', brief, contextGraph, tone, editMode = 'balanced', honorificLevel = 50, explanationLevel = 'balanced', memories = [], vaultPath, timeoutMs, isolated = false }) {
+  if (!String(brief ?? '').trim()) throw new Error('초안 작성에는 글쓰기 프롬프트가 필요합니다.');
+  const graph = activeContextGraph(contextGraph);
+  if (!graph.nodes.length) throw new Error('초안에 포함할 맥락 노드가 필요합니다.');
+  const knowledge = await searchVault({ text: brief, editMode, honorificLevel, vaultPath });
+  const prompt = buildDraftPrompt({ brief, contextGraph: graph, tone, editMode, honorificLevel, explanationLevel, memories, knowledge });
+  const result = await structuredWithEngine({ engine, prompt, schemaPath: rewriteSchemaPath, validate: assertResult, timeoutMs, isolated });
+  return { ...result, knowledge };
+}
+
+export async function rewriteWithEngine({ engine = 'codex', text, brief = '', contextGraph, tone, editMode = 'balanced', honorificLevel = 50, explanationLevel = 'balanced', memories = [], vaultPath, timeoutMs, isolated = false }) {
+  const knowledge = await searchVault({ text, editMode, honorificLevel, vaultPath });
+  const prompt = buildRewritePrompt({ text, brief, contextGraph: activeContextGraph(contextGraph), tone, editMode, honorificLevel, explanationLevel, memories, knowledge });
+  const result = await structuredWithEngine({ engine, prompt, schemaPath: rewriteSchemaPath, validate: assertResult, timeoutMs, isolated });
+  return { ...result, knowledge };
 }
 
 export async function runCodexStructured({ prompt, schemaPath, timeoutMs, isolated = false }) {

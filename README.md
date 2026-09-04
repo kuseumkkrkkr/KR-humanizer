@@ -3,7 +3,7 @@
 <p align="center"><strong>고친 문장을 먼저 보여줍니다.</strong><br>뜻은 지키고, 읽는 부담만 덜어내는 로컬 우선 한국어 윤문 도구</p>
 <p align="center"><a href="https://kuseumkkrkkr.github.io/KR-humanizer/">웹사이트</a> · <a href="https://kuseumkkrkkr.github.io/KR-humanizer/guide/">설치 가이드</a> · <a href="https://kuseumkkrkkr.github.io/KR-humanizer/knowledge/">윤문 지식 저장소</a> · <a href="https://github.com/kuseumkkrkkr/KR-humanizer/releases/latest">최신 릴리스</a></p>
 
-KR-humanizer는 한국어 글을 더 자연스럽고 편안하게 읽도록 돕는 로컬 우선 윤문 도구입니다. 문단 구성과 오탈자를 먼저 점검하고 국립국어원의 근거 자료를 검색해, 글의 의미와 수치를 보존하면서 어색한 표현을 다듬습니다. 사용자는 바뀐 단어와 어순을 문장별로 비교한 뒤 원하는 수정만 수락할 수 있습니다. 별도의 모델 API 대신 로그인된 Codex 또는 Claude Code를 실행하며, npm CLI와 로컬 GUI, 각 도구에 맞는 플러그인으로 사용할 수 있습니다.
+KR-humanizer는 한국어 글을 더 자연스럽고 편안하게 읽도록 돕는 로컬 우선 윤문 도구입니다. 글을 쓰기 전에는 프롬프트에서 맥락 노드를 먼저 만들고, 초안이 있으면 문단 흐름을 편집 가능한 그래프로 바꿉니다. 필요 없는 노드를 제외해 과잉설명을 걷어낸 뒤 국립국어원의 근거 자료를 검색하고, 바뀐 문장만 Git형 Diff로 검토합니다. 별도의 모델 API 대신 로그인된 Codex 또는 Claude Code를 실행하며 npm CLI, 로컬 GUI, 플러그인으로 사용할 수 있습니다.
 
 > 이 도구는 AI 판별기 회피나 출처 위장을 보장하지 않습니다. `sanitize`는 비가시 Unicode, BOM, 제어문자처럼 실제로 확인 가능한 텍스트 이상만 보여 주고 정리합니다.
 
@@ -13,9 +13,10 @@ KR-humanizer는 한국어 글을 더 자연스럽고 편안하게 읽도록 돕�
 - Codex CLI 또는 Claude Code CLI를 통한 API 키 없는 윤문 제안
 - 문장/단어 단위 전후 비교, 어순 변경 표식, 선택 수락
 - 평어체부터 경어체까지 5단계 말투 높임 슬라이더와 4가지 윤문 방식
+- 최저·중간·최대 3단계 설명률
 - 국립국어원 규범과 공개 윤문 Skill 관찰을 정리한 Obsidian Markdown 지식 저장소
 - 입력·윤문 방식·높임 단계에 맞는 지식 카드를 로컬 검색해 프롬프트에 자동 주입
-- 글의 의미 흐름 그래프
+- Plan 모드의 선행 노드 생성과 내용·순서·포함 여부를 편집하는 맥락 그래프
 - 로컬 결정 메모리와 선택적 self-hosted mem0 연동
 - npm CLI와 로컬 브라우저 GUI
 - Codex 및 Claude Code 공용 플러그인
@@ -30,7 +31,9 @@ npm test
 npm link
 kr-humanizer analyze draft.txt
 kr-humanizer knowledge draft.txt --mode strict --honorific 75
-kr-humanizer rewrite draft.txt --engine codex --mode balanced --honorific 75 --out proposal.json
+kr-humanizer plan brief.txt --explanation minimal --out graph.json
+kr-humanizer draft brief.txt --graph graph.json --out draft.json
+kr-humanizer rewrite draft.txt --engine codex --mode balanced --honorific 75 --explanation minimal --graph graph.json --out proposal.json
 kr-humanizer cv --samples 3 --folds 3
 kr-humanizer gui
 ```
@@ -41,7 +44,7 @@ kr-humanizer gui
 npm install -g github:kuseumkkrkkr/KR-humanizer
 ```
 
-GitHub Release의 `kr-humanizer-0.6.1.tgz` 파일도 동일한 npm 설치물입니다. npm registry에는 아직 게시하지 않았습니다.
+GitHub Release의 `kr-humanizer-0.7.0.tgz` 파일도 동일한 npm 설치물입니다. npm registry에는 아직 게시하지 않았습니다.
 
 Claude Code가 설치되어 있으면 `--engine claude`를 사용할 수 있습니다. 외부 모델 API를 직접 호출하지 않으며, 사용자가 로그인한 CLI 프로세스만 실행합니다.
 
@@ -89,12 +92,14 @@ flowchart LR
 
   Skill --> CLI
   CLI --> Analyze[규칙 기반 분석]
+  CLI --> Context[맥락 그래프 정규화]
   CLI --> Diff[문장·단어 Diff]
   CLI --> CV[합성 CV]
   CLI --> Server[127.0.0.1 HTTP 서버]
   GUI -->|세션 토큰 포함 요청| Server
 
   Server --> Analyze
+  Server --> Context
   Server --> Diff
   Server --> Memory{메모리 공급자}
   Memory --> Local[로컬 JSON]
@@ -106,6 +111,7 @@ flowchart LR
   Runner -->|spawn, plan mode| Claude[Claude Code CLI]
   Vault[Obsidian Markdown 지식 저장소] --> Retriever[결정적 로컬 검색]
   Retriever --> Runner
+  Context --> Runner
   Codex --> Schema[JSON Schema 응답]
   Claude --> Schema
   Schema --> Diff
@@ -122,8 +128,8 @@ flowchart LR
 | 명령 진입점 | `bin/kr-humanizer.js`, `src/cli.js` | 인자 해석, 파일·표준입력 처리, 명령 라우팅 |
 | 한국어 분석 | `src/core/analyze.js`, `data/ko-rules.json` | 문장 분리, 문단·문장 통계, 규칙 후보·장문·비가시 문자 검사 |
 | 변경 계산 | `src/core/diff.js` | 문장 정렬, 단어 단위 LCS, 어순 변경 표식, 선택한 변경 적용 |
-| 문체 제어 | `src/core/style.js` | 5단계 상대 높임 프로필과 4가지 윤문 방식 검증 |
-| 프롬프트 | `src/core/prompt.js` | 의미 보존 규칙, 목표 문체, 높임·윤문 방식, 이전 수락 성향, 원문 결합 |
+| 문체 제어 | `src/core/style.js`, `context-graph.js` | 5단계 상대 높임, 4가지 윤문 방식, 3단계 설명률과 활성 노드 검증 |
+| 프롬프트 | `src/core/prompt.js` | Plan·초안·윤문 프롬프트, 활성 그래프, 의미 보존 규칙, 이전 수락 성향 결합 |
 | 지식 검색 | `src/knowledge/vault.js`, `obsidian-vault/` | Markdown 카드 파싱, 입력별 점수화, 출처를 포함한 상위 지침 선택 |
 | 실행기 | `src/engines/runner.js` | Codex·Claude 자식 프로세스 실행, 시간·출력 제한, 구조화된 JSON 파싱 |
 | GUI | `src/gui/index.html`, `app.js`, `styles.css`, `server.js` | 로컬 편집·검토 UI와 토큰 보호용 HTTP API |
@@ -138,13 +144,15 @@ flowchart LR
 | `analyze` | 파일 또는 표준입력 | 통계, 규칙 후보, 의미 흐름 JSON |
 | `sanitize` | 파일 또는 표준입력 | 확인된 비가시 문자를 제거한 UTF-8 텍스트. `--out`을 지정한 경우에만 파일 작성 |
 | `knowledge` | 원문, `--mode`, `--honorific`, 선택 사항인 `--vault` | 모델 실행 없이 관련 지식 카드와 출처를 JSON으로 반환 |
-| `rewrite` | 원문, 엔진, 문체, `--mode`, `--honorific` | 구조화된 윤문 응답을 문장별 proposal JSON으로 변환 |
+| `plan` | 글쓰기 프롬프트, 엔진, `--explanation` | 초안 없이 편집 가능한 노드·관계 JSON 생성 |
+| `draft` | 글쓰기 프롬프트, `--graph`, 문체 설정 | 활성 노드만 사용한 초안과 의미 흐름 JSON 생성 |
+| `rewrite` | 원문, 엔진, 문체, `--mode`, `--honorific`, `--explanation`, 선택 사항인 `--graph` | 활성 노드 범위를 지킨 윤문을 문장별 proposal JSON으로 변환 |
 | `review` | 원문 파일 + 별도 윤문 파일 | 모델 실행 없이 두 글의 Diff proposal 생성 |
 | `accept` | proposal JSON + 문장 ID | 선택한 변경만 반영한 텍스트 생성 |
 | `cv` | 샘플·fold 수 | 합성 원문, EXEC 윤문, 지표, A/B 위치를 무작위화한 의견 파일 저장 |
 | `gui` | 포트 | `127.0.0.1`에서 로컬 검토 서버 실행 |
 
-파일을 생략하거나 `-`를 지정하면 표준입력을 읽습니다. `rewrite`와 `cv`를 제외한 핵심 분석·Diff·수락 명령은 모델 없이 결정적으로 실행됩니다.
+파일을 생략하거나 `-`를 지정하면 표준입력을 읽습니다. `plan`, `draft`, `rewrite`, `cv`를 제외한 핵심 분석·Diff·수락 명령은 모델 없이 결정적으로 실행됩니다.
 
 ### 런타임 라이브러리
 
@@ -169,6 +177,7 @@ sequenceDiagram
   actor U as 작성자
   participant UI as GUI 또는 CLI
   participant A as analyze.js
+  participant G as context-graph.js
   participant M as local memory / mem0
   participant K as Obsidian vault search
   participant P as prompt.js
@@ -176,7 +185,17 @@ sequenceDiagram
   participant E as Codex 또는 Claude CLI
   participant D as diff.js
 
-  U->>UI: 한국어 원문 입력
+  U->>UI: 글쓰기 프롬프트 또는 한국어 초안 입력
+  alt 프롬프트 + Plan 모드
+    UI->>R: 설명률과 프롬프트로 노드 요청
+    R->>E: plan.schema.json 제한 실행
+    E-->>UI: 계획 노드와 관계
+  else 기존 초안
+    UI->>A: 문단 흐름 추출
+    A-->>UI: 기본 노드와 관계
+  end
+  U->>G: 노드 내용·순서·포함 여부 편집
+  G-->>UI: 활성 노드만 반환
   UI->>A: 문단·오탈자·비가시 문자 점검
   A-->>UI: 통계, 발견 후보, 기본 의미 흐름
   U->>UI: 윤문 제안 요청
@@ -184,7 +203,7 @@ sequenceDiagram
   M-->>P: 이전 수락 성향
   UI->>K: 원문 + 윤문 방식 + 높임 단계
   K-->>P: 관련 카드 최대 6개 + 출처
-  P->>R: 보존 규칙 + 윤문 방식 + 높임 정도 + 지식 + 메모리 + 원문
+  P->>R: 활성 그래프 + 설명률 + 보존 규칙 + 문체 + 지식 + 메모리 + 원문
   R->>E: 셸 문자열이 아닌 인자 배열로 실행
   E-->>R: rewrite.schema.json 구조의 JSON
   R->>D: 원문과 rewrittenText 비교
@@ -202,11 +221,13 @@ sequenceDiagram
 2. 사용자가 고른 목표 문체
 3. `fluent`, `balanced`, `strict`, `concise` 중에서 선택한 윤문 방식
 4. 0~100의 높임 정도와 이에 대응하는 상대 높임 등급
-5. 과장된 접속어와 상투 표현을 줄이고 구체적인 동사와 짧은 문장을 우선하는 편집 규칙
-6. AI 판별기 회피와 출처 위장을 하지 않는다는 경계
-7. Obsidian 저장소에서 검색한 규범·편집 지침과 출처
-8. 로컬 메모리에서 검색한 이전 수락 성향
-9. 구분선 안의 원문 전체
+5. `minimal`, `balanced`, `maximal` 중 선택한 설명률
+6. 사용자가 편집하고 포함시킨 활성 맥락 노드
+7. 과장된 접속어와 상투 표현을 줄이고 구체적인 동사와 짧은 문장을 우선하는 편집 규칙
+8. AI 판별기 회피와 출처 위장을 하지 않는다는 경계
+9. Obsidian 저장소에서 검색한 규범·편집 지침과 출처
+10. 로컬 메모리에서 검색한 이전 수락 성향
+11. 구분선 안의 원문 전체
 
 응답은 `schemas/rewrite.schema.json`으로 제한합니다. 필수 필드는 윤문 본문 `rewrittenText`, 요약 `summary`, 의미 흐름 노드 `flow`, 관계 `edges`입니다. 스키마에 맞지 않거나 필드가 빠지면 결과를 적용하지 않고 오류로 처리합니다.
 
@@ -255,15 +276,21 @@ kr-humanizer rewrite draft.txt --engine codex --vault D:\\my-writing-vault --out
 
 두 경로 모두 `spawn(..., { shell: false })`를 사용하며, 기본 제한은 실행 시간 180초와 출력 크기 2 MiB입니다.
 
-## 문장 수정 UX와 적용 원리
+## 그래프 기반 글쓰기와 문장 수정 UX
 
 ```mermaid
 stateDiagram-v2
-  [*] --> 원문입력
+  [*] --> 입력선택
+  입력선택 --> 프롬프트입력: 새 글
+  입력선택 --> 원문입력: 기존 글
+  프롬프트입력 --> 계획노드: Plan 모드
+  원문입력 --> 계획노드: 문단 흐름 추출
+  계획노드 --> 그래프편집: 내용·순서·포함 여부
+  그래프편집 --> 초안: 활성 노드로 작성
+  초안 --> 사전점검: 문단·오탈자 점검
   원문입력 --> 사전점검: 문단·오탈자 점검
-  원문입력 --> 말투설정: 윤문 방식 + 높임 슬라이더
-  말투설정 --> 사전점검
-  사전점검 --> 제안생성: Codex·Claude 윤문
+  사전점검 --> 말투설정: 윤문 방식 + 높임 + 설명률
+  말투설정 --> 제안생성: Codex·Claude 윤문
   제안생성 --> 변경검토
   변경검토 --> 변경검토: 유형 필터
   변경검토 --> 변경검토: 통합 Diff / 전후 나란히
@@ -276,6 +303,9 @@ stateDiagram-v2
   확정결과 --> 로컬기억: 이번 선택을 기억
 ```
 
+- **Plan 모드:** 글쓰기 프롬프트가 있을 때만 활성화됩니다. 초안을 쓰기 전에 `plan.schema.json` 형태의 노드와 관계를 먼저 받습니다.
+- **그래프 편집:** 각 노드의 역할과 내용을 고치고, 위·아래 이동, 제외, 삭제를 할 수 있습니다. 제외한 노드는 초안·윤문 프롬프트에서 제거됩니다.
+- **설명률:** `최저`는 핵심 주장과 필수 근거만, `중간`은 필요한 연결 설명을 한 번씩, `최대`는 제공된 맥락의 개념과 인과를 충분히 풉니다. 어떤 단계도 새 사실을 허용하지 않습니다.
 - **유형 필터:** 전체, 문장 수정, 어순 변경, 추가·삭제로 제안을 좁힙니다. 필터는 표시만 바꾸며, 이미 선택한 문장을 임의로 해제하지 않습니다.
 - **두 가지 비교:** 기본 `통합 Diff`는 Git처럼 `- 원문`과 `+ 제안`을 두 줄로 표시하고 바뀐 단어를 한 번 더 강조합니다. `전후 나란히`는 긴 문장을 좌우로 분리해 비교합니다.
 - **개별 결정:** 각 문장 hunk에서 `수락` 또는 `거절`을 바로 선택하고, 수락·거절·미결정 개수를 함께 확인합니다.
@@ -297,7 +327,13 @@ UI의 `평어체`와 `경어체`는 이해를 돕기 위한 넓은 범주이며,
 | 75 | 부드러운 경어 · 해요체 | `-아요`, `-어요`, `-예요` 계열 |
 | 100 | 격식 경어 · 하십시오체 | `-습니다/-ㅂ니다`, `-습니까` 계열 |
 
-![윤문 방식과 말투 높임 슬라이더](artifacts/screenshots/00-style-settings.png)
+![윤문 방식, 높임과 설명률 설정](artifacts/screenshots/00-style-settings.png)
+
+Plan 모드에서 만든 노드와 과잉설명 노드를 제외한 상태:
+
+![Plan 모드의 초기 맥락 노드](artifacts/screenshots/00-context-plan.png)
+
+![과잉설명 노드를 제외한 맥락 그래프](artifacts/screenshots/00-context-edited.png)
 
 ### 검증된 GUI 화면
 
@@ -320,11 +356,13 @@ flowchart TB
   Marketplace[Codex·Claude marketplace] --> Manifest[플러그인 manifest]
   Manifest --> SharedSkill[skills/humanize/SKILL.md]
   SharedSkill --> AnalyzeCmd[kr-humanizer analyze]
+  SharedSkill --> PlanCmd[kr-humanizer plan / draft]
   SharedSkill --> KnowledgeCmd[kr-humanizer knowledge]
   SharedSkill --> RewriteCmd[kr-humanizer rewrite]
   SharedSkill --> GuiCmd[kr-humanizer gui]
   SharedSkill --> CvCmd[kr-humanizer cv]
   AnalyzeCmd --> ReviewRule[진단을 먼저 제시]
+  PlanCmd --> GraphRule[노드를 먼저 검토·편집]
   KnowledgeCmd --> VaultRule[출처 있는 관련 카드 검색]
   RewriteCmd --> ReviewRule
   GuiCmd --> Approval[변경별 사용자 수락]

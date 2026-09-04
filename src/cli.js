@@ -2,19 +2,22 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { stdin, stdout } from 'node:process';
 import { analyzeText, sanitizeText } from './core/analyze.js';
 import { applyProposal, buildProposal } from './core/diff.js';
-import { rewriteWithEngine } from './engines/runner.js';
+import { draftWithEngine, planWithEngine, rewriteWithEngine } from './engines/runner.js';
 import { createMemoryStore } from './memory/index.js';
 import { startGui } from './gui/server.js';
 import { runCv } from './benchmark/run.js';
 import { getEditModeInstruction, normalizeHonorificLevel } from './core/style.js';
 import { searchVault } from './knowledge/vault.js';
+import { getExplanationProfile } from './core/context-graph.js';
 
-const help = `KR-humanizer 0.6.1
+const help = `KR-humanizer 0.7.0
 
 사용법:
   kr-humanizer analyze <file|-> [--json]
   kr-humanizer sanitize <file|-> [--out <file>]
-  kr-humanizer rewrite <file|-> [--engine codex|claude] [--tone <문체>] [--mode fluent|balanced|strict|concise] [--honorific 0-100] [--vault <Obsidian 폴더>] [--out <file>]
+  kr-humanizer plan <prompt|-> [--engine codex|claude] [--explanation minimal|balanced|maximal] [--out <file>]
+  kr-humanizer draft <prompt|-> --graph <graph.json> [--engine codex|claude] [--explanation minimal|balanced|maximal] [--out <file>]
+  kr-humanizer rewrite <file|-> [--engine codex|claude] [--tone <문체>] [--mode fluent|balanced|strict|concise] [--honorific 0-100] [--explanation minimal|balanced|maximal] [--graph <graph.json>] [--out <file>]
   kr-humanizer knowledge <file|-> [--mode balanced] [--honorific 50] [--vault <Obsidian 폴더>] [--limit 6]
   kr-humanizer review <original> <rewritten> [--out <file>]
   kr-humanizer accept <proposal.json> --ids s1,s2 [--out <file>]
@@ -58,6 +61,12 @@ async function emit(value, path) {
   else stdout.write(text.endsWith('\n') ? text : `${text}\n`);
 }
 
+async function readGraph(path) {
+  if (!path) return undefined;
+  const value = JSON.parse(await readFile(path, 'utf8'));
+  return value.flow ?? value;
+}
+
 export async function main(args) {
   const command = args[0];
   const rest = args.slice(1);
@@ -88,14 +97,36 @@ export async function main(args) {
     const matches = await searchVault({ text, editMode, honorificLevel, vaultPath: option(rest, '--vault'), limit: option(rest, '--limit', '6') });
     return emit(matches, option(rest, '--out'));
   }
+  if (command === 'plan') {
+    const brief = await readInput(paths[0]);
+    const explanationLevel = option(rest, '--explanation', 'balanced');
+    getExplanationProfile(explanationLevel);
+    return emit(await planWithEngine({ engine: option(rest, '--engine', 'codex'), brief, tone: option(rest, '--tone'), explanationLevel }), option(rest, '--out'));
+  }
+  if (command === 'draft') {
+    const brief = await readInput(paths[0]);
+    const explanationLevel = option(rest, '--explanation', 'balanced');
+    getExplanationProfile(explanationLevel);
+    const contextGraph = await readGraph(option(rest, '--graph'));
+    if (!contextGraph) throw new Error('draft 명령에는 --graph <graph.json>이 필요합니다.');
+    const editMode = option(rest, '--mode', 'balanced');
+    getEditModeInstruction(editMode);
+    const honorificLevel = normalizeHonorificLevel(option(rest, '--honorific', '50'));
+    const memory = createMemoryStore({ provider: option(rest, '--memory', 'local'), baseUrl: option(rest, '--mem0-url'), userId: option(rest, '--user', 'default') });
+    const memories = (await memory.search(brief.slice(0, 500), 6)).map((item) => item.text);
+    return emit(await draftWithEngine({ engine: option(rest, '--engine', 'codex'), brief, contextGraph, tone: option(rest, '--tone'), editMode, honorificLevel, explanationLevel, memories, vaultPath: option(rest, '--vault') }), option(rest, '--out'));
+  }
   if (command === 'rewrite') {
     const text = await readInput(paths[0]);
     const editMode = option(rest, '--mode', 'balanced');
     getEditModeInstruction(editMode);
     const honorificLevel = normalizeHonorificLevel(option(rest, '--honorific', '50'));
+    const explanationLevel = option(rest, '--explanation', 'balanced');
+    getExplanationProfile(explanationLevel);
+    const contextGraph = await readGraph(option(rest, '--graph'));
     const memory = createMemoryStore({ provider: option(rest, '--memory', 'local'), baseUrl: option(rest, '--mem0-url'), userId: option(rest, '--user', 'default') });
     const memories = (await memory.search(text.slice(0, 500), 6)).map((item) => item.text);
-    const result = await rewriteWithEngine({ engine: option(rest, '--engine', 'codex'), text, tone: option(rest, '--tone'), editMode, honorificLevel, memories, vaultPath: option(rest, '--vault') });
+    const result = await rewriteWithEngine({ engine: option(rest, '--engine', 'codex'), text, contextGraph, tone: option(rest, '--tone'), editMode, honorificLevel, explanationLevel, memories, vaultPath: option(rest, '--vault') });
     const proposal = { ...buildProposal(text, result.rewrittenText), summary: result.summary, flow: { nodes: result.flow, edges: result.edges }, knowledge: result.knowledge };
     return emit(proposal, option(rest, '--out'));
   }
