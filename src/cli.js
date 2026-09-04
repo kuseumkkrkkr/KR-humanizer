@@ -11,7 +11,7 @@ import { searchVault } from './knowledge/vault.js';
 import { getNiklStatus, syncNiklSources } from './knowledge/nikl-agent.js';
 import { getExplanationProfile } from './core/context-graph.js';
 
-const help = `KR-humanizer 0.10.0
+const help = `KR-humanizer 0.10.1
 
 사용법:
   kr-humanizer analyze <file|-> [--json]
@@ -116,7 +116,17 @@ export async function main(args) {
     const action = paths[0] ?? 'status';
     const storePath = option(rest, '--store');
     if (action === 'status') return emit(await getNiklStatus({ storePath, vaultPath: option(rest, '--vault') }), option(rest, '--out'));
-    if (action === 'sync') return emit(await syncNiklSources({ storePath, raw: rest.includes('--raw'), acknowledgeLicense: rest.includes('--acknowledge-license') }), option(rest, '--out'));
+    if (action === 'sync') {
+      const outputPath = option(rest, '--out');
+      const result = await syncNiklSources({ storePath, raw: rest.includes('--raw'), acknowledgeLicense: rest.includes('--acknowledge-license') });
+      if (outputPath) return emit(result, outputPath);
+      const licenseCounts = result.records.reduce((counts, record) => {
+        const type = record.license?.type ?? 'unknown';
+        counts[type] = (counts[type] ?? 0) + 1;
+        return counts;
+      }, {});
+      return emit({ generatedAt: result.generatedAt, mode: result.mode, records: result.records.length, attachments: result.records.filter((record) => record.parentSourceId).length, totalBytes: result.totalBytes, licenseCounts, storePath: result.storePath });
+    }
     throw new Error(`지원하지 않는 nikl 작업: ${action}`);
   }
   if (command === 'plan') {

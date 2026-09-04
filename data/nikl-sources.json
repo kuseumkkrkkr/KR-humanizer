@@ -7,7 +7,13 @@
     "maxBytes": 2097152,
     "expectedContentType": "text/html",
     "requiredText": "저작권 정책",
-    "purpose": "이용 조건과 개별 공공누리 유형 우선 원칙 확인"
+    "purpose": "이용 조건과 개별 공공누리 유형 우선 원칙 확인",
+    "license": {
+      "type": "site-policy",
+      "label": "국립국어원 저작권 정책",
+      "evidenceUrl": "https://www.korean.go.kr/front/nuri/pageView.do?mkn=3&page_id=P000189",
+      "note": "개별 자료에 표시된 공공누리 유형이 우선합니다."
+    }
   },
   {
     "id": "nikl-korean-norms",
@@ -17,7 +23,13 @@
     "maxBytes": 8388608,
     "expectedContentType": "text/html",
     "requiredText": "한글 맞춤법",
-    "purpose": "맞춤법·표준어·문장 부호 조항 확인"
+    "purpose": "맞춤법·표준어·문장 부호 조항 확인",
+    "license": {
+      "type": "site-policy",
+      "label": "국립국어원 저작권 정책 적용",
+      "evidenceUrl": "https://www.korean.go.kr/front/nuri/pageView.do?mkn=3&page_id=P000189",
+      "note": "공식 규범 웹 본문입니다. 개별 표시가 있으면 그 조건이 우선합니다."
+    }
   },
   {
     "id": "nikl-korean-norms-downloads",
@@ -27,7 +39,18 @@
     "maxBytes": 4194304,
     "expectedContentType": "text/html",
     "requiredText": "한국어문규정집",
-    "purpose": "공식 규정집과 고시 자료의 배포 위치 확인"
+    "purpose": "공식 규정집과 고시 자료의 배포 위치 확인",
+    "license": {
+      "type": "site-policy",
+      "label": "국립국어원 저작권 정책 적용",
+      "evidenceUrl": "https://www.korean.go.kr/front/nuri/pageView.do?mkn=3&page_id=P000189",
+      "note": "첨부별 별도 표시가 있으면 그 조건이 우선하며 재배포 전에 다시 확인합니다."
+    },
+    "collection": {
+      "pages": 3,
+      "downloadPath": "/kornorms/common/download.do",
+      "maxAttachmentBytes": 33554432
+    }
   },
   {
     "id": "nikl-public-language-handbook",
@@ -37,6 +60,44 @@
     "maxBytes": 4194304,
     "expectedContentType": "text/html",
     "requiredText": "행정문서 표현 개선",
-    "purpose": "문장·단락 윤문 지침 확인"
+    "purpose": "문장·단락 윤문 지침 확인",
+    "license": {
+      "type": "KOGL-4",
+      "label": "공공누리 제4유형: 출처표시+상업적 이용금지+변경금지",
+      "evidenceUrl": "https://www.korean.go.kr/front/reportData/reportDataView.do?mn_id=207&report_seq=1122&searchOrder=",
+      "note": "로컬 참고만 허용하며 저장소 재배포와 변형 자료 생성을 금지합니다."
+    }
+  },
+  {
+    "id": "nikl-korean-norms-book-2018",
+    "title": "한국 어문 규정집(2018) PDF 전문",
+    "url": "https://www.korean.go.kr/common/download.do?file_path=reportData&c_file_name=1d66f826-df50-418d-a34f-2c38fa1fd45e_0.pdf&o_file_name=%ED%95%9C%EA%B5%AD%EC%96%B4%EB%AC%B8%EA%B7%9C%EC%A0%95%EC%A7%91.pdf",
+    "fileName": "korean-norms-book-2018.pdf",
+    "maxBytes": 33554432,
+    "expectedContentType": "application/",
+    "requiredText": "",
+    "purpose": "제1유형 공식 규정집 전문의 조항과 찾아보기 확인",
+    "license": {
+      "type": "KOGL-1",
+      "label": "공공누리 제1유형: 출처표시",
+      "evidenceUrl": "https://www.korean.go.kr/front/reportData/reportDataView.do?mn_id=207&report_seq=943",
+      "note": "출처를 표시해 이용합니다."
+    }
+  },
+  {
+    "id": "nikl-public-language-handbook-pdf",
+    "title": "행정문서 표현 개선 및 쉬운 공공언어 쓰기 지침 개발 PDF 전문",
+    "url": "https://www.korean.go.kr/common/download.do?file_path=reportData&c_file_name=4b822627-0996-4319-abe8-833b1248da4e.pdf&o_file_name=%ED%96%89%EC%A0%95%EB%AC%B8%EC%84%9C%20%ED%91%9C%ED%98%84%20%EA%B0%9C%EC%84%A0%20%EB%B0%8F%20%EC%89%AC%EC%9A%B4%20%EA%B3%B5%EA%B3%B5%EC%96%B8%EC%96%B4%20%EC%93%B0%EA%B8%B0%20%EC%A7%80%EC%B9%A8%20%EA%B0%9C%EB%B0%9C(2021).pdf",
+    "fileName": "public-language-handbook-2021.pdf",
+    "maxBytes": 33554432,
+    "expectedContentType": "application/",
+    "requiredText": "",
+    "purpose": "제4유형 공공언어 지침 전문의 문장·단락 기준 확인",
+    "license": {
+      "type": "KOGL-4",
+      "label": "공공누리 제4유형: 출처표시+상업적 이용금지+변경금지",
+      "evidenceUrl": "https://www.korean.go.kr/front/reportData/reportDataView.do?mn_id=207&report_seq=1122&searchOrder=",
+      "note": "로컬 참고만 허용하며 저장소 재배포와 변형 자료 생성을 금지합니다."
+    }
   }
 ]

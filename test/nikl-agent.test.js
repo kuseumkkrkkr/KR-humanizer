@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildKnowledgeAgentReport, getNiklStatus, syncNiklSources } from '../src/knowledge/nikl-agent.js';
+import { buildKnowledgeAgentReport, discoverKornormsAttachments, getNiklStatus, syncNiklSources } from '../src/knowledge/nikl-agent.js';
 
-const source = { id: 'nikl-test', title: '시험 자료', url: 'https://www.korean.go.kr/test', fileName: 'test.html', maxBytes: 1024, expectedContentType: 'text/html', requiredText: '공식 자료', purpose: '시험' };
+const license = { type: 'KOGL-1', label: '공공누리 제1유형', evidenceUrl: 'https://www.korean.go.kr/license', note: '출처표시' };
+const source = { id: 'nikl-test', title: '시험 자료', url: 'https://www.korean.go.kr/test', fileName: 'test.html', maxBytes: 1024, expectedContentType: 'text/html', requiredText: '공식 자료', purpose: '시험', license };
 const fixedNow = () => new Date('2026-09-05T00:00:00.000Z');
 
 test('NIKL agent stores provenance metadata but does not approve snapshots for prompts', async () => {
@@ -37,8 +38,36 @@ test('raw NIKL snapshots stay in a local cache after acknowledgement', async () 
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('NIKL collection parser creates bounded official attachment records with inherited license', () => {
+  const collection = { ...source, collection: { pages: 1, downloadPath: '/kornorms/common/download.do', maxAttachmentBytes: 2048 } };
+  const html = `<a href="javascript:fnCmdFileDownload('listForm','refr','abc_0','한국어문규정집.pdf','324');">받기</a>`;
+  const [attachment] = discoverKornormsAttachments(html, collection, 1);
+  assert.equal(attachment.originalFileName, '한국어문규정집.pdf');
+  assert.equal(attachment.license.type, 'KOGL-1');
+  assert.match(attachment.url, /^https:\/\/www\.korean\.go\.kr\/kornorms\/common\/download\.do\?/);
+  assert.equal(attachment.fileName, '324-abc_0.pdf');
+});
+
 test('NIKL agent rejects redirects outside official allowlisted hosts', async () => {
   await assert.rejects(() => syncNiklSources({ sources: [source], fetchImpl: async () => new Response('', { status: 302, headers: { location: 'https://example.com/data' } }) }), /허용되지 않은 이동 주소/);
+});
+
+test('NIKL agent retries a transient official-server failure', async () => {
+  let attempts = 0;
+  const root = await mkdtemp(join(tmpdir(), 'kr-humanizer-nikl-'));
+  try {
+    const result = await syncNiklSources({
+      storePath: root,
+      sources: [source],
+      fetchImpl: async () => {
+        attempts += 1;
+        if (attempts === 1) throw new TypeError('temporary connection reset');
+        return new Response('공식 자료', { headers: { 'content-type': 'text/html' } });
+      }
+    });
+    assert.equal(attempts, 2);
+    assert.equal(result.records.length, 1);
+  } finally { await rm(root, { recursive: true, force: true }); }
 });
 
 test('NIKL agent rejects HTTP 200 soft-error pages and mislabeled PDFs', async () => {

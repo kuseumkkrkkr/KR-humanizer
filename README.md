@@ -321,16 +321,16 @@ kr-humanizer rewrite draft.txt --engine codex --vault D:\\my-writing-vault --out
 # 승인 카드와 로컬 자료 상태
 kr-humanizer nikl status
 
-# 등록된 공식 자료의 출처·해시·갱신 시각만 확인
+# 등록된 공식 자료와 어문 규범 자료실 첨부의 출처·해시·갱신 시각만 확인
 kr-humanizer nikl sync
 
 # 전문 원본도 로컬 캐시에 보관
 kr-humanizer nikl sync --raw --acknowledge-license
 ```
 
-전문은 `.kr-humanizer/nikl/raw/`에만 저장되어 Git과 npm 패키지에서 제외됩니다. `manifest.json`에는 원본 URL, 최종 URL, 조회 시각, 크기, SHA-256과 저작권 정책 주소가 기록됩니다. 수집된 전문은 자동으로 윤문 프롬프트에 들어가지 않습니다. 조항·적용 조건·예외를 검토해 `obsidian-vault/규범/` 카드로 승인한 내용만 검색됩니다.
+전문은 `.kr-humanizer/nikl/raw/`에만 저장되어 Git과 npm 패키지에서 제외됩니다. 현재 검증 기준으로 어문 규범 자료실 3쪽의 첨부 29건을 포함한 35건, 약 23.3 MB가 저장됩니다. PDF/HWP 시그니처와 파일별 크기를 검사하며 `manifest.json`에는 원본 URL, 최종 URL, 원래 파일명, 상위 자료실, 조회 시각, 크기, SHA-256, 공공누리 유형과 근거 URL이 기록됩니다. 수집된 전문은 자동으로 윤문 프롬프트에 들어가지 않습니다. 조항·적용 조건·예외를 검토해 `obsidian-vault/규범/` 카드로 승인한 내용만 검색됩니다.
 
-수집 대상은 코드에 등록한 국립국어원 HTTPS 자료로 제한합니다. 사이트 전체 링크를 추적하지 않으며 개별 자료에 별도 공공누리 유형이 표시되어 있으면 그 조건이 [국립국어원 저작권 정책](https://www.korean.go.kr/front/nuri/pageView.do?mkn=3&page_id=P000189)보다 구체적인 조건으로 우선합니다. 확인 화면은 [저작권 정책 캡처](docs/screenshots/nikl-copyright-policy.png)에 남겼습니다. 한국어기초사전은 [공식 오픈 API](https://krdict.korean.go.kr/kor/openApi/openApiInfo)와 사용자가 발급받은 키가 필요한 별도 데이터원이며, 키 없이 크롤링으로 우회하지 않습니다.
+수집 대상은 코드에 등록한 국립국어원 HTTPS 자료, 어문 규범 자료실 3쪽과 그 첨부로 제한합니다. 사이트 전체 링크는 추적하지 않습니다. 2018 한국 어문 규정집 PDF는 [상세 페이지에 표시된 공공누리 제1유형](https://www.korean.go.kr/front/reportData/reportDataView.do?mn_id=207&report_seq=943), 공공언어 지침 PDF는 [제4유형](https://www.korean.go.kr/front/reportData/reportDataView.do?mn_id=207&report_seq=1122&searchOrder=)으로 기록합니다. 제4유형 파일은 로컬 참고만 허용하며 재배포·변형하지 않습니다. 자료실 첨부처럼 개별 유형이 표시되지 않은 파일은 [국립국어원 저작권 정책](https://www.korean.go.kr/front/nuri/pageView.do?mkn=3&page_id=P000189)을 기록하되, 개별 표시 우선 및 재배포 전 재확인 상태로 둡니다. 실제 표시 화면은 [제1유형 캡처](docs/screenshots/nikl-kogl-1.png), [제4유형 캡처](docs/screenshots/nikl-kogl-4.png), [저작권 정책 캡처](docs/screenshots/nikl-copyright-policy.png)에 남겼습니다. 한국어기초사전은 [공식 오픈 API](https://krdict.korean.go.kr/kor/openApi/openApiInfo)와 사용자가 발급받은 키가 필요한 별도 데이터원이며, 키 없이 크롤링으로 우회하지 않습니다.
 
 ### 엔진별 실행 차이
 

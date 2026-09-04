@@ -1,6 +1,6 @@
 {
   "name": "kr-humanizer",
-  "version": "0.10.0+codex.20260904183334",
+  "version": "0.10.1+codex.20260904184534",
   "description": "Source-grounded Korean proofreading with a controlled NIKL reference agent",
   "author": {
     "name": "kuseumkkrkkr"
@@ -23,7 +23,7 @@
       "Plan-first drafting",
       "explanation depth",
       "Obsidian knowledge retrieval",
-      "NIKL source refresh agent",
+      "NIKL full-text source agent",
       "local GUI",
       "Codex Spark Tab completion"
     ],
