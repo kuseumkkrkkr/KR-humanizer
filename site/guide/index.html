@@ -25,7 +25,7 @@
 codex plugin add kr-humanizer@kr-humanizer</div><p>새 스레드에서 글쓰기를 요청하면 공용 Skill이 Plan 노드 → 그래프 편집 → 초안·진단 → Diff 확인 순서를 안내합니다. 기존 글은 진단부터 시작할 수 있습니다.</p></div></section>
     <section class="content-section"><h2>Claude Code 플러그인</h2><div><div class="code-block">claude plugin marketplace add kuseumkkrkkr/KR-humanizer
 claude plugin install kr-humanizer@kr-humanizer</div><p>CLI에서 <code>--engine claude</code>를 선택하면 plan 권한과 비영속 세션으로 Claude Code를 실행합니다.</p></div></section>
-    <section class="content-section"><h2>윤문 방식</h2><div><ul class="card-list"><li><strong>fluent</strong>최소한의 문법·자연스러움 수정</li><li><strong>balanced</strong>명료성·흐름·문장 길이 균형 편집</li><li><strong>strict</strong>문체 혼용·반복·모호성까지 엄격 검토</li><li><strong>concise</strong>주장과 조건을 보존한 간결화</li></ul><p>높임 정도는 0~100의 5단계, 설명률은 최저·중간·최대 중에서 선택합니다. 최대도 제공되지 않은 사실을 추가하지 않습니다.</p></div></section>
+    <section class="content-section"><h2>윤문 방식</h2><div><ul class="card-list"><li><strong>weak · 약함</strong>문장 구조를 유지하고 어투·종결만 변경</li><li><strong>medium · 중간</strong>그래프 기반 논리와 AI식 재설명·반복·과잉 설명 점검</li><li><strong>strict · 엄격</strong>중간 점검에 국립국어원 규범과 상세 문법·호응·중의성 검토 추가</li></ul><p>기본값은 medium입니다. 높임 정도는 0~100의 5단계, 설명률은 최저·중간·최대 중에서 선택합니다. 어느 설정도 제공되지 않은 사실을 추가하지 않습니다.</p></div></section>
   </main>
   <footer><div class="brand footer-brand"><img src="../assets/mark.svg" width="30" height="30" alt=""><span>KR-humanizer</span></div><p>뜻은 지키고, 읽는 부담만 덜어냅니다.</p><div><a href="../">홈</a><a href="../knowledge/">지식 저장소</a><a href="https://github.com/kuseumkkrkkr/KR-humanizer">GitHub</a></div></footer>
 </body>

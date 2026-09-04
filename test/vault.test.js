@@ -43,7 +43,7 @@ test('vault search retrieves applicable Korean norms in the default top eight de
 });
 
 test('knowledge context is bounded and carries provenance', async () => {
-  const matches = await searchVault({ text: '보고서를 작성합니다.', editMode: 'balanced', honorificLevel: 100, limit: 12 });
+  const matches = await searchVault({ text: '보고서를 작성합니다.', editMode: 'medium', honorificLevel: 100, limit: 12 });
   const context = buildKnowledgeContext(matches);
   assert.ok(context.length <= 6_000);
   assert.match(context, /https:\/\//);
@@ -51,7 +51,7 @@ test('knowledge context is bounded and carries provenance', async () => {
 });
 
 test('unrelated text does not activate general mode terms', async () => {
-  const matches = await searchVault({ text: 'xyz', editMode: 'balanced' });
+  const matches = await searchVault({ text: 'xyz', editMode: 'medium' });
   assert.deepEqual(matches.map((match) => match.id), ['skill-text-humanize-korean-protected-scope']);
 });
 

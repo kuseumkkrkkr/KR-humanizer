@@ -37,7 +37,7 @@ kr-humanizer knowledge draft.txt --mode strict --honorific 75
 kr-humanizer nikl status
 kr-humanizer plan brief.txt --explanation minimal --out graph.json
 kr-humanizer draft brief.txt --graph graph.json --out draft.json
-kr-humanizer rewrite draft.txt --engine codex --mode balanced --honorific 75 --explanation minimal --graph graph.json --out proposal.json
+kr-humanizer rewrite draft.txt --engine codex --mode medium --honorific 75 --explanation minimal --graph graph.json --out proposal.json
 kr-humanizer cv --samples 3 --folds 3
 kr-humanizer gui
 ```
@@ -260,7 +260,7 @@ sequenceDiagram
 
 1. 사실·고유명사·수치·주장·관점을 바꾸지 말라는 보존 조건
 2. 사용자가 고른 목표 문체
-3. `fluent`, `balanced`, `strict`, `concise` 중에서 선택한 윤문 방식
+3. `weak`(약함), `medium`(중간), `strict`(엄격) 중에서 선택한 윤문 방식과 모드별 금지선
 4. 0~100의 높임 정도와 이에 대응하는 상대 높임 등급
 5. `minimal`, `balanced`, `maximal` 중 선택한 설명률
 6. 사용자가 편집하고 포함시킨 활성 맥락 노드
@@ -442,12 +442,34 @@ Codex와 Claude용 manifest는 모두 같은 `humanize-korean-writing` Skill을 
 
 | KR-humanizer 기능 | 참고한 공개 원리 | 적용 경계 |
 |---|---|---|
-| `fluent` 최소 수정 | [QuillBot Fluency는 문법과 자연스러움에 집중하고 변경과 동의어 치환을 줄임](https://help.quillbot.com/hc/en-us/articles/35854318883351-What-are-modes-in-the-QuillBot-Paraphraser-and-how-do-I-use-them) | 의미 없는 단어 교체 금지 |
+| `weak` 약함 | [QuillBot Fluency는 변경과 동의어 치환을 줄이는 방식을 제공](https://help.quillbot.com/hc/en-us/articles/35854318883351-What-are-modes-in-the-QuillBot-Paraphraser-and-how-do-I-use-them) | 문장 수·순서·문단을 유지하고 어투·종결만 변경 |
 | 독자 관점 말투 점검 | [Grammarly는 글이 더 친근하고 긍정적이며 자신감 있게 들리도록 문장별 말투 제안을 제공](https://support.grammarly.com/hc/en-us/articles/10674801783309-How-do-Grammarly-s-tone-suggestions-work) | 성격 판단이 아닌 독자가 받는 인상만 검토 |
 | 격식·간결 조절 | [Wordtune은 Formal/Casual과 Shorten/Expand 제어를 제공](https://www.wordtune.com/rewrite) | 사실 추가 위험이 있는 Expand는 제외 |
 | `strict` 엄격 검토 | [LanguageTool Picky Mode는 격식 문맥에서 더 많은 문법·문체 제안을 표시](https://languagetool.org/insights/post/picky-mode/) | 자동 반영하지 않고 문장별 수락 유지 |
 
-윤문 방식은 `fluent`(최소 수정), `balanced`(균형 편집), `strict`(문체 혼용과 모호성까지 검토), `concise`(근거를 보존한 간결화) 네 가지입니다. 의미가 달라질 수 있는 창작 모드와 근거 없는 내용 확장은 넣지 않았습니다.
+윤문 방식은 세 가지입니다.
+
+| 모드 | 실제 편집 범위 | 고치지 않는 것 |
+|---|---|---|
+| `weak` · 약함 | 어투와 종결 표현만 변경 | 문장 수·순서·문단, 오탈자, 문법, 논리, 반복 |
+| `medium` · 중간 | 약함 + 그래프 기반 논리 흐름, AI식 상투 표현, 재설명, 반복, 과잉 설명 | 별도 문법 추론과 규범 교정 |
+| `strict` · 엄격 | 중간 + 국립국어원 규범, 맞춤법·띄어쓰기·문장 부호, 조사·어미, 호응, 수식 범위와 중의성 | 근거가 불확실한 교정 |
+
+기본값은 `medium`입니다. 예전 `fluent`와 `balanced` 인자는 각각 `weak`와 `medium`의 호환 별칭으로만 동작하며, `concise`는 독립 모드에서 제거했습니다. 모든 모드는 사실·수치·주장 보존과 문장별 수락 절차를 공유합니다.
+
+```mermaid
+flowchart LR
+  Input[원문] --> Weak[약함: 어투와 종결만]
+  Input --> Graph[의미 흐름 그래프]
+  Graph --> Medium[중간: 논리와 AI식 반복]
+  Medium --> Norms[국립국어원 규범 카드]
+  Norms --> Strict[엄격: 문법·호응·중의성]
+  Weak --> Diff[문장별 Diff와 수락]
+  Medium --> Diff
+  Strict --> Diff
+```
+
+동일 원문을 세 번 실제 Codex EXEC로 실행한 결과와 원문·Diff JSON은 [`experiments/mode-comparison/2026-09-05/`](experiments/mode-comparison/2026-09-05/)에 있습니다. 이 사례에서는 약함이 6문장을 유지했고, 중간은 재설명을 합쳐 4문장으로 줄이면서 `몇일`을 보존했으며, 엄격만 `며칠`로 교정하고 호응 근거를 설명했습니다.
 
 ## 메모리 구조
 

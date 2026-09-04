@@ -55,10 +55,11 @@
         <button id="rewrite" class="primary">윤문 제안 만들기</button>
       </div>
       <details class="writing-settings">
-        <summary><span>문체 설정</span><span id="settings-summary">균형 편집 · 원문 유지 · 설명 중간</span></summary>
+        <summary><span>문체 설정</span><span id="settings-summary">중간 · 원문 유지 · 설명 중간</span></summary>
         <div class="settings-grid">
           <label class="mode-control" for="edit-mode"><span>윤문 방식</span>
-          <select id="edit-mode"><option value="fluent">최소 수정</option><option value="balanced" selected>균형 편집</option><option value="strict">엄격 검토</option><option value="concise">간결화</option></select>
+          <select id="edit-mode"><option value="weak">약함 · 어투만</option><option value="medium" selected>중간 · 논리와 반복</option><option value="strict">엄격 · 규범과 문법</option></select>
+          <small id="edit-mode-help">중간은 맥락 그래프와 AI식 재설명·반복까지 점검합니다.</small>
           </label>
           <div class="honorific-control">
           <div class="honorific-head"><label for="honorific">말투 높임 정도</label><output id="honorific-value" for="honorific">중립 · 원문 유지</output></div>

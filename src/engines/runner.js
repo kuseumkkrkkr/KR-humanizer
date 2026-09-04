@@ -8,6 +8,7 @@ import { buildAutocompletePrompt, buildDraftPrompt, buildPlanPrompt, buildRewrit
 import { activeContextGraph, normalizeContextGraph } from '../core/context-graph.js';
 import { searchVault } from '../knowledge/vault.js';
 import { buildKnowledgeAgentReport } from '../knowledge/nikl-agent.js';
+import { normalizeEditMode } from '../core/style.js';
 
 const rewriteSchemaPath = fileURLToPath(new URL('../../schemas/rewrite.schema.json', import.meta.url));
 const planSchemaPath = fileURLToPath(new URL('../../schemas/plan.schema.json', import.meta.url));
@@ -53,6 +54,13 @@ function assertResult(value) {
   return value;
 }
 
+export function knowledgeForEditMode(matches, editMode) {
+  const mode = normalizeEditMode(editMode);
+  if (mode === 'strict') return matches;
+  if (mode === 'medium') return matches.filter((item) => ['writing-guidance', 'skill-observation'].includes(item.kind));
+  return matches.filter((item) => item.id === 'nikl-writing-ending-genre-consistency');
+}
+
 function assertPlan(value) {
   if (!value || !Array.isArray(value.nodes) || !Array.isArray(value.edges)) throw new Error('엔진이 예상한 계획 JSON을 반환하지 않았습니다.');
   const graph = normalizeContextGraph(value);
@@ -89,24 +97,26 @@ export async function planWithEngine({ engine = 'codex', brief, tone, explanatio
   return structuredWithEngine({ engine, prompt: buildPlanPrompt({ brief, tone, explanationLevel }), schemaPath: planSchemaPath, validate: assertPlan, timeoutMs, isolated });
 }
 
-export async function draftWithEngine({ engine = 'codex', brief, contextGraph, tone, editMode = 'balanced', honorificLevel = 50, explanationLevel = 'balanced', memories = [], vaultPath, timeoutMs, isolated = false }) {
+export async function draftWithEngine({ engine = 'codex', brief, contextGraph, tone, editMode = 'medium', honorificLevel = 50, explanationLevel = 'balanced', memories = [], vaultPath, timeoutMs, isolated = false }) {
   if (!String(brief ?? '').trim()) throw new Error('초안 작성에는 글쓰기 프롬프트가 필요합니다.');
   const graph = activeContextGraph(contextGraph);
   if (!graph.nodes.length) throw new Error('초안에 포함할 맥락 노드가 필요합니다.');
-  const knowledge = await searchVault({ text: brief, editMode, honorificLevel, vaultPath });
-  const prompt = buildDraftPrompt({ brief, contextGraph: graph, tone, editMode, honorificLevel, explanationLevel, memories, knowledge });
+  const mode = normalizeEditMode(editMode);
+  const knowledge = knowledgeForEditMode(await searchVault({ text: brief, editMode: mode, honorificLevel, vaultPath }), mode);
+  const prompt = buildDraftPrompt({ brief, contextGraph: graph, tone, editMode: mode, honorificLevel, explanationLevel, memories, knowledge });
   const result = await structuredWithEngine({ engine, prompt, schemaPath: rewriteSchemaPath, validate: assertResult, timeoutMs, isolated });
   return { ...result, knowledge, knowledgeAgent: buildKnowledgeAgentReport(knowledge) };
 }
 
-export async function rewriteWithEngine({ engine = 'codex', text, brief = '', contextGraph, tone, editMode = 'balanced', honorificLevel = 50, explanationLevel = 'balanced', memories = [], vaultPath, timeoutMs, isolated = false }) {
-  const knowledge = await searchVault({ text, editMode, honorificLevel, vaultPath });
-  const prompt = buildRewritePrompt({ text, brief, contextGraph: activeContextGraph(contextGraph), tone, editMode, honorificLevel, explanationLevel, memories, knowledge });
+export async function rewriteWithEngine({ engine = 'codex', text, brief = '', contextGraph, tone, editMode = 'medium', honorificLevel = 50, explanationLevel = 'balanced', memories = [], vaultPath, timeoutMs, isolated = false }) {
+  const mode = normalizeEditMode(editMode);
+  const knowledge = knowledgeForEditMode(await searchVault({ text, editMode: mode, honorificLevel, vaultPath }), mode);
+  const prompt = buildRewritePrompt({ text, brief, contextGraph: activeContextGraph(contextGraph), tone, editMode: mode, honorificLevel, explanationLevel, memories, knowledge });
   const result = await structuredWithEngine({ engine, prompt, schemaPath: rewriteSchemaPath, validate: assertResult, timeoutMs, isolated });
   return { ...result, knowledge, knowledgeAgent: buildKnowledgeAgentReport(knowledge) };
 }
 
-export async function autocompleteWithCodex({ text, contextGraph, tone, editMode = 'balanced', honorificLevel = 50, explanationLevel = 'balanced', timeoutMs = 60_000 }) {
+export async function autocompleteWithCodex({ text, contextGraph, tone, editMode = 'medium', honorificLevel = 50, explanationLevel = 'balanced', timeoutMs = 60_000 }) {
   const value = String(text ?? '').trim();
   if (value.length < 20) throw Object.assign(new Error('자동완성에는 20자 이상의 문맥이 필요합니다.'), { status: 400 });
   if (value.length > 200_000) throw Object.assign(new Error('자동완성 문맥은 200,000자를 넘을 수 없습니다.'), { status: 400 });

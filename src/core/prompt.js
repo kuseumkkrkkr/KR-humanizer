@@ -1,4 +1,4 @@
-import { getEditModeInstruction, getHonorificProfile } from './style.js';
+import { getEditModeInstruction, getEditModeProfile, getHonorificProfile, normalizeEditMode } from './style.js';
 import { buildKnowledgeContext } from '../knowledge/vault.js';
 import { formatContextGraph, getExplanationProfile } from './context-graph.js';
 
@@ -6,12 +6,13 @@ function graphBlock(contextGraph) {
   return contextGraph?.nodes?.length ? formatContextGraph(contextGraph) : '- 지정된 노드 없음';
 }
 
-export function buildAutocompletePrompt({ text, contextGraph, tone = '편안하고 자연스러운 한국어', editMode = 'balanced', honorificLevel = 50, explanationLevel = 'balanced' }) {
+export function buildAutocompletePrompt({ text, contextGraph, tone = '편안하고 자연스러운 한국어', editMode = 'medium', honorificLevel = 50, explanationLevel = 'balanced' }) {
+  const mode = normalizeEditMode(editMode);
   const honorific = getHonorificProfile(honorificLevel);
   const explanation = getExplanationProfile(explanationLevel);
   return `당신은 한국어 문장 자동완성 편집기입니다. 사용자가 쓰던 글 바로 뒤에 올 문장 하나만 JSON으로 제안하세요.
 목표 문체: ${tone}
-윤문 방식: ${editMode} — ${getEditModeInstruction(editMode)}
+윤문 방식: ${mode}(${getEditModeProfile(mode).label}) — ${getEditModeInstruction(mode)}
 말투 높임 정도: ${honorific.level}/100 — ${honorific.label}
 설명률: ${explanation.label} — ${explanation.instruction}
 규칙:
@@ -49,14 +50,15 @@ ${brief}
 </writing-brief>`;
 }
 
-export function buildDraftPrompt({ brief, contextGraph, tone = '편안하고 자연스러운 한국어', editMode = 'balanced', honorificLevel = 50, explanationLevel = 'balanced', memories = [], knowledge = [] }) {
+export function buildDraftPrompt({ brief, contextGraph, tone = '편안하고 자연스러운 한국어', editMode = 'medium', honorificLevel = 50, explanationLevel = 'balanced', memories = [], knowledge = [] }) {
+  const mode = normalizeEditMode(editMode);
   const explanation = getExplanationProfile(explanationLevel);
   const honorific = getHonorificProfile(honorificLevel);
-  const modeInstruction = getEditModeInstruction(editMode);
+  const modeInstruction = getEditModeInstruction(mode);
   const memoryBlock = memories.length ? memories.map((item) => `- ${item}`).join('\n') : '- 없음';
   return `당신은 한국어 초안 작성자입니다. 사용자가 확정한 활성 노드만 사용해 글을 쓰세요.
 목표 문체: ${tone}
-윤문 방식: ${editMode} — ${modeInstruction}
+윤문 방식: ${mode}(${getEditModeProfile(mode).label}) — ${modeInstruction}
 말투 높임 정도: ${honorific.level}/100 — ${honorific.label}
 설명률: ${explanation.label} — ${explanation.instruction}
 규칙:
@@ -80,23 +82,45 @@ ${brief}
 </writing-brief>`;
 }
 
-export function buildRewritePrompt({ text, brief = '', contextGraph, tone = '편안하고 자연스러운 한국어', editMode = 'balanced', honorificLevel = 50, explanationLevel = 'balanced', memories = [], knowledge = [] }) {
+function modeRules(mode) {
+  if (mode === 'weak') return `모드 경계:
+- 어투와 종결 표현 외에는 손대지 않습니다.
+- 문장 수, 문장 순서, 문단 수를 원문과 정확히 같게 유지합니다.
+- 오탈자, 띄어쓰기, 문법, 호응, 논리, 반복을 발견해도 rewrittenText에서는 고치지 않습니다.
+- summary에는 "어투만 조정"이라고 밝힙니다.`;
+  if (mode === 'medium') return `모드 경계:
+- flow와 edges로 원문의 의미 흐름을 먼저 점검한 뒤 어투를 다듬습니다.
+- "이는 단순히", "다시 말해", "~라고 할 수 있습니다" 같은 상투적 전개, 재설명, 반복, 과잉 설명만 제거하거나 합칩니다.
+- 필요한 경우 문장 순서와 문단 구조를 바꿀 수 있으나 새로운 논거를 넣지 않습니다.
+- 오탈자, 띄어쓰기, 조사·어미, 호응이 명백해 보여도 원문의 표기를 그대로 둡니다. 이 모드에서는 별도 문법 판단으로 고치지 않습니다.
+- summary에는 제거한 반복·재설명 또는 논리 변경을 구체적으로 적습니다.`;
+  return `모드 경계:
+- 중간 모드의 그래프 기반 논리·반복·AI 상투 표현 점검을 모두 수행합니다.
+- 검색된 국립국어원 카드의 적용 조건과 경계를 확인해 맞춤법, 띄어쓰기, 문장 부호, 조사·어미를 검토합니다.
+- 각 문장의 주어-서술어 호응, 수식 범위, 지시 대상, 중의성을 문맥에 따라 상세 추론합니다.
+- 확실한 규범 또는 문맥 근거가 없는 교정은 하지 않습니다.
+- summary에는 규범 교정과 문법 추론의 근거를 항목별로 적습니다.`;
+}
+
+export function buildRewritePrompt({ text, brief = '', contextGraph, tone = '편안하고 자연스러운 한국어', editMode = 'medium', honorificLevel = 50, explanationLevel = 'balanced', memories = [], knowledge = [] }) {
+  const mode = normalizeEditMode(editMode);
   const memoryBlock = memories.length ? memories.map((item) => `- ${item}`).join('\n') : '- 없음';
   const honorific = getHonorificProfile(honorificLevel);
-  const modeInstruction = getEditModeInstruction(editMode);
+  const modeInstruction = getEditModeInstruction(mode);
   const explanation = getExplanationProfile(explanationLevel);
   const knowledgeBlock = buildKnowledgeContext(knowledge);
   return `당신은 한국어 윤문 편집자입니다. 아래 원문의 사실, 고유명사, 수치, 주장, 글쓴이의 관점을 바꾸지 마세요.
 목표 문체: ${tone}
-윤문 방식: ${editMode} — ${modeInstruction}
+윤문 방식: ${mode}(${getEditModeProfile(mode).label}) — ${modeInstruction}
 말투 높임 정도: ${honorific.level}/100 — ${honorific.label}
 상대 높임 지침: ${honorific.instruction}
 설명률: ${explanation.label} — ${explanation.instruction}
-규칙:
+${modeRules(mode)}
+공통 규칙(위 모드 경계가 충돌하면 모드 경계를 우선합니다):
 1. AI 판별기 회피나 출처 위장을 시도하지 않습니다.
-2. 과장된 접속어, 추상적 평가, 상투 표현을 줄이고 구체적인 동사와 짧은 문장을 우선합니다.
+2. 중간·엄격 모드에서만 과장된 접속어, 추상적 평가, 상투 표현을 줄이고 구체적인 동사와 짧은 문장을 우선합니다.
 3. 확실하지 않은 맞춤법이나 사실은 임의로 고치지 않습니다.
-4. 문단 구조를 유지하되 흐름상 꼭 필요할 때만 어순을 바꿉니다.
+4. 중간·엄격 모드에서만 흐름상 꼭 필요할 때 어순이나 문단 구조를 바꿉니다.
 5. rewrittenText에는 윤문 결과만 넣습니다.
 6. flow에는 의미 흐름을 문단 단위로 요약하고 edges로 관계를 표시합니다.
 7. 높임 정도는 청자를 향한 종결 어미와 공손성에만 적용합니다. 인물에 대한 주체·객체 높임이나 직함은 원문의 관계를 보존합니다.

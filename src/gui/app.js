@@ -34,10 +34,16 @@ function updateHonorific() {
   updateSettingsSummary();
 }
 function updateSettingsSummary() {
-  const mode = $('#edit-mode')?.selectedOptions[0]?.textContent ?? '균형 편집';
+  const mode = $('#edit-mode')?.selectedOptions[0]?.textContent ?? '중간 · 논리와 반복';
+  const modeHelp = {
+    weak: '문장 수와 순서를 유지하고 어투·종결 표현만 바꿉니다.',
+    medium: '맥락 그래프와 AI식 상투 표현·재설명·반복까지 점검합니다.',
+    strict: '중간 점검에 국립국어원 규범과 문법·호응 추론을 더합니다.'
+  }[$('#edit-mode')?.value];
   const speech = honorificLabels[Number($('#honorific')?.value ?? 50)].replace(/^중립 · /, '');
   const explanation = document.querySelector('input[name="explanation"]:checked')?.nextElementSibling?.textContent ?? '중간';
   if ($('#settings-summary')) $('#settings-summary').textContent = `${mode} · ${speech} · 설명 ${explanation}`;
+  if ($('#edit-mode-help')) $('#edit-mode-help').textContent = modeHelp;
 }
 function notify(message, error = false) {
   status.textContent = message;

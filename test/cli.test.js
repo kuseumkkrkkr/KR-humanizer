@@ -46,6 +46,12 @@ test('CLI rejects an unsupported editing mode before launching an engine', async
   assert.match(result.stderr, /지원하지 않는 윤문 방식/);
 });
 
+test('CLI rejects removed concise mode', async () => {
+  const result = await invoke(['rewrite', '-', '--mode', 'concise'], '문장을 검토한다.');
+  assert.equal(result.code, 1);
+  assert.match(result.stderr, /지원하지 않는 윤문 방식/);
+});
+
 test('CLI rejects an unsupported explanation level before launching an engine', async () => {
   const result = await invoke(['rewrite', '-', '--explanation', 'verbose'], '문장을 검토한다.');
   assert.notEqual(result.code, 0);

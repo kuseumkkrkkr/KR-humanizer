@@ -7,11 +7,21 @@ const HONORIFIC_PROFILES = [
 ];
 
 export const EDIT_MODES = Object.freeze({
-  fluent: '맞춤법과 어색한 호응을 중심으로 고치고, 불필요한 동의어 치환은 피하는 최소 수정 모드입니다.',
-  balanced: '자연스러운 흐름, 명료성, 문장 길이를 균형 있게 다듬되 의미 없는 변형은 피합니다.',
-  strict: '문법과 호응뿐 아니라 문체 혼용, 과한 구어체, 반복, 모호한 지시어까지 엄격하게 검토합니다.',
-  concise: '중복과 군더더기를 줄여 더 짧게 쓰되 주장, 근거, 조건, 수치와 뉘앙스는 삭제하지 않습니다.'
+  weak: Object.freeze({
+    label: '약함',
+    instruction: '뜻, 정보, 문장 수, 문장 순서와 문단 구조를 그대로 두고 어투와 종결 표현만 자연스럽게 바꿉니다. 맞춤법·문법·논리·중복은 이 모드에서 교정하지 않습니다.'
+  }),
+  medium: Object.freeze({
+    label: '중간',
+    instruction: '어투를 다듬고 의미 흐름 그래프로 논리 연결을 점검합니다. AI 특유의 상투적 전개, 같은 뜻의 재설명, 반복과 과잉 설명만 줄이되 맞춤법·문법을 상세 추론해 고치지는 않습니다.'
+  }),
+  strict: Object.freeze({
+    label: '엄격',
+    instruction: '중간 모드의 점검에 국립국어원 어문 규범을 더합니다. 맞춤법, 띄어쓰기, 문장 부호, 조사·어미, 주어와 서술어의 호응, 수식 범위와 중의성을 문맥과 검색 근거로 상세히 검토합니다.'
+  })
 });
+
+const LEGACY_EDIT_MODE_ALIASES = Object.freeze({ fluent: 'weak', balanced: 'medium' });
 
 export function normalizeHonorificLevel(value = 50) {
   const number = Number(value);
@@ -25,7 +35,16 @@ export function getHonorificProfile(value = 50) {
   return { ...profile, level };
 }
 
-export function getEditModeInstruction(mode = 'balanced') {
-  if (!Object.hasOwn(EDIT_MODES, mode)) throw new Error(`지원하지 않는 윤문 방식: ${mode}`);
-  return EDIT_MODES[mode];
+export function normalizeEditMode(mode = 'medium') {
+  const normalized = LEGACY_EDIT_MODE_ALIASES[mode] ?? mode;
+  if (!Object.hasOwn(EDIT_MODES, normalized)) throw new Error(`지원하지 않는 윤문 방식: ${mode}`);
+  return normalized;
+}
+
+export function getEditModeProfile(mode = 'medium') {
+  return EDIT_MODES[normalizeEditMode(mode)];
+}
+
+export function getEditModeInstruction(mode = 'medium') {
+  return getEditModeProfile(mode).instruction;
 }

@@ -6,21 +6,21 @@ import { autocompleteWithCodex, draftWithEngine, planWithEngine, rewriteWithEngi
 import { createMemoryStore } from './memory/index.js';
 import { startGui } from './gui/server.js';
 import { runCv } from './benchmark/run.js';
-import { getEditModeInstruction, normalizeHonorificLevel } from './core/style.js';
+import { normalizeEditMode, normalizeHonorificLevel } from './core/style.js';
 import { searchVault } from './knowledge/vault.js';
 import { getNiklStatus, syncNiklSources } from './knowledge/nikl-agent.js';
 import { getExplanationProfile } from './core/context-graph.js';
 
-const help = `KR-humanizer 0.10.1
+const help = `KR-humanizer 0.11.0
 
 사용법:
   kr-humanizer analyze <file|-> [--json]
   kr-humanizer sanitize <file|-> [--out <file>]
-  kr-humanizer complete <file|-> [--tone <문체>] [--mode fluent|balanced|strict|concise] [--honorific 0-100] [--explanation minimal|balanced|maximal] [--graph <graph.json>] [--out <file>]
+  kr-humanizer complete <file|-> [--tone <문체>] [--mode weak|medium|strict] [--honorific 0-100] [--explanation minimal|balanced|maximal] [--graph <graph.json>] [--out <file>]
   kr-humanizer plan <prompt|-> [--engine codex|claude] [--explanation minimal|balanced|maximal] [--out <file>]
   kr-humanizer draft <prompt|-> --graph <graph.json> [--engine codex|claude] [--explanation minimal|balanced|maximal] [--out <file>]
-  kr-humanizer rewrite <file|-> [--engine codex|claude] [--tone <문체>] [--mode fluent|balanced|strict|concise] [--honorific 0-100] [--explanation minimal|balanced|maximal] [--graph <graph.json>] [--out <file>]
-  kr-humanizer knowledge <file|-> [--mode balanced] [--honorific 50] [--vault <Obsidian 폴더>] [--limit 8]
+  kr-humanizer rewrite <file|-> [--engine codex|claude] [--tone <문체>] [--mode weak|medium|strict] [--honorific 0-100] [--explanation minimal|balanced|maximal] [--graph <graph.json>] [--out <file>]
+  kr-humanizer knowledge <file|-> [--mode medium] [--honorific 50] [--vault <Obsidian 폴더>] [--limit 8]
   kr-humanizer nikl status [--store <폴더>] [--vault <Obsidian 폴더>]
   kr-humanizer nikl sync [--store <폴더>] [--raw --acknowledge-license]
   kr-humanizer review <original> <rewritten> [--out <file>]
@@ -86,8 +86,7 @@ export async function main(args) {
   }
   if (command === 'complete') {
     const text = await readInput(paths[0]);
-    const editMode = option(rest, '--mode', 'balanced');
-    getEditModeInstruction(editMode);
+    const editMode = normalizeEditMode(option(rest, '--mode', 'medium'));
     const honorificLevel = normalizeHonorificLevel(option(rest, '--honorific', '50'));
     const explanationLevel = option(rest, '--explanation', 'balanced');
     getExplanationProfile(explanationLevel);
@@ -106,8 +105,7 @@ export async function main(args) {
   }
   if (command === 'knowledge') {
     const text = await readInput(paths[0]);
-    const editMode = option(rest, '--mode', 'balanced');
-    getEditModeInstruction(editMode);
+    const editMode = normalizeEditMode(option(rest, '--mode', 'medium'));
     const honorificLevel = normalizeHonorificLevel(option(rest, '--honorific', '50'));
     const matches = await searchVault({ text, editMode, honorificLevel, vaultPath: option(rest, '--vault'), limit: option(rest, '--limit', '8') });
     return emit(matches, option(rest, '--out'));
@@ -141,8 +139,7 @@ export async function main(args) {
     getExplanationProfile(explanationLevel);
     const contextGraph = await readGraph(option(rest, '--graph'));
     if (!contextGraph) throw new Error('draft 명령에는 --graph <graph.json>이 필요합니다.');
-    const editMode = option(rest, '--mode', 'balanced');
-    getEditModeInstruction(editMode);
+    const editMode = normalizeEditMode(option(rest, '--mode', 'medium'));
     const honorificLevel = normalizeHonorificLevel(option(rest, '--honorific', '50'));
     const memory = createMemoryStore({ provider: option(rest, '--memory', 'local'), baseUrl: option(rest, '--mem0-url'), userId: option(rest, '--user', 'default') });
     const memories = (await memory.search(brief.slice(0, 500), 6)).map((item) => item.text);
@@ -150,8 +147,7 @@ export async function main(args) {
   }
   if (command === 'rewrite') {
     const text = await readInput(paths[0]);
-    const editMode = option(rest, '--mode', 'balanced');
-    getEditModeInstruction(editMode);
+    const editMode = normalizeEditMode(option(rest, '--mode', 'medium'));
     const honorificLevel = normalizeHonorificLevel(option(rest, '--honorific', '50'));
     const explanationLevel = option(rest, '--explanation', 'balanced');
     getExplanationProfile(explanationLevel);

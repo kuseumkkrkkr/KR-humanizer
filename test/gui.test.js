@@ -22,6 +22,11 @@ test('review UX exposes filters, comparison modes, and bulk selection', async ()
   assert.match(html, />통합 Diff</);
   assert.match(html, /id="accept" class="primary" disabled/);
   assert.match(html, /id="edit-mode"/);
+  assert.match(html, /value="weak">약함 · 어투만/);
+  assert.match(html, /value="medium" selected>중간 · 논리와 반복/);
+  assert.match(html, /value="strict">엄격 · 규범과 문법/);
+  assert.doesNotMatch(html, /value="concise"/);
+  assert.match(html, /id="edit-mode-help"/);
   assert.match(html, /id="honorific" type="range" min="0" max="100" step="25" value="50"/);
   assert.match(html, /id="honorific-value"/);
   for (const id of ['brief', 'plan-mode', 'plan', 'graph-nodes', 'add-node', 'draft']) assert.match(html, new RegExp(`id="${id}"`));
@@ -54,6 +59,7 @@ test('review UX exposes filters, comparison modes, and bulk selection', async ()
   assert.match(app, /\/api\/capabilities/);
   assert.match(app, /\/api\/autocomplete/);
   assert.match(app, /function updateSettingsSummary\(\)/);
+  assert.match(app, /국립국어원 규범과 문법·호응 추론/);
   assert.match(css, /#changes\[data-view="split"\]/);
   assert.match(css, /\.diff-line/);
   assert.match(css, /\.word-remove/);

@@ -1,7 +1,7 @@
 import { readdir, readFile, stat } from 'node:fs/promises';
 import { resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getHonorificProfile } from '../core/style.js';
+import { getHonorificProfile, normalizeEditMode } from '../core/style.js';
 
 export const DEFAULT_VAULT_PATH = fileURLToPath(new URL('../../obsidian-vault/', import.meta.url));
 const MAX_NOTE_BYTES = 128 * 1024;
@@ -60,11 +60,10 @@ function array(value) { return Array.isArray(value) ? value : value ? [value] : 
 
 function modeTerms(editMode) {
   return {
-    fluent: '맞춤법 띄어쓰기 호응 최소 수정',
-    balanced: '호응 결속 명료성 문장 부호',
-    strict: '맞춤법 띄어쓰기 문장 부호 호응 높임 일관성 번역투',
-    concise: '중복 명사화 장문 군더더기 간결'
-  }[editMode] ?? '';
+    weak: '어투 종결 표현 말투',
+    medium: '결속 논리 흐름 반복 재설명 과잉 설명 상투 표현 번역투',
+    strict: '맞춤법 띄어쓰기 문장 부호 조사 어미 호응 중의성 높임 일관성 번역투'
+  }[normalizeEditMode(editMode)] ?? '';
 }
 
 function scoreNote(note, query) {
@@ -109,7 +108,7 @@ export async function loadVault(vaultPath = DEFAULT_VAULT_PATH) {
   return notes;
 }
 
-export async function searchVault({ text, editMode = 'balanced', honorificLevel = 50, vaultPath = DEFAULT_VAULT_PATH, limit = 8 } = {}) {
+export async function searchVault({ text, editMode = 'medium', honorificLevel = 50, vaultPath = DEFAULT_VAULT_PATH, limit = 8 } = {}) {
   const boundedLimit = Math.max(1, Math.min(12, Number(limit) || 8));
   const honorific = getHonorificProfile(honorificLevel);
   const query = String(text ?? '').slice(0, 20_000);

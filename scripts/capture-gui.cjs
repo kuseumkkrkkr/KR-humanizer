@@ -95,7 +95,8 @@ async function main() {
     await page.locator('#honorific').fill('75');
     if ((await page.locator('#honorific-value').textContent()) !== '부드러운 경어 · 해요체') throw new Error('Honorific slider label did not update');
     if ((await page.locator('#honorific').getAttribute('aria-valuetext')) !== '부드러운 경어 · 해요체 75') throw new Error('Honorific slider accessibility value is missing');
-    if ((await page.locator('#settings-summary').textContent()) !== '엄격 검토 · 부드러운 경어 · 해요체 · 설명 최대') throw new Error('Collapsed settings summary did not reflect controls');
+    if ((await page.locator('#settings-summary').textContent()) !== '엄격 · 규범과 문법 · 부드러운 경어 · 해요체 · 설명 최대') throw new Error('Collapsed settings summary did not reflect controls');
+    if (!((await page.locator('#edit-mode-help').textContent()) || '').includes('국립국어원 규범과 문법·호응 추론')) throw new Error('Editing mode boundary help did not update');
     await page.locator('.editor-panel').screenshot({ path: join(outputDir, '00-style-settings.png') });
     await page.locator('#analyze').click();
     await page.locator('#diagnosis').waitFor({ state: 'visible' });

@@ -1,0 +1,627 @@
+{
+  "original": "이번 서비스는 시민들이 정책 정보를 보다 더 쉽게 이해하는 데에 있어서 도움을 제공하기 위해 만들어졌습니다. 이는 단순히 정보를 제공하는 것을 넘어, 시민들의 이해를 돕기 위한 역할을 수행하는 것이라고 할 수 있습니다. 다시 말해 이 서비스는 시민이 정책을 쉽게 이해하도록 돕는 서비스입니다.\n\n운영팀은 접수된 의견을 검토하고 있으며, 각 부서의 검토 결과는 담당자가 종합하여 최종 결정이 이루어집니다. 몇일 안에 처리되는지 이용자가 알기 어렵기 때문에 처리 절차를 안내하는 것이 필요합니다. 이러한 안내는 이용자가 처리 절차를 이해하는 데 도움을 제공할 수 있습니다.\n",
+  "rewritten": "이번 서비스는 시민이 정책 정보를 쉽게 이해하도록 돕기 위해 만들었습니다. 정보 제공을 넘어 시민의 정책 이해를 돕는 서비스입니다.\n\n접수된 의견은 운영팀이 검토하고, 각 부서의 검토 결과는 담당자가 종합합니다. 이후 최종 결정이 이루어집니다. 며칠 안에 처리되는지 이용자가 알기 어려우므로 처리 절차를 안내할 필요가 있습니다. 이 안내는 이용자가 처리 절차를 이해하는 데 도움이 될 수 있습니다.",
+  "originalSentences": [
+    "이번 서비스는 시민들이 정책 정보를 보다 더 쉽게 이해하는 데에 있어서 도움을 제공하기 위해 만들어졌습니다.",
+    "이는 단순히 정보를 제공하는 것을 넘어, 시민들의 이해를 돕기 위한 역할을 수행하는 것이라고 할 수 있습니다.",
+    "다시 말해 이 서비스는 시민이 정책을 쉽게 이해하도록 돕는 서비스입니다.",
+    "운영팀은 접수된 의견을 검토하고 있으며, 각 부서의 검토 결과는 담당자가 종합하여 최종 결정이 이루어집니다.",
+    "몇일 안에 처리되는지 이용자가 알기 어렵기 때문에 처리 절차를 안내하는 것이 필요합니다.",
+    "이러한 안내는 이용자가 처리 절차를 이해하는 데 도움을 제공할 수 있습니다."
+  ],
+  "rewrittenSentences": [
+    "이번 서비스는 시민이 정책 정보를 쉽게 이해하도록 돕기 위해 만들었습니다.",
+    "정보 제공을 넘어 시민의 정책 이해를 돕는 서비스입니다.",
+    "접수된 의견은 운영팀이 검토하고, 각 부서의 검토 결과는 담당자가 종합합니다.",
+    "이후 최종 결정이 이루어집니다.",
+    "며칠 안에 처리되는지 이용자가 알기 어려우므로 처리 절차를 안내할 필요가 있습니다.",
+    "이 안내는 이용자가 처리 절차를 이해하는 데 도움이 될 수 있습니다."
+  ],
+  "units": [
+    {
+      "id": "s1",
+      "index": 0,
+      "start": 0,
+      "end": 60,
+      "before": "이번 서비스는 시민들이 정책 정보를 보다 더 쉽게 이해하는 데에 있어서 도움을 제공하기 위해 만들어졌습니다.",
+      "after": "이번 서비스는 시민이 정책 정보를 쉽게 이해하도록 돕기 위해 만들었습니다.",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "same",
+          "text": "이번 서비스는 "
+        },
+        {
+          "type": "remove",
+          "text": "시민들이"
+        },
+        {
+          "type": "add",
+          "text": "시민이"
+        },
+        {
+          "type": "same",
+          "text": " 정책 정보를 "
+        },
+        {
+          "type": "remove",
+          "text": "보다 더 "
+        },
+        {
+          "type": "same",
+          "text": "쉽게 "
+        },
+        {
+          "type": "remove",
+          "text": "이해하는 데에 있어서 도움을"
+        },
+        {
+          "type": "add",
+          "text": "이해하도록"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "제공하기"
+        },
+        {
+          "type": "add",
+          "text": "돕기"
+        },
+        {
+          "type": "same",
+          "text": " 위해 "
+        },
+        {
+          "type": "remove",
+          "text": "만들어졌습니다"
+        },
+        {
+          "type": "add",
+          "text": "만들었습니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s2",
+      "index": 1,
+      "start": 61,
+      "end": 122,
+      "before": "이는 단순히 정보를 제공하는 것을 넘어, 시민들의 이해를 돕기 위한 역할을 수행하는 것이라고 할 수 있습니다.",
+      "after": "정보 제공을 넘어 시민의 정책 이해를 돕는 서비스입니다.",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "이는 단순히 정보를 제공하는"
+        },
+        {
+          "type": "add",
+          "text": "정보"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "것을"
+        },
+        {
+          "type": "add",
+          "text": "제공을"
+        },
+        {
+          "type": "same",
+          "text": " 넘어"
+        },
+        {
+          "type": "remove",
+          "text": ","
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "시민들의 이해를 돕기 위한 역할을 수행하는"
+        },
+        {
+          "type": "add",
+          "text": "시민의"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "것이라고"
+        },
+        {
+          "type": "add",
+          "text": "정책"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "할"
+        },
+        {
+          "type": "add",
+          "text": "이해를"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "수"
+        },
+        {
+          "type": "add",
+          "text": "돕는"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "있습니다"
+        },
+        {
+          "type": "add",
+          "text": "서비스입니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s3",
+      "index": 2,
+      "start": 123,
+      "end": 163,
+      "before": "다시 말해 이 서비스는 시민이 정책을 쉽게 이해하도록 돕는 서비스입니다.",
+      "after": "접수된 의견은 운영팀이 검토하고, 각 부서의 검토 결과는 담당자가 종합합니다.",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "다시"
+        },
+        {
+          "type": "add",
+          "text": "접수된"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "말해"
+        },
+        {
+          "type": "add",
+          "text": "의견은"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "이"
+        },
+        {
+          "type": "add",
+          "text": "운영팀이"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "서비스는"
+        },
+        {
+          "type": "add",
+          "text": "검토하고,"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "시민이"
+        },
+        {
+          "type": "add",
+          "text": "각"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "정책을"
+        },
+        {
+          "type": "add",
+          "text": "부서의"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "쉽게"
+        },
+        {
+          "type": "add",
+          "text": "검토"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "이해하도록"
+        },
+        {
+          "type": "add",
+          "text": "결과는"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "돕는"
+        },
+        {
+          "type": "add",
+          "text": "담당자가"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "서비스입니다"
+        },
+        {
+          "type": "add",
+          "text": "종합합니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s4",
+      "index": 3,
+      "start": 165,
+      "end": 225,
+      "before": "운영팀은 접수된 의견을 검토하고 있으며, 각 부서의 검토 결과는 담당자가 종합하여 최종 결정이 이루어집니다.",
+      "after": "이후 최종 결정이 이루어집니다.",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "운영팀은 접수된 의견을 검토하고 있으며, 각 부서의 검토 결과는 담당자가 종합하여"
+        },
+        {
+          "type": "add",
+          "text": "이후"
+        },
+        {
+          "type": "same",
+          "text": " 최종 결정이 이루어집니다."
+        }
+      ]
+    },
+    {
+      "id": "s5",
+      "index": 4,
+      "start": 226,
+      "end": 275,
+      "before": "몇일 안에 처리되는지 이용자가 알기 어렵기 때문에 처리 절차를 안내하는 것이 필요합니다.",
+      "after": "며칠 안에 처리되는지 이용자가 알기 어려우므로 처리 절차를 안내할 필요가 있습니다.",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "몇일"
+        },
+        {
+          "type": "add",
+          "text": "며칠"
+        },
+        {
+          "type": "same",
+          "text": " 안에 처리되는지 이용자가 알기 "
+        },
+        {
+          "type": "remove",
+          "text": "어렵기 때문에"
+        },
+        {
+          "type": "add",
+          "text": "어려우므로"
+        },
+        {
+          "type": "same",
+          "text": " 처리 절차를 "
+        },
+        {
+          "type": "remove",
+          "text": "안내하는"
+        },
+        {
+          "type": "add",
+          "text": "안내할"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "것이"
+        },
+        {
+          "type": "add",
+          "text": "필요가"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "필요합니다"
+        },
+        {
+          "type": "add",
+          "text": "있습니다"
+        },
+        {
+          "type": "same",
+          "text": "."
+        }
+      ]
+    },
+    {
+      "id": "s6",
+      "index": 5,
+      "start": 276,
+      "end": 318,
+      "before": "이러한 안내는 이용자가 처리 절차를 이해하는 데 도움을 제공할 수 있습니다.",
+      "after": "이 안내는 이용자가 처리 절차를 이해하는 데 도움이 될 수 있습니다.",
+      "kind": "rewrite",
+      "movedTo": null,
+      "diff": [
+        {
+          "type": "remove",
+          "text": "이러한"
+        },
+        {
+          "type": "add",
+          "text": "이"
+        },
+        {
+          "type": "same",
+          "text": " 안내는 이용자가 처리 절차를 이해하는 데 "
+        },
+        {
+          "type": "remove",
+          "text": "도움을"
+        },
+        {
+          "type": "add",
+          "text": "도움이"
+        },
+        {
+          "type": "same",
+          "text": " "
+        },
+        {
+          "type": "remove",
+          "text": "제공할"
+        },
+        {
+          "type": "add",
+          "text": "될"
+        },
+        {
+          "type": "same",
+          "text": " 수 있습니다."
+        }
+      ]
+    }
+  ],
+  "summary": "- 규범 교정: 기간을 나타내는 ‘몇일’을 한글 맞춤법에 따라 ‘며칠’로 고쳤습니다.\n- 표현 간결화: ‘보다 더’, ‘이해하는 데에 있어서 도움을 제공하다’, ‘역할을 수행하는 것이라고 할 수 있다’처럼 중복되거나 긴 표현을 구체적인 동사 ‘돕다’로 정리했습니다.\n- 반복 정리: 첫 문단에서 같은 서비스 목적을 세 차례 반복한 부분을 두 문장으로 줄였습니다. 정보 제공을 넘어 정책 이해를 돕는다는 주장은 유지했습니다.\n- 호응 개선: 운영팀의 검토, 담당자의 종합, 최종 결정이 한 문장에 섞여 행위 주체가 흐려진 부분을 나눴습니다. 최종 결정의 주체는 원문에 없으므로 새로 지정하지 않았습니다.\n- 조사·띄어쓰기: ‘이해하는 데’에서 ‘데’를 의존 명사로 보고 띄어 썼습니다.\n- 문장 연결: 처리 기간을 알기 어렵다는 상황과 절차 안내의 필요성 사이의 인과 관계는 원문대로 유지했으며, 근거를 추가하지 않았습니다.\n- 종결 어미: 업무 문체에 맞춰 ‘-습니다’ 계열을 일관되게 유지했습니다.",
+  "flow": {
+    "nodes": [
+      {
+        "id": "p1",
+        "label": "서비스의 목적과 역할: 시민의 정책 정보 이해 지원",
+        "role": "목적 설명"
+      },
+      {
+        "id": "p2",
+        "label": "의견 검토·결정 절차와 이용자 안내의 필요성",
+        "role": "운영 절차 및 필요 조치"
+      }
+    ],
+    "edges": [
+      {
+        "from": "p1",
+        "to": "p2",
+        "relation": "서비스 목적에서 실제 운영 절차와 안내 필요성으로 전개"
+      }
+    ]
+  },
+  "knowledge": [
+    {
+      "id": "nikl-spelling-myeochil",
+      "title": "며칠의 표기",
+      "kind": "norm",
+      "authority": "국립국어원",
+      "sourceUrl": "https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=216&qna_seq=317387",
+      "sourceSection": "온라인가나다 답변 및 덧붙임 2 - 한글 맞춤법 제27항",
+      "path": "규범/맞춤법-며칠.md",
+      "guidance": "날짜 수나 기간을 뜻하는 `몇일`은 `며칠`로 제안한다. 월과 일을 각각 묻는 `몇 월 며칠`도 같은 표기를 쓴다.",
+      "appliesWhen": "며칠 동안, 며칠 뒤처럼 날짜 수나 기간을 나타내는 문맥에 적용한다.",
+      "boundary": "숫자나 식별자의 일부, 인용된 오표기는 자동으로 바꾸지 않는다.",
+      "matchedTerms": [
+        "몇일"
+      ],
+      "score": 49
+    },
+    {
+      "id": "nikl-spacing-particle-dependent-noun",
+      "title": "조사와 의존 명사 띄어쓰기",
+      "kind": "norm",
+      "authority": "국립국어원",
+      "sourceUrl": "https://www.korean.go.kr/kornorms/m/m_regltn.do",
+      "sourceSection": "한글 맞춤법 제41항·제42항",
+      "path": "규범/띄어쓰기-조사와-의존명사.md",
+      "guidance": "조사는 앞말에 붙이고 의존 명사는 띄어 쓴다. `할수`는 `할 수`로, 체언 뒤 조사 `만큼·뿐`은 붙이고 관형형 뒤 의존 명사 `만큼·뿐`은 띄운다. 품사를 문맥으로 확정할 수 없으면 후보로만 제시한다.",
+      "appliesWhen": "",
+      "boundary": "표면형만으로 일괄 치환하지 않는다. 사전 등재 복합어와 조사·의존 명사 구분을 먼저 확인한다.",
+      "matchedTerms": [],
+      "score": 29
+    },
+    {
+      "id": "nikl-writing-ending-genre-consistency",
+      "title": "종결 어미와 장르 일관성",
+      "kind": "writing-guidance",
+      "authority": "국립국어원",
+      "sourceUrl": "https://www.korean.go.kr/common/download.do?c_file_name=84ced1e6-7ca7-4556-862a-e62d23ceca8f.pdf&file_path=reportData",
+      "sourceSection": "글쓰기 첨삭 지원을 위한 지시문 기반 생성 말뭉치 구축 연구 - 문체·관습 유형",
+      "path": "규범/글쓰기-종결어미와-장르일관성.md",
+      "guidance": "원문의 장르와 선택한 높임 단계를 기준으로 종결 어미를 통일한다. 인용·대화·의도적 전환은 보존하고, 보고서·논증문에서 우연히 섞인 구어체만 제안 대상으로 삼는다. 문법상 가능한 표현을 장르상 덜 적합하다는 이유만으로 오류라고 부르지 않는다.",
+      "appliesWhen": "",
+      "boundary": "문체 선택은 작성 목적에 따라 달라진다. 사용자가 정한 목소리와 장르가 규칙보다 우선한다.",
+      "matchedTerms": [],
+      "score": 22
+    },
+    {
+      "id": "nikl-paragraph-logic-connective",
+      "title": "문장 간 논리와 접속어",
+      "kind": "writing-guidance",
+      "authority": "국립국어원",
+      "sourceUrl": "https://korean.go.kr/common/download.do?c_file_name=f595077c-82b4-42a5-8ab6-0c31fef547ff.pdf&file_path=etcData",
+      "sourceSection": "개정판 한눈에 알아보는 공공언어 바로 쓰기 14~15쪽 - 논리적 구성·접속어 사용",
+      "path": "규범/단락-논리와-접속어.md",
+      "guidance": "접속어를 고치기 전에 두 문장의 관계를 먼저 판정한다. 근거가 없는 인과 관계를 새로 만들지 말고, 연결 고리가 없으면 접속어 추가보다 정보 보완이나 문단 재배치를 제안한다.",
+      "appliesWhen": "앞 문장과 뒤 문장의 관계가 인과·대조·첨가 중 무엇인지 불분명하거나 접속어와 내용이 어긋날 때 적용한다.",
+      "boundary": "접속어 생략이 자연스러운 문장에는 기계적으로 접속어를 덧붙이지 않는다.",
+      "matchedTerms": [],
+      "score": 17
+    },
+    {
+      "id": "nikl-relative-honorific-endings",
+      "title": "상대 높임 등급과 종결 어미",
+      "kind": "grammar",
+      "authority": "국립국어원",
+      "sourceUrl": "https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=27&pageIndex=1&qna_seq=332328",
+      "sourceSection": "상대 높임 표현과 비격식체",
+      "path": "규범/상대높임-종결어미.md",
+      "guidance": "선택한 높임 단계에 맞는 종결 어미를 문단 안에서 일관되게 쓴다. 해체·해라체·해요체·하십시오체를 임의로 섞지 않는다. 청자 상대 높임과 문장 속 인물에 대한 주체·객체 높임을 구분하고, 인물 관계와 직함은 원문대로 보존한다.",
+      "appliesWhen": "",
+      "boundary": "온라인가나다 답변은 구체적인 문맥 설명이다. 특수한 장르나 인용문의 종결형까지 일괄 변환하지 않는다.",
+      "matchedTerms": [],
+      "score": 17
+    },
+    {
+      "id": "nikl-sentence-information-splitting",
+      "title": "긴 문장과 정보 분할",
+      "kind": "writing-guidance",
+      "authority": "국립국어원",
+      "sourceUrl": "https://korean.go.kr/common/download.do?c_file_name=f595077c-82b4-42a5-8ab6-0c31fef547ff.pdf&file_path=etcData",
+      "sourceSection": "개정판 한눈에 알아보는 공공언어 바로 쓰기 11쪽 - 지나치게 긴 문장 삼가기",
+      "path": "규범/문장-긴문장과-정보분할.md",
+      "guidance": "핵심 사실과 독자가 해야 할 행동을 분리하되, 원문의 인과·조건·범위를 유지한다. 문장 길이 숫자만으로 자르지 말고 의미 단위에서 나눈다.",
+      "appliesWhen": "일시·목적·대상·행동·기한 등 서로 다른 정보가 한 문장에 이어지고 독자가 다시 읽어야 할 때 적용한다.",
+      "boundary": "법률 문장, 정의문, 목록 도입문처럼 한 문장 구조가 기능적인 경우는 임의 분할하지 않는다.",
+      "matchedTerms": [],
+      "score": 17
+    },
+    {
+      "id": "skill-jaw-dev-write-staged-diagnosis",
+      "title": "jaw-dev-write의 단계별 진단 구조",
+      "kind": "skill-observation",
+      "authority": "community-skill",
+      "sourceUrl": "https://github.com/lidge-jun/cli-jaw-skills/blob/1b8be996f952a2691d41932e0fcb163e47148647/jaw-dev-write/SKILL.md",
+      "sourceSection": "jaw-dev-write/SKILL.md @ 1b8be996",
+      "path": "skills/jaw-dev-write-단계별-진단.md",
+      "guidance": "윤문을 한 번에 전면 재작성하지 말고 문체 일관성 → 번역투 → 구조 반복 → 문말 리듬 순으로 진단한다. 실제 결함이 발견된 문장만 제안하고 이미 자연스러운 문장은 유지한다.",
+      "appliesWhen": "",
+      "boundary": "이 카드는 워크플로 관찰이며 어문 규범이 아니다. 세부 패턴은 국립국어원 카드와 원문 문맥으로 다시 판단한다.",
+      "matchedTerms": [],
+      "score": 15
+    },
+    {
+      "id": "nikl-spacing-auxiliary-predicate",
+      "title": "보조 용언 띄어쓰기",
+      "kind": "norm",
+      "authority": "국립국어원",
+      "sourceUrl": "https://www.korean.go.kr/kornorms/m/m_regltn.do",
+      "sourceSection": "한글 맞춤법 제47항",
+      "path": "규범/띄어쓰기-보조용언.md",
+      "guidance": "본용언과 보조 용언은 우선 띄어 쓴다. 붙여쓰기가 허용되는 구성도 원문의 일관된 표기를 존중하고, 중간에 조사나 다른 성분이 있으면 띄운다. 사전에 한 단어로 오른 용언은 임의로 분리하지 않는다.",
+      "appliesWhen": "",
+      "boundary": "허용 표기와 필수 표기를 구분한다. 허용 범위를 오탈자로 단정하지 않는다.",
+      "matchedTerms": [],
+      "score": 12
+    }
+  ],
+  "knowledgeAgent": {
+    "automaticallyConsulted": true,
+    "mode": "approved-local-vault",
+    "officialMatches": 7,
+    "cardIds": [
+      "nikl-spelling-myeochil",
+      "nikl-spacing-particle-dependent-noun",
+      "nikl-writing-ending-genre-consistency",
+      "nikl-paragraph-logic-connective",
+      "nikl-relative-honorific-endings",
+      "nikl-sentence-information-splitting",
+      "nikl-spacing-auxiliary-predicate"
+    ],
+    "rawSnapshotsUsed": false
+  }
+}

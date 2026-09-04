@@ -2,10 +2,9 @@
 
 Use these modes as editorial goals, not as copied product behavior.
 
-- `fluent`: correct grammar and awkward phrasing with the fewest changes. Avoid synonym churn.
-- `balanced`: improve clarity, flow, and sentence length while preserving the writer's voice.
-- `strict`: also flag inconsistent endings, excessive colloquialisms, repetition, vague references, and distracting punctuation.
-- `concise`: remove redundancy without dropping claims, evidence, conditions, numbers, or uncertainty.
+- `weak` (약함): change only tone and sentence endings. Preserve sentence count, order, paragraph structure, facts, grammar, and even detected typos for the separate diagnosis step.
+- `medium` (중간): add graph-based logic review and remove only formulaic AI phrasing, re-explanation, repetition, and over-explanation. Do not independently correct grammar.
+- `strict` (엄격): add NIKL-grounded spelling and spacing plus detailed reasoning about particles, endings, subject-predicate agreement, modifier scope, references, and ambiguity.
 
 ## Product research translated into KR-humanizer
 
