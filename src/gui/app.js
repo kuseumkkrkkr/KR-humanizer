@@ -6,6 +6,10 @@ let reviewFilter = 'all';
 let reviewView = 'unified';
 let appliedIds = new Set();
 let contextGraph = { nodes: [], edges: [] };
+let completion = '';
+let completionTimer = null;
+let completionRequest = 0;
+let composing = false;
 
 const honorificLabels = {
   0: '평어 · 해체',
@@ -46,6 +50,51 @@ function buttonBusy(button, busy) {
   button.disabled = busy;
   button.dataset.label ??= button.textContent;
   button.textContent = busy ? '처리 중…' : button.dataset.label;
+}
+
+function dismissCompletion() {
+  completion = '';
+  $('#completion-text').textContent = '';
+  $('#completion-panel').classList.add('hidden');
+}
+
+function acceptCompletion() {
+  if (!completion) return;
+  const separator = /\s$/.test(source.value) ? '' : ' ';
+  source.value += `${separator}${completion}`;
+  source.setSelectionRange(source.value.length, source.value.length);
+  dismissCompletion();
+  source.dispatchEvent(new Event('input'));
+  source.focus();
+}
+
+async function requestCompletion(sequence) {
+  if (!$('#autocomplete-enabled').checked || source.selectionStart !== source.value.length || source.selectionEnd !== source.value.length || source.value.trim().length < 20) return;
+  $('#autocomplete-capability').textContent = '다음 문장 생성 중…';
+  try {
+    const result = await api('/api/autocomplete', { text: source.value, contextGraph, ...settingsPayload() });
+    if (sequence !== completionRequest || !$('#autocomplete-enabled').checked) return;
+    completion = result.completion;
+    $('#completion-text').textContent = completion || '안전하게 이어 쓸 문장을 찾지 못했습니다.';
+    $('#completion-panel').classList.toggle('hidden', !completion);
+    $('#autocomplete-capability').textContent = 'Codex EXEC 준비됨';
+  } catch (error) {
+    if (sequence !== completionRequest) return;
+    if (error.message.includes('처리 중')) {
+      $('#autocomplete-capability').textContent = '이전 제안 처리 중';
+      completionTimer = setTimeout(() => requestCompletion(sequence), 800);
+    } else $('#autocomplete-capability').textContent = '자동완성 실패';
+  }
+}
+
+function scheduleCompletion() {
+  clearTimeout(completionTimer);
+  completionRequest += 1;
+  dismissCompletion();
+  if (!composing && $('#autocomplete-enabled').checked && source.value.trim().length >= 20 && source.selectionStart === source.value.length) {
+    const sequence = completionRequest;
+    completionTimer = setTimeout(() => requestCompletion(sequence), 1200);
+  }
 }
 
 function renderAnalysis(result) {
@@ -276,7 +325,26 @@ $('#plan-mode').addEventListener('change', updateBriefState);
 document.querySelectorAll('input[name="explanation"]').forEach((item) => item.addEventListener('change', updateGraphControls));
 updateBriefState();
 
-source.addEventListener('input', () => { $('#char-count').textContent = `${source.value.length.toLocaleString()}자`; });
+source.addEventListener('input', () => { $('#char-count').textContent = `${source.value.length.toLocaleString()}자`; scheduleCompletion(); });
+source.addEventListener('compositionstart', () => { composing = true; clearTimeout(completionTimer); });
+source.addEventListener('compositionend', () => { composing = false; scheduleCompletion(); });
+source.addEventListener('click', () => { if (source.selectionStart !== source.value.length) dismissCompletion(); });
+source.addEventListener('keydown', (event) => {
+  if (event.key === 'Tab' && completion && !composing) { event.preventDefault(); acceptCompletion(); }
+  if (event.key === 'Escape' && completion) { event.preventDefault(); dismissCompletion(); }
+});
+$('#accept-completion').addEventListener('click', acceptCompletion);
+$('#dismiss-completion').addEventListener('click', dismissCompletion);
+$('#autocomplete-enabled').addEventListener('change', () => {
+  dismissCompletion();
+  $('#autocomplete-capability').textContent = $('#autocomplete-enabled').checked ? '입력 끝에서 잠시 멈추면 제안합니다.' : '자동완성 꺼짐';
+  if ($('#autocomplete-enabled').checked) scheduleCompletion();
+});
+
+api('/api/capabilities', {}).then(({ codex }) => {
+  $('#autocomplete-enabled').disabled = !codex.available;
+  $('#autocomplete-capability').textContent = codex.available ? `${codex.version} · 사용 가능` : 'Codex EXEC를 찾지 못했습니다.';
+}).catch(() => { $('#autocomplete-capability').textContent = 'Codex EXEC 확인 실패'; });
 $('#plan').addEventListener('click', async (event) => {
   const button = event.currentTarget;
   try {

@@ -4,13 +4,15 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { buildDraftPrompt, buildPlanPrompt, buildRewritePrompt } from '../core/prompt.js';
+import { buildAutocompletePrompt, buildDraftPrompt, buildPlanPrompt, buildRewritePrompt } from '../core/prompt.js';
 import { activeContextGraph, normalizeContextGraph } from '../core/context-graph.js';
 import { searchVault } from '../knowledge/vault.js';
 
 const rewriteSchemaPath = fileURLToPath(new URL('../../schemas/rewrite.schema.json', import.meta.url));
 const planSchemaPath = fileURLToPath(new URL('../../schemas/plan.schema.json', import.meta.url));
+const autocompleteSchemaPath = fileURLToPath(new URL('../../schemas/autocomplete.schema.json', import.meta.url));
 const MAX_OUTPUT = 2 * 1024 * 1024;
+export const AUTOCOMPLETE_MODEL = 'gpt-5.3-codex-spark';
 
 function run(command, args, input, timeoutMs = 180_000) {
   return new Promise((resolve, reject) => {
@@ -57,6 +59,13 @@ function assertPlan(value) {
   return { summary: String(value.summary ?? ''), ...graph };
 }
 
+export function assertCompletion(value) {
+  if (!value || typeof value.completion !== 'string') throw new Error('자동완성 엔진이 예상한 JSON을 반환하지 않았습니다.');
+  const clean = value.completion.trim().replace(/^[“”"']+|[“”"']+$/g, '').slice(0, 300);
+  const firstSentence = clean.match(/^.*?[.!?。！？](?:["'”’)]*)?(?=\s|$)/s)?.[0] ?? clean;
+  return { completion: firstSentence.trim() };
+}
+
 function parseClaude(stdout, validate) {
   const outer = JSON.parse(stdout);
   if (outer.structured_output) return validate(outer.structured_output);
@@ -96,11 +105,29 @@ export async function rewriteWithEngine({ engine = 'codex', text, brief = '', co
   return { ...result, knowledge };
 }
 
-export async function runCodexStructured({ prompt, schemaPath, timeoutMs, isolated = false }) {
+export async function autocompleteWithCodex({ text, contextGraph, tone, editMode = 'balanced', honorificLevel = 50, explanationLevel = 'balanced', timeoutMs = 60_000 }) {
+  const value = String(text ?? '').trim();
+  if (value.length < 20) throw Object.assign(new Error('자동완성에는 20자 이상의 문맥이 필요합니다.'), { status: 400 });
+  if (value.length > 200_000) throw Object.assign(new Error('자동완성 문맥은 200,000자를 넘을 수 없습니다.'), { status: 400 });
+  const prompt = buildAutocompletePrompt({ text: value, contextGraph: activeContextGraph(contextGraph), tone, editMode, honorificLevel, explanationLevel });
+  return assertCompletion(await runCodexStructured({ prompt, schemaPath: autocompleteSchemaPath, timeoutMs, model: AUTOCOMPLETE_MODEL, isolated: true }));
+}
+
+export async function checkCodexAvailable(timeoutMs = 5_000) {
+  try {
+    const { stdout } = await run('codex', ['--version'], '', timeoutMs);
+    return { available: true, version: stdout.trim(), model: AUTOCOMPLETE_MODEL };
+  } catch {
+    return { available: false, version: '', model: AUTOCOMPLETE_MODEL };
+  }
+}
+
+export async function runCodexStructured({ prompt, schemaPath, timeoutMs, isolated = false, model }) {
   const outputPath = join(tmpdir(), `kr-humanizer-${randomUUID()}.json`);
   try {
     const isolationArgs = isolated ? ['--ignore-user-config', '--ignore-rules'] : [];
-    await run('codex', ['exec', ...isolationArgs, '--sandbox', 'read-only', '--ephemeral', '--skip-git-repo-check', '--output-schema', schemaPath, '--output-last-message', outputPath, '-'], prompt, timeoutMs);
+    const modelArgs = model ? ['--model', model] : [];
+    await run('codex', ['exec', ...isolationArgs, ...modelArgs, '--sandbox', 'read-only', '--ephemeral', '--skip-git-repo-check', '--output-schema', schemaPath, '--output-last-message', outputPath, '-'], prompt, timeoutMs);
     return JSON.parse(await readFile(outputPath, 'utf8'));
   } finally {
     await unlink(outputPath).catch(() => {});

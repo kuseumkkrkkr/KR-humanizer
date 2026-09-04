@@ -5,7 +5,7 @@ import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { analyzeText, sanitizeText } from '../core/analyze.js';
 import { applyProposal, buildProposal } from '../core/diff.js';
-import { draftWithEngine, planWithEngine, rewriteWithEngine } from '../engines/runner.js';
+import { autocompleteWithCodex, checkCodexAvailable, draftWithEngine, planWithEngine, rewriteWithEngine } from '../engines/runner.js';
 import { createMemoryStore } from '../memory/index.js';
 
 const MAX_BODY = 1024 * 1024;
@@ -50,6 +50,8 @@ function openBrowser(url) {
 export async function startGui({ port = 4317, open = true } = {}) {
   if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('port는 1024~65535 정수여야 합니다.');
   const token = randomBytes(24).toString('hex');
+  let autocompleteBusy = false;
+  let capabilities;
   const server = createServer(async (request, response) => {
     try {
       const url = new URL(request.url, 'http://127.0.0.1');
@@ -61,6 +63,17 @@ export async function startGui({ port = 4317, open = true } = {}) {
       }
       if (request.method !== 'POST' || request.headers['x-kr-humanizer-token'] !== token) return send(response, 403, { error: '허용되지 않은 요청입니다.' });
       const body = await readBody(request);
+      if (url.pathname === '/api/capabilities') {
+        capabilities ??= await checkCodexAvailable();
+        return send(response, 200, { codex: capabilities });
+      }
+      if (url.pathname === '/api/autocomplete') {
+        if (autocompleteBusy) throw Object.assign(new Error('이전 자동완성을 처리 중입니다.'), { status: 429 });
+        autocompleteBusy = true;
+        try {
+          return send(response, 200, { ...(await autocompleteWithCodex({ text: body.text, contextGraph: body.contextGraph, tone: body.tone, editMode: body.editMode, honorificLevel: body.honorificLevel, explanationLevel: body.explanationLevel })) });
+        } finally { autocompleteBusy = false; }
+      }
       if (url.pathname === '/api/analyze') return send(response, 200, analyzeText(body.text ?? ''));
       if (url.pathname === '/api/sanitize') return send(response, 200, sanitizeText(body.text ?? ''));
       if (url.pathname === '/api/accept') return send(response, 200, { text: applyProposal(body.proposal, body.acceptedIds ?? []) });

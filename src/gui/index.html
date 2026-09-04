@@ -33,6 +33,15 @@
       </div>
       <div class="field-head"><label for="source">초안 또는 원문</label><span>직접 쓰거나 그래프에서 생성</span></div>
       <textarea id="source" maxlength="200000" placeholder="점검할 한국어 글을 붙여 넣으세요."></textarea>
+      <div class="autocomplete-bar">
+        <label class="autocomplete-toggle"><input id="autocomplete-enabled" type="checkbox" disabled><span>Tab 문장 자동완성</span></label>
+        <span id="autocomplete-capability" class="capability" role="status">Codex EXEC 확인 중…</span>
+        <span class="fixed-model">고정 모델 · gpt-5.3-codex-spark</span>
+      </div>
+      <div id="completion-panel" class="completion-panel hidden" aria-live="polite">
+        <div><strong>이어쓰기 제안</strong><p id="completion-text"></p></div>
+        <div class="completion-actions"><button id="accept-completion" class="primary" type="button">적용 <kbd>Tab</kbd></button><button id="dismiss-completion" type="button">닫기 <kbd>Esc</kbd></button></div>
+      </div>
       <div class="controls">
         <button id="analyze" class="secondary">문단·오탈자 점검</button>
         <button id="sanitize" class="secondary">비가시 문자 정리</button>

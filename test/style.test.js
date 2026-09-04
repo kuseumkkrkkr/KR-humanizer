@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildDraftPrompt, buildPlanPrompt, buildRewritePrompt } from '../src/core/prompt.js';
+import { buildAutocompletePrompt, buildDraftPrompt, buildPlanPrompt, buildRewritePrompt } from '../src/core/prompt.js';
+import { AUTOCOMPLETE_MODEL, assertCompletion } from '../src/engines/runner.js';
 import { getEditModeInstruction, getHonorificProfile, normalizeHonorificLevel } from '../src/core/style.js';
 
 test('honorific intensity maps to explicit Korean speech levels', () => {
@@ -10,6 +11,16 @@ test('honorific intensity maps to explicit Korean speech levels', () => {
   assert.equal(getHonorificProfile(75).key, 'haeyo');
   assert.equal(getHonorificProfile(100).key, 'hasipsio');
   assert.throws(() => normalizeHonorificLevel(101), /0~100/);
+});
+
+test('autocomplete is fixed to Spark and returns only the first bounded sentence', () => {
+  assert.equal(AUTOCOMPLETE_MODEL, 'gpt-5.3-codex-spark');
+  const prompt = buildAutocompletePrompt({ text: '독자가 이해할 핵심을 먼저 적었습니다.', explanationLevel: 'minimal' });
+  assert.match(prompt, /문장 하나만/);
+  assert.match(prompt, /없는 사실, 수치, 출처, 고유명사를 만들지/);
+  assert.match(prompt, /<writing-context>/);
+  assert.equal(assertCompletion({ completion: '다음에는 적용 방법을 설명합니다. 그 뒤에는 결론입니다.' }).completion, '다음에는 적용 방법을 설명합니다.');
+  assert.equal(assertCompletion({ completion: '“이어지는 문장입니다.”' }).completion, '이어지는 문장입니다.');
 });
 
 test('rewrite prompt carries mode, honorific level, and relationship boundary', () => {

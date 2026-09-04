@@ -37,6 +37,12 @@ async function main() {
         if (!request.brief || request.explanationLevel !== 'maximal') throw new Error('Plan request is missing brief or explanation level');
         return route.fulfill({ status: 200, contentType: 'application/json; charset=utf-8', body: JSON.stringify(planFixture) });
       });
+      await page.route('**/api/capabilities', (route) => route.fulfill({ status: 200, contentType: 'application/json; charset=utf-8', body: JSON.stringify({ codex: { available: true, version: 'codex-cli test', model: 'gpt-5.3-codex-spark' } }) }));
+      await page.route('**/api/autocomplete', (route) => {
+        const request = route.request().postDataJSON();
+        if (request.text.length < 20 || request.engine !== 'codex') throw new Error('Autocomplete request is missing editor context');
+        return route.fulfill({ status: 200, contentType: 'application/json; charset=utf-8', body: JSON.stringify({ completion: '이어서 사용자가 확인할 선택지를 분명하게 보여줍니다.' }) });
+      });
       await page.route('**/api/draft', (route) => {
         const request = route.request().postDataJSON();
         if (request.contextGraph.nodes.filter((node) => node.included !== false).length !== 2) throw new Error('Excluded context node reached draft generation');
@@ -53,6 +59,15 @@ async function main() {
     await page.goto(process.env.KR_HUMANIZER_GUI_URL || 'http://127.0.0.1:4317', { waitUntil: 'networkidle' });
     await page.locator('#source').fill(source);
     if (fixture) {
+      if (!(await page.locator('#autocomplete-enabled').isEnabled())) throw new Error('Codex autocomplete did not become available');
+      await page.locator('#autocomplete-enabled').check();
+      await page.locator('#completion-panel').waitFor({ state: 'visible', timeout: 5_000 });
+      if (!((await page.locator('#completion-text').textContent()) || '').includes('선택지를')) throw new Error('Autocomplete sentence was not previewed');
+      await page.locator('.editor-panel').screenshot({ path: join(outputDir, '00-tab-autocomplete.png') });
+      await page.locator('#source').press('Tab');
+      if (!((await page.locator('#source').inputValue()).endsWith('이어서 사용자가 확인할 선택지를 분명하게 보여줍니다.'))) throw new Error('Tab did not accept the completion');
+      await page.locator('#autocomplete-enabled').uncheck();
+      await page.locator('#source').fill(source);
       await page.locator('#brief').fill('맥락 그래프로 과잉 설명을 줄이는 한국어 윤문 도구를 소개해 줘.');
       if (!(await page.locator('#plan-mode').isEnabled()) || await page.locator('#plan').isEnabled()) throw new Error('Plan mode availability does not follow the brief');
       await page.locator('#plan-mode').check();
@@ -126,8 +141,17 @@ async function main() {
 
     if (fixture) {
       const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
+      await mobile.route('**/api/capabilities', (route) => route.fulfill({ status: 200, contentType: 'application/json; charset=utf-8', body: JSON.stringify({ codex: { available: true, version: 'codex-cli test', model: 'gpt-5.3-codex-spark' } }) }));
+      await mobile.route('**/api/autocomplete', (route) => route.fulfill({ status: 200, contentType: 'application/json; charset=utf-8', body: JSON.stringify({ completion: '이어서 모바일에서도 적용 버튼으로 문장을 넣을 수 있습니다.' }) }));
       await mobile.route('**/api/rewrite', (route) => route.fulfill({ status: 200, contentType: 'application/json; charset=utf-8', body: JSON.stringify(fixture) }));
       await mobile.goto(process.env.KR_HUMANIZER_GUI_URL || 'http://127.0.0.1:4317', { waitUntil: 'networkidle' });
+      await mobile.locator('#source').fill(source);
+      await mobile.locator('#autocomplete-enabled').check();
+      await mobile.locator('#completion-panel').waitFor({ state: 'visible', timeout: 5_000 });
+      await mobile.locator('.editor-panel').screenshot({ path: join(outputDir, '00-tab-autocomplete-mobile.png') });
+      await mobile.locator('#accept-completion').click();
+      if (!((await mobile.locator('#source').inputValue()).endsWith('이어서 모바일에서도 적용 버튼으로 문장을 넣을 수 있습니다.'))) throw new Error('Mobile Apply did not accept the completion');
+      await mobile.locator('#autocomplete-enabled').uncheck();
       await mobile.locator('#source').fill(source);
       await mobile.locator('#rewrite').click();
       await mobile.locator('#review').waitFor({ state: 'visible' });

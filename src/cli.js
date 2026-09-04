@@ -2,7 +2,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { stdin, stdout } from 'node:process';
 import { analyzeText, sanitizeText } from './core/analyze.js';
 import { applyProposal, buildProposal } from './core/diff.js';
-import { draftWithEngine, planWithEngine, rewriteWithEngine } from './engines/runner.js';
+import { autocompleteWithCodex, draftWithEngine, planWithEngine, rewriteWithEngine } from './engines/runner.js';
 import { createMemoryStore } from './memory/index.js';
 import { startGui } from './gui/server.js';
 import { runCv } from './benchmark/run.js';
@@ -10,11 +10,12 @@ import { getEditModeInstruction, normalizeHonorificLevel } from './core/style.js
 import { searchVault } from './knowledge/vault.js';
 import { getExplanationProfile } from './core/context-graph.js';
 
-const help = `KR-humanizer 0.7.0
+const help = `KR-humanizer 0.8.0
 
 사용법:
   kr-humanizer analyze <file|-> [--json]
   kr-humanizer sanitize <file|-> [--out <file>]
+  kr-humanizer complete <file|-> [--tone <문체>] [--mode fluent|balanced|strict|concise] [--honorific 0-100] [--explanation minimal|balanced|maximal] [--graph <graph.json>] [--out <file>]
   kr-humanizer plan <prompt|-> [--engine codex|claude] [--explanation minimal|balanced|maximal] [--out <file>]
   kr-humanizer draft <prompt|-> --graph <graph.json> [--engine codex|claude] [--explanation minimal|balanced|maximal] [--out <file>]
   kr-humanizer rewrite <file|-> [--engine codex|claude] [--tone <문체>] [--mode fluent|balanced|strict|concise] [--honorific 0-100] [--explanation minimal|balanced|maximal] [--graph <graph.json>] [--out <file>]
@@ -79,6 +80,17 @@ export async function main(args) {
   if (command === 'sanitize') {
     const result = sanitizeText(await readInput(paths[0]));
     return emit(rest.includes('--json') ? result : result.text, option(rest, '--out'));
+  }
+  if (command === 'complete') {
+    const text = await readInput(paths[0]);
+    const editMode = option(rest, '--mode', 'balanced');
+    getEditModeInstruction(editMode);
+    const honorificLevel = normalizeHonorificLevel(option(rest, '--honorific', '50'));
+    const explanationLevel = option(rest, '--explanation', 'balanced');
+    getExplanationProfile(explanationLevel);
+    const contextGraph = await readGraph(option(rest, '--graph'));
+    const result = await autocompleteWithCodex({ text, contextGraph, tone: option(rest, '--tone'), editMode, honorificLevel, explanationLevel });
+    return emit(result.completion, option(rest, '--out'));
   }
   if (command === 'review') {
     const proposal = buildProposal(await readInput(paths[0]), await readInput(paths[1]));

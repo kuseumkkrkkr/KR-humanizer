@@ -3,7 +3,7 @@
 <p align="center"><strong>고친 문장을 먼저 보여줍니다.</strong><br>뜻은 지키고, 읽는 부담만 덜어내는 로컬 우선 한국어 윤문 도구</p>
 <p align="center"><a href="https://kuseumkkrkkr.github.io/KR-humanizer/">웹사이트</a> · <a href="https://kuseumkkrkkr.github.io/KR-humanizer/guide/">설치 가이드</a> · <a href="https://kuseumkkrkkr.github.io/KR-humanizer/knowledge/">윤문 지식 저장소</a> · <a href="https://github.com/kuseumkkrkkr/KR-humanizer/releases/latest">최신 릴리스</a></p>
 
-KR-humanizer는 한국어 글을 더 자연스럽고 편안하게 읽도록 돕는 로컬 우선 윤문 도구입니다. 글을 쓰기 전에는 프롬프트에서 맥락 노드를 먼저 만들고, 초안이 있으면 문단 흐름을 편집 가능한 그래프로 바꿉니다. 필요 없는 노드를 제외해 과잉설명을 걷어낸 뒤 국립국어원의 근거 자료를 검색하고, 바뀐 문장만 Git형 Diff로 검토합니다. 별도의 모델 API 대신 로그인된 Codex 또는 Claude Code를 실행하며 npm CLI, 로컬 GUI, 플러그인으로 사용할 수 있습니다.
+KR-humanizer는 한국어 글을 더 자연스럽고 편안하게 읽도록 돕는 로컬 우선 윤문 도구입니다. 글을 쓰기 전에는 프롬프트에서 맥락 노드를 먼저 만들고, 초안이 있으면 문단 흐름을 편집 가능한 그래프로 바꿉니다. 필요 없는 노드를 제외해 과잉설명을 걷어낸 뒤 국립국어원의 근거 자료를 검색하고, 바뀐 문장만 Git형 Diff로 검토합니다. Codex EXEC 사용자는 작성 중인 글 끝에서 `gpt-5.3-codex-spark`가 제안한 다음 문장 하나를 확인하고 Tab으로 넣을 수 있습니다. 별도의 모델 API 대신 로그인된 Codex 또는 Claude Code를 실행하며 npm CLI, 로컬 GUI, 플러그인으로 사용할 수 있습니다.
 
 > 이 도구는 AI 판별기 회피나 출처 위장을 보장하지 않습니다. `sanitize`는 비가시 Unicode, BOM, 제어문자처럼 실제로 확인 가능한 텍스트 이상만 보여 주고 정리합니다.
 
@@ -11,6 +11,7 @@ KR-humanizer는 한국어 글을 더 자연스럽고 편안하게 읽도록 돕�
 
 - 문단·문장 길이, 중복 표현, 기본 오탈자, 비가시 문자 진단
 - Codex CLI 또는 Claude Code CLI를 통한 API 키 없는 윤문 제안
+- Codex EXEC 전용, `gpt-5.3-codex-spark` 고정 다음 문장 자동완성(Tab 수락·Escape 취소)
 - 문장/단어 단위 전후 비교, 어순 변경 표식, 선택 수락
 - 평어체부터 경어체까지 5단계 말투 높임 슬라이더와 4가지 윤문 방식
 - 최저·중간·최대 3단계 설명률
@@ -30,6 +31,7 @@ npm install
 npm test
 npm link
 kr-humanizer analyze draft.txt
+kr-humanizer complete draft.txt
 kr-humanizer knowledge draft.txt --mode strict --honorific 75
 kr-humanizer plan brief.txt --explanation minimal --out graph.json
 kr-humanizer draft brief.txt --graph graph.json --out draft.json
@@ -44,7 +46,9 @@ kr-humanizer gui
 npm install -g github:kuseumkkrkkr/KR-humanizer
 ```
 
-GitHub Release의 `kr-humanizer-0.7.0.tgz` 파일도 동일한 npm 설치물입니다. npm registry에는 아직 게시하지 않았습니다.
+GitHub Release의 `kr-humanizer-0.8.0.tgz` 파일도 동일한 npm 설치물입니다. npm registry에는 아직 게시하지 않았습니다.
+
+GUI 자동완성은 기본적으로 꺼져 있습니다. GUI가 Codex EXEC를 확인한 뒤 토글을 켜고 글 끝에서 1.2초 멈추면 다음 문장 하나를 표시합니다. Tab 또는 `적용`으로 넣고 Escape로 닫습니다. 일반 윤문 엔진 선택과 달리 자동완성은 Claude Code로 전환하거나 모델을 바꿀 수 없습니다.
 
 Claude Code가 설치되어 있으면 `--engine claude`를 사용할 수 있습니다. 외부 모델 API를 직접 호출하지 않으며, 사용자가 로그인한 CLI 프로세스만 실행합니다.
 
@@ -67,7 +71,7 @@ claude plugin install kr-humanizer@kr-humanizer
 ## 개인정보와 보안
 
 - GUI 서버는 `127.0.0.1`에만 바인딩됩니다.
-- 입력은 기본적으로 외부 서버에 저장하거나 전송하지 않습니다.
+- 입력은 KR-humanizer 자체 원격 서버에 저장하지 않습니다. 자동완성·초안·윤문을 요청하면 로그인된 Codex 또는 Claude Code CLI가 해당 제공자 서비스와 통신합니다.
 - CLI 실행은 셸 문자열이 아닌 인자 배열을 사용합니다.
 - mem0는 localhost 주소만 허용하며 기본값은 비활성입니다.
 - 원문은 200,000자, 요청 본문은 1 MiB로 제한됩니다.
@@ -97,6 +101,10 @@ flowchart LR
   CLI --> CV[합성 CV]
   CLI --> Server[127.0.0.1 HTTP 서버]
   GUI -->|세션 토큰 포함 요청| Server
+  GUI -->|1.2초 멈춤, 글 끝| Server
+  Server --> Complete[다음 문장 제안]
+  Complete -->|고정 모델| Spark[gpt-5.3-codex-spark]
+  Spark -->|미리보기| GUI
 
   Server --> Analyze
   Server --> Context
@@ -129,7 +137,7 @@ flowchart LR
 | 한국어 분석 | `src/core/analyze.js`, `data/ko-rules.json` | 문장 분리, 문단·문장 통계, 규칙 후보·장문·비가시 문자 검사 |
 | 변경 계산 | `src/core/diff.js` | 문장 정렬, 단어 단위 LCS, 어순 변경 표식, 선택한 변경 적용 |
 | 문체 제어 | `src/core/style.js`, `context-graph.js` | 5단계 상대 높임, 4가지 윤문 방식, 3단계 설명률과 활성 노드 검증 |
-| 프롬프트 | `src/core/prompt.js` | Plan·초안·윤문 프롬프트, 활성 그래프, 의미 보존 규칙, 이전 수락 성향 결합 |
+| 프롬프트 | `src/core/prompt.js` | Plan·초안·윤문·한 문장 자동완성 프롬프트, 활성 그래프, 의미 보존 규칙, 이전 수락 성향 결합 |
 | 지식 검색 | `src/knowledge/vault.js`, `obsidian-vault/` | Markdown 카드 파싱, 입력별 점수화, 출처를 포함한 상위 지침 선택 |
 | 실행기 | `src/engines/runner.js` | Codex·Claude 자식 프로세스 실행, 시간·출력 제한, 구조화된 JSON 파싱 |
 | GUI | `src/gui/index.html`, `app.js`, `styles.css`, `server.js` | 로컬 편집·검토 UI와 토큰 보호용 HTTP API |
@@ -143,6 +151,7 @@ flowchart LR
 |---|---|---|
 | `analyze` | 파일 또는 표준입력 | 통계, 규칙 후보, 의미 흐름 JSON |
 | `sanitize` | 파일 또는 표준입력 | 확인된 비가시 문자를 제거한 UTF-8 텍스트. `--out`을 지정한 경우에만 파일 작성 |
+| `complete` | 20자 이상 파일 또는 표준입력, 문체 설정, 선택 사항인 `--graph` | Codex EXEC의 고정 Spark 모델이 제안한 다음 문장 하나 |
 | `knowledge` | 원문, `--mode`, `--honorific`, 선택 사항인 `--vault` | 모델 실행 없이 관련 지식 카드와 출처를 JSON으로 반환 |
 | `plan` | 글쓰기 프롬프트, 엔진, `--explanation` | 초안 없이 편집 가능한 노드·관계 JSON 생성 |
 | `draft` | 글쓰기 프롬프트, `--graph`, 문체 설정 | 활성 노드만 사용한 초안과 의미 흐름 JSON 생성 |
@@ -152,7 +161,7 @@ flowchart LR
 | `cv` | 샘플·fold 수 | 합성 원문, EXEC 윤문, 지표, A/B 위치를 무작위화한 의견 파일 저장 |
 | `gui` | 포트 | `127.0.0.1`에서 로컬 검토 서버 실행 |
 
-파일을 생략하거나 `-`를 지정하면 표준입력을 읽습니다. `plan`, `draft`, `rewrite`, `cv`를 제외한 핵심 분석·Diff·수락 명령은 모델 없이 결정적으로 실행됩니다.
+파일을 생략하거나 `-`를 지정하면 표준입력을 읽습니다. `complete`, `plan`, `draft`, `rewrite`, `cv`를 제외한 핵심 분석·Diff·수락 명령은 모델 없이 결정적으로 실행됩니다.
 
 ### 런타임 라이브러리
 
@@ -169,6 +178,36 @@ flowchart LR
 | localhost mem0 | Node 내장 `fetch`, `AbortSignal.timeout` |
 
 Playwright는 제품 런타임이 아니라 `scripts/capture-gui.cjs`의 화면 검증에만 선택적으로 사용됩니다.
+
+### Tab 문장 자동완성 흐름
+
+```mermaid
+sequenceDiagram
+  actor U as 작성자
+  participant G as 로컬 GUI
+  participant S as 127.0.0.1 서버
+  participant R as runner.js
+  participant C as Codex EXEC
+
+  G->>S: 세션 토큰으로 Codex 설치 확인
+  S-->>G: CLI 버전과 사용 가능 여부
+  U->>G: 자동완성 켜기, 글 끝에서 입력
+  G->>G: IME 조합 종료 + 1.2초 대기 + 20자 확인
+  G->>S: 최근 문맥, 활성 그래프, 문체 설정
+  S->>S: 자동완성 동시 실행 1건 제한
+  S->>R: 한 문장 전용 프롬프트와 JSON Schema
+  R->>C: codex exec --model gpt-5.3-codex-spark
+  C-->>G: 최대 300자의 다음 문장 미리보기
+  alt 작성자가 Tab 또는 적용 선택
+    G->>G: 원문 끝에 제안 삽입
+  else Escape 또는 계속 입력
+    G->>G: 제안 폐기
+  end
+```
+
+자동완성은 모델 선택 메뉴를 사용하지 않습니다. `src/engines/runner.js`의 `AUTOCOMPLETE_MODEL` 상수와 실제 `--model` 인자가 모두 `gpt-5.3-codex-spark`로 고정됩니다. 프롬프트는 다음 문장 하나, 제공되지 않은 사실 금지, 안전한 전개가 없을 때 빈 문자열을 요구합니다. 응답은 별도 Schema로 제한한 뒤 첫 문장과 300자까지만 남깁니다. 입력 중 새 요청이 생기면 이전 응답은 화면에 반영하지 않으며, 서버는 Codex 프로세스를 동시에 하나만 실행합니다.
+
+OpenAI의 공개 Codex 활용 문서는 Codex-Spark를 빠르고 범위가 좁은 UI 수정에 쓰는 예를 들지만, 한국어 문장 자동완성 전용 모델이라고 규정하지는 않습니다. 이 프로젝트는 빠른 단일 문장 작업에 맞춰 Spark를 고정한 구현입니다. 근거: [OpenAI Codex use cases](https://developers.openai.com/codex/use-cases/).
 
 ## 윤문 요청의 내부 흐름
 

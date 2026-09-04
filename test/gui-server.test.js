@@ -43,6 +43,14 @@ test('GUI enforces byte-sized request limit and security headers', async () => {
       body: JSON.stringify({ brief: '가'.repeat(4_001) })
     });
     assert.equal(longBrief.status, 400);
+
+    const shortCompletion = await fetch(`http://127.0.0.1:${port}/api/autocomplete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-kr-humanizer-token': token },
+      body: JSON.stringify({ text: '짧은 글' })
+    });
+    assert.equal(shortCompletion.status, 400);
+    assert.match((await shortCompletion.json()).error, /20자 이상/);
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }

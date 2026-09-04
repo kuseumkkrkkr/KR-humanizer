@@ -6,7 +6,7 @@
     {
       "name": "kr-humanizer",
       "source": "./plugins/kr-humanizer",
-      "description": "Korean writing planning, editable context graph, explanation control, reviewable Diff, and local GUI",
+      "description": "Korean writing planning, Codex Spark sentence completion, editable context graph, reviewable Diff, and local GUI",
       "category": "productivity",
       "tags": ["korean", "writing", "proofreading", "local-first"]
     }

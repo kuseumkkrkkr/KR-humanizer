@@ -25,6 +25,8 @@ test('review UX exposes filters, comparison modes, and bulk selection', async ()
   assert.match(html, /id="honorific" type="range" min="0" max="100" step="25" value="50"/);
   assert.match(html, /id="honorific-value"/);
   for (const id of ['brief', 'plan-mode', 'plan', 'graph-nodes', 'add-node', 'draft']) assert.match(html, new RegExp(`id="${id}"`));
+  for (const id of ['autocomplete-enabled', 'autocomplete-capability', 'completion-panel', 'completion-text', 'accept-completion', 'dismiss-completion']) assert.match(html, new RegExp(`id="${id}"`));
+  assert.match(html, /gpt-5\.3-codex-spark/);
   assert.match(html, /name="explanation" value="minimal"/);
   assert.match(html, /name="explanation" value="balanced" checked/);
   assert.match(html, /name="explanation" value="maximal"/);
@@ -42,6 +44,11 @@ test('review UX exposes filters, comparison modes, and bulk selection', async ()
   assert.match(app, /\/api\/draft/);
   assert.match(app, /explanationLevel: explanationLevel\(\)/);
   assert.match(app, /node\.included = include\.checked/);
+  assert.match(app, /event\.key === 'Tab'/);
+  assert.match(app, /event\.key === 'Escape'/);
+  assert.match(app, /setTimeout\(\(\) => requestCompletion\(sequence\), 1200\)/);
+  assert.match(app, /\/api\/capabilities/);
+  assert.match(app, /\/api\/autocomplete/);
   assert.match(css, /#changes\[data-view="split"\]/);
   assert.match(css, /\.diff-line/);
   assert.match(css, /\.word-remove/);
@@ -51,5 +58,6 @@ test('review UX exposes filters, comparison modes, and bulk selection', async ()
   assert.match(css, /\.writing-settings/);
   assert.match(css, /\.graph-node-row/);
   assert.match(css, /\.segmented/);
+  assert.match(css, /\.completion-panel/);
   assert.match(css, /min-height:44px/);
 });

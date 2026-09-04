@@ -2,7 +2,7 @@ import { access, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 const root = resolve('site');
-const expected = ['index.html', 'guide/index.html', 'knowledge/index.html', 'styles.css', 'app.js', 'robots.txt', 'sitemap.xml', 'llms.txt', 'manifest.webmanifest', 'assets/mark.svg', 'assets/og-card.png', 'assets/review-screen.png'];
+const expected = ['index.html', 'guide/index.html', 'knowledge/index.html', 'styles.css', 'app.js', 'robots.txt', 'sitemap.xml', 'llms.txt', 'manifest.webmanifest', 'assets/mark.svg', 'assets/og-card.png', 'assets/review-screen.png', 'assets/autocomplete-screen.png'];
 for (const path of expected) await access(resolve(root, path));
 
 const pages = [

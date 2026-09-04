@@ -28,6 +28,12 @@ test('CLI sanitizes piped text', async () => {
   assert.equal(result.stdout, '가나\n');
 });
 
+test('CLI rejects short completion context before launching Codex', async () => {
+  const result = await invoke(['complete', '-'], '짧은 글');
+  assert.equal(result.code, 1);
+  assert.match(result.stderr, /20자 이상/);
+});
+
 test('CLI rejects an invalid honorific level before launching an engine', async () => {
   const result = await invoke(['rewrite', '-', '--honorific', '101'], '문장을 검토한다.');
   assert.equal(result.code, 1);

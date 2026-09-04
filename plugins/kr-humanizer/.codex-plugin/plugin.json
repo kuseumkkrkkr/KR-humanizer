@@ -1,7 +1,7 @@
 {
   "name": "kr-humanizer",
-  "version": "0.7.0+codex.20260904165301",
-  "description": "Graph-guided Korean drafting and review with explicit, user-approved changes",
+  "version": "0.8.0+codex.20260904170939",
+  "description": "Graph-guided Korean drafting, Spark sentence completion, and explicit review",
   "author": {
     "name": "kuseumkkrkkr"
   },
@@ -9,7 +9,7 @@
   "interface": {
     "displayName": "KR-humanizer",
     "shortDescription": "Source-guided Korean writing review.",
-    "longDescription": "Plan Korean writing as editable context nodes, control explanation depth, retrieve relevant National Institute of Korean Language guidance, compare rewrites sentence by sentence, and accept only chosen changes.",
+    "longDescription": "Plan Korean writing as editable context nodes, continue a draft with opt-in Codex Spark sentence suggestions, retrieve relevant National Institute of Korean Language guidance, compare rewrites sentence by sentence, and accept only chosen changes.",
     "developerName": "kuseumkkrkkr",
     "category": "Productivity",
     "capabilities": [
@@ -23,7 +23,8 @@
       "Plan-first drafting",
       "explanation depth",
       "Obsidian knowledge retrieval",
-      "local GUI"
+      "local GUI",
+      "Codex Spark Tab completion"
     ],
     "defaultPrompt": "Use KR-humanizer to review this Korean text and show every proposed change before applying it."
   }

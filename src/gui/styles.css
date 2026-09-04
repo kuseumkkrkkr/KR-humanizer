@@ -15,6 +15,16 @@ main{max-width:1120px;margin:auto;padding:0 24px 80px;display:grid;gap:18px}
 .section-head>span{color:var(--muted);font-size:13px}
 textarea{width:100%;min-height:280px;border:1px solid var(--line);border-radius:12px;padding:18px;font:inherit;resize:vertical;background:#fcfcfa;color:var(--ink)}
 textarea:focus,select:focus,button:focus{outline:3px solid rgba(20,108,67,.16);outline-offset:2px}
+.autocomplete-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px;color:var(--muted);font-size:12px}
+.autocomplete-toggle{display:flex;align-items:center;gap:7px;min-height:44px;color:var(--ink);font-size:13px;font-weight:800}
+.autocomplete-toggle input{width:18px;height:18px;accent-color:var(--green)}
+.capability{color:var(--green);font-weight:700}
+.fixed-model{margin-left:auto;font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+.completion-panel{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:8px;padding:12px 14px;border:1px solid #bad2c3;border-left:4px solid var(--green);border-radius:10px;background:var(--green-soft)}
+.completion-panel strong{display:block;color:var(--green);font-size:12px}
+.completion-panel p{margin:2px 0 0}
+.completion-actions{display:flex;gap:7px;flex:0 0 auto}
+kbd{padding:2px 5px;border:1px solid rgba(24,32,28,.22);border-radius:4px;background:rgba(255,255,255,.7);font:11px ui-monospace,SFMono-Regular,Consolas,monospace;color:inherit}
 .controls{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
 button,select{border:1px solid var(--line);border-radius:9px;padding:10px 14px;background:#fff;font:inherit;font-weight:700;color:var(--ink)}
 button{cursor:pointer}
@@ -145,6 +155,10 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .finding{grid-template-columns:1fr}
 .controls>*{flex:1 1 45%}
 .controls .primary{flex-basis:100%}
+.fixed-model{width:100%;margin-left:0}
+.completion-panel{align-items:stretch;flex-direction:column}
+.completion-actions{display:grid;grid-template-columns:1fr 1fr}
+.completion-actions button,.autocomplete-toggle{min-height:44px}
 .editor-panel,.result-panel{padding:18px;border-radius:14px}
 main{padding:0 12px 60px}
 header{padding-left:18px;padding-right:18px}
