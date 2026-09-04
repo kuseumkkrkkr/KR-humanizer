@@ -11,7 +11,7 @@ test('Codex and Claude plugin manifests share a stable identity', async () => {
   const claude = await json('../plugins/kr-humanizer/.claude-plugin/plugin.json');
   assert.equal(codex.name, 'kr-humanizer');
   assert.equal(claude.name, codex.name);
-  assert.equal(claude.version, codex.version);
+  assert.equal(claude.version, codex.version.split('+')[0]);
 });
 
 test('both marketplaces resolve the same plugin directory', async () => {

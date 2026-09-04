@@ -1,0 +1,25 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "type":"object",
+  "additionalProperties":false,
+  "required":["evaluations"],
+  "properties":{
+    "evaluations":{"type":"array","items":{
+      "type":"object","additionalProperties":false,
+      "required":["id","winner","naturalnessA","naturalnessB","readabilityA","readabilityB","coherenceA","coherenceB","meaningChangedA","meaningChangedB","reason"],
+      "properties":{
+        "id":{"type":"string"},
+        "winner":{"type":"string","enum":["A","B","TIE"]},
+        "naturalnessA":{"type":"integer","minimum":1,"maximum":5},
+        "naturalnessB":{"type":"integer","minimum":1,"maximum":5},
+        "readabilityA":{"type":"integer","minimum":1,"maximum":5},
+        "readabilityB":{"type":"integer","minimum":1,"maximum":5},
+        "coherenceA":{"type":"integer","minimum":1,"maximum":5},
+        "coherenceB":{"type":"integer","minimum":1,"maximum":5},
+        "meaningChangedA":{"type":"boolean"},
+        "meaningChangedB":{"type":"boolean"},
+        "reason":{"type":"string"}
+      }
+    }}
+  }
+}

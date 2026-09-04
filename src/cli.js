@@ -5,8 +5,9 @@ import { applyProposal, buildProposal } from './core/diff.js';
 import { rewriteWithEngine } from './engines/runner.js';
 import { createMemoryStore } from './memory/index.js';
 import { startGui } from './gui/server.js';
+import { runCv } from './benchmark/run.js';
 
-const help = `KR-humanizer 0.1.0
+const help = `KR-humanizer 0.2.0
 
 사용법:
   kr-humanizer analyze <file|-> [--json]
@@ -14,6 +15,7 @@ const help = `KR-humanizer 0.1.0
   kr-humanizer rewrite <file|-> [--engine codex|claude] [--tone <문체>] [--out <file>]
   kr-humanizer review <original> <rewritten> [--out <file>]
   kr-humanizer accept <proposal.json> --ids s1,s2 [--out <file>]
+  kr-humanizer cv [--samples 3] [--folds 3] [--out-dir experiments/runs]
   kr-humanizer gui [--port 4317] [--no-open]
 
 메모리 선택:
@@ -82,6 +84,15 @@ export async function main(args) {
     const result = await rewriteWithEngine({ engine: option(rest, '--engine', 'codex'), text, tone: option(rest, '--tone'), memories });
     const proposal = { ...buildProposal(text, result.rewrittenText), summary: result.summary, flow: { nodes: result.flow, edges: result.edges } };
     return emit(proposal, option(rest, '--out'));
+  }
+  if (command === 'cv') {
+    const result = await runCv({
+      samples: Number(option(rest, '--samples', '3')),
+      folds: Number(option(rest, '--folds', '3')),
+      outputRoot: option(rest, '--out-dir', 'experiments/runs'),
+      onProgress: (message) => process.stderr.write(`[CV] ${message}\n`)
+    });
+    return emit(result);
   }
   if (command === 'gui') {
     const port = Number(option(rest, '--port', '4317'));

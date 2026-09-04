@@ -24,6 +24,7 @@ npm test
 npm link
 kr-humanizer analyze draft.txt
 kr-humanizer rewrite draft.txt --engine codex --out proposal.json
+kr-humanizer cv --samples 3 --folds 3
 kr-humanizer gui
 ```
 
@@ -33,7 +34,7 @@ kr-humanizer gui
 npm install -g github:kuseumkkrkkr/KR-humanizer
 ```
 
-`kr-humanizer-0.1.0.tgz` 파일도 동일한 npm 설치물입니다. npm registry에는 아직 게시하지 않았습니다.
+GitHub Release의 `kr-humanizer-0.2.0.tgz` 파일도 동일한 npm 설치물입니다. npm registry에는 아직 게시하지 않았습니다.
 
 Claude Code가 설치되어 있으면 `--engine claude`를 사용할 수 있습니다. 외부 모델 API를 직접 호출하지 않으며, 사용자가 로그인한 CLI 프로세스만 실행합니다.
 
@@ -62,3 +63,9 @@ claude plugin install kr-humanizer@kr-humanizer
 - 원문은 200,000자, 요청 본문은 1 MiB로 제한됩니다.
 
 자세한 제품 범위와 근거는 [docs/PLAN.md](docs/PLAN.md), [docs/RESEARCH.md](docs/RESEARCH.md)를 참고하세요.
+
+## 합성 CV
+
+`cv` 명령은 정치·경제·사회 주제별 최소 프롬프트 원문과 윤문문을 pair 단위 3-fold로 나눕니다. 설명 가능한 문체 지표, 블라인드 A/B 평가, 원문/윤문 문체 구분 실험을 함께 저장합니다. 사람이 쓴 기준 글이나 실제 독자 평가는 포함하지 않으므로 사람다움 정확도로 해석하면 안 됩니다.
+
+최종 실행은 `experiments/runs/2026-09-04T06-22-37-885Z/`에 기준문 9개, EXEC 윤문 9개, 평가 의견 9개로 분리 저장했습니다. 실제 GUI 동작 캡처는 `artifacts/screenshots/`에서 확인할 수 있습니다.

@@ -3,6 +3,10 @@ dist/
 *.tgz
 .kr-humanizer/
 .tmp-install*/
+experiments/latest-run.json
+experiments/runs/*
+!experiments/runs/2026-09-04T06-22-37-885Z/
+!experiments/runs/2026-09-04T06-22-37-885Z/**
 coverage/
 *.log
 .DS_Store

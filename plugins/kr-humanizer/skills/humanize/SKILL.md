@@ -17,6 +17,10 @@ Preserve the writer's facts, numbers, proper nouns, stance, and intended audienc
 6. Present changes without overwriting the source. Mark `order` changes clearly and apply only the sentence IDs the user accepts.
 7. Use `sanitize` only after showing the detected code points. Explain that these are verifiable text-control characters, not proof of an AI watermark.
 
+## Synthetic CV
+
+When the user asks to compare plain AI drafts with KR-humanizer output, run `npx --yes github:kuseumkkrkkr/KR-humanizer cv --samples 3 --folds 3`. Keep each original/rewrite pair in one fold, present deterministic style metrics separately from blinded model judgment, and state that synthetic CV is not evidence of human preference or detector evasion.
+
 ## Boundaries
 
 - Do not add facts or smooth over uncertainty.

@@ -1,0 +1,5 @@
+[
+  {"id":"politics","label":"정치","prompt":"한국 정치에 관한 글을 작성하세요."},
+  {"id":"economy","label":"경제","prompt":"한국 경제에 관한 글을 작성하세요."},
+  {"id":"society","label":"사회","prompt":"한국 사회에 관한 글을 작성하세요."}
+]

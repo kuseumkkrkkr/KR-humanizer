@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { buildRewritePrompt } from '../core/prompt.js';
 
-const schemaPath = fileURLToPath(new URL('../../schemas/rewrite.schema.json', import.meta.url));
+const rewriteSchemaPath = fileURLToPath(new URL('../../schemas/rewrite.schema.json', import.meta.url));
 const MAX_OUTPUT = 2 * 1024 * 1024;
 
 function run(command, args, input, timeoutMs = 180_000) {
@@ -50,21 +50,26 @@ function parseClaude(stdout) {
   return assertResult(outer);
 }
 
-export async function rewriteWithEngine({ engine = 'codex', text, tone, memories = [], timeoutMs }) {
+export async function rewriteWithEngine({ engine = 'codex', text, tone, memories = [], timeoutMs, isolated = false }) {
   const prompt = buildRewritePrompt({ text, tone, memories });
   if (engine === 'codex') {
-    const outputPath = join(tmpdir(), `kr-humanizer-${randomUUID()}.json`);
-    try {
-      await run('codex', ['exec', '--sandbox', 'read-only', '--ephemeral', '--skip-git-repo-check', '--output-schema', schemaPath, '--output-last-message', outputPath, '-'], prompt, timeoutMs);
-      return assertResult(JSON.parse(await readFile(outputPath, 'utf8')));
-    } finally {
-      await unlink(outputPath).catch(() => {});
-    }
+    return assertResult(await runCodexStructured({ prompt, schemaPath: rewriteSchemaPath, timeoutMs, isolated }));
   }
   if (engine === 'claude') {
-    const schema = await readFile(schemaPath, 'utf8');
+    const schema = await readFile(rewriteSchemaPath, 'utf8');
     const { stdout } = await run('claude', ['-p', '--output-format', 'json', '--json-schema', schema, '--permission-mode', 'plan', '--no-session-persistence'], prompt, timeoutMs);
     return parseClaude(stdout);
   }
   throw new Error(`지원하지 않는 엔진: ${engine}`);
+}
+
+export async function runCodexStructured({ prompt, schemaPath, timeoutMs, isolated = false }) {
+  const outputPath = join(tmpdir(), `kr-humanizer-${randomUUID()}.json`);
+  try {
+    const isolationArgs = isolated ? ['--ignore-user-config', '--ignore-rules'] : [];
+    await run('codex', ['exec', ...isolationArgs, '--sandbox', 'read-only', '--ephemeral', '--skip-git-repo-check', '--output-schema', schemaPath, '--output-last-message', outputPath, '-'], prompt, timeoutMs);
+    return JSON.parse(await readFile(outputPath, 'utf8'));
+  } finally {
+    await unlink(outputPath).catch(() => {});
+  }
 }
