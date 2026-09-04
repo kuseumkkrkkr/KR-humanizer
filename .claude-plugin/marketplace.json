@@ -1,0 +1,13 @@
+{
+  "name": "kr-humanizer",
+  "owner": {"name": "kuseumkkrkkr"},
+  "plugins": [
+    {
+      "name": "kr-humanizer",
+      "source": "./plugins/kr-humanizer",
+      "description": "Korean writing diagnosis, reviewable rewrite diff, flow graph, and local GUI",
+      "category": "productivity",
+      "tags": ["korean", "writing", "proofreading", "local-first"]
+    }
+  ]
+}

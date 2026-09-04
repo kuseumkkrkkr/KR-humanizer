@@ -1,0 +1,20 @@
+{
+  "name": "kr-humanizer",
+  "interface": {
+    "displayName": "KR-humanizer"
+  },
+  "plugins": [
+    {
+      "name": "kr-humanizer",
+      "source": {
+        "source": "local",
+        "path": "./plugins/kr-humanizer"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

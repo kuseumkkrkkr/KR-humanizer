@@ -1,0 +1,2 @@
+#!/usr/bin/env sh
+exec npx --yes github:kuseumkkrkkr/KR-humanizer "$@"

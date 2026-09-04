@@ -1,0 +1,5 @@
+[
+  {"id":"basic-typos","input":"이렇게 하면 되요. 누구나 할수 있다.","expectRuleIds":["typo-doeda","spacing-halsu"]},
+  {"id":"invisible-mark","input":"사람\u200b다운 글","expectInvisible":["U+200B"]},
+  {"id":"paragraph-flow","input":"문제를 설명합니다. 원인을 짚습니다.\n\n해결책을 제안합니다.","expectParagraphs":2}
+]

@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.tgz
+.kr-humanizer/
+.tmp-install*/
+coverage/
+*.log
+.DS_Store

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="kr-humanizer-token" content="__SESSION_TOKEN__">
+  <title>KR-humanizer</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <div>
+      <span class="eyebrow">LOCAL WRITING REVIEW</span>
+      <h1>KR-humanizer</h1>
+      <p>글의 뜻은 지키고, 읽는 부담만 덜어냅니다.</p>
+    </div>
+    <span class="local-badge">127.0.0.1 · 로컬</span>
+  </header>
+  <main>
+    <section class="editor-panel">
+      <div class="section-head">
+        <div><span class="step">01</span><h2>원문 점검</h2></div>
+        <span id="char-count">0자</span>
+      </div>
+      <textarea id="source" maxlength="200000" placeholder="점검할 한국어 글을 붙여 넣으세요."></textarea>
+      <div class="controls">
+        <button id="analyze" class="secondary">문단·오탈자 점검</button>
+        <button id="sanitize" class="secondary">비가시 문자 정리</button>
+        <select id="engine" aria-label="윤문 엔진"><option value="codex">Codex CLI</option><option value="claude">Claude Code CLI</option></select>
+        <select id="tone" aria-label="목표 문체"><option>편안하고 자연스러운 한국어</option><option>간결한 업무 문체</option><option>따뜻한 대화체</option><option>차분한 설명체</option></select>
+        <button id="rewrite" class="primary">윤문 제안 만들기</button>
+      </div>
+      <p class="notice">AI 판별 회피를 보장하지 않습니다. 비가시 문자는 확인 가능한 텍스트 이상만 정리합니다.</p>
+    </section>
+
+    <section id="diagnosis" class="result-panel hidden">
+      <div class="section-head"><div><span class="step">02</span><h2>먼저 확인할 부분</h2></div></div>
+      <div id="stats" class="stats"></div>
+      <div id="findings" class="findings"></div>
+    </section>
+
+    <section id="review" class="result-panel hidden">
+      <div class="section-head"><div><span class="step">03</span><h2>바뀐 문장 비교</h2></div><span id="summary"></span></div>
+      <div class="legend"><span><i class="removed"></i>삭제</span><span><i class="added"></i>추가</span><span><i class="moved"></i>어순 변경</span></div>
+      <div id="changes" class="changes"></div>
+      <div class="accept-bar"><span id="selection-count">0개 선택</span><button id="accept" class="primary">선택한 변경 수락</button></div>
+    </section>
+
+    <section id="flow-section" class="result-panel hidden">
+      <div class="section-head"><div><span class="step">04</span><h2>의미 흐름</h2></div></div>
+      <div id="flow" class="flow"></div>
+    </section>
+
+    <section id="output-section" class="result-panel hidden">
+      <div class="section-head"><div><span class="step">05</span><h2>확정 결과</h2></div><button id="copy" class="text-button">복사</button></div>
+      <textarea id="output" readonly></textarea>
+      <button id="remember" class="secondary">이번 선택을 로컬에 기억</button>
+    </section>
+  </main>
+  <div id="status" role="status" aria-live="polite"></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

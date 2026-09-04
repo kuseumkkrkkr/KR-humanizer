@@ -1,0 +1,18 @@
+{
+  "name": "kr-humanizer",
+  "version": "0.1.0",
+  "description": "Local-first Korean writing review and humanization CLI with Codex and Claude Code adapters",
+  "type": "module",
+  "bin": {"kr-humanizer": "./bin/kr-humanizer.js"},
+  "scripts": {
+    "start": "node ./bin/kr-humanizer.js",
+    "test": "node --test",
+    "check": "node --check ./bin/kr-humanizer.js && node --check ./src/cli.js && node --check ./src/gui/server.js",
+    "pack:dry": "npm pack --dry-run"
+  },
+  "engines": {"node": ">=20"},
+  "files": ["bin", "src", "data", "schemas", "plugins", "README.md", "LICENSE"],
+  "keywords": ["korean", "writing", "proofreading", "codex", "claude-code", "cli"],
+  "license": "MIT",
+  "repository": {"type": "git", "url": "git+https://github.com/kuseumkkrkkr/KR-humanizer.git"}
+}

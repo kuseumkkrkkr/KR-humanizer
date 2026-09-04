@@ -1,0 +1,18 @@
+{
+  "name": "kr-humanizer",
+  "version": "0.1.0",
+  "description": "Review and rewrite Korean text with explicit, user-approved changes",
+  "author": {
+    "name": "kuseumkkrkkr"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "KR-humanizer",
+    "shortDescription": "Review Korean writing before accepting rewrites.",
+    "longDescription": "Diagnose paragraphs and text hygiene, compare Korean rewrites sentence by sentence, mark reordered ideas, and let the writer accept each change.",
+    "developerName": "kuseumkkrkkr",
+    "category": "Productivity",
+    "capabilities": ["Korean proofreading", "rewrite review", "local GUI"],
+    "defaultPrompt": "Use KR-humanizer to review this Korean text and show every proposed change before applying it."
+  }
+}
