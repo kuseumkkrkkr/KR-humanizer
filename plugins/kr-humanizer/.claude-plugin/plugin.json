@@ -1,7 +1,7 @@
 {
   "name": "kr-humanizer",
   "description": "Review and rewrite Korean text with explicit, user-approved changes",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "author": {"name": "kuseumkkrkkr"},
   "homepage": "https://github.com/kuseumkkrkkr/KR-humanizer",
   "repository": "https://github.com/kuseumkkrkkr/KR-humanizer"

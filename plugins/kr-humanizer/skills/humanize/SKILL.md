@@ -11,9 +11,9 @@ Preserve the writer's facts, numbers, proper nouns, stance, and intended audienc
 
 1. Save the supplied text to a temporary UTF-8 file only when a file is needed for the CLI.
 2. Run `npx --yes github:kuseumkkrkkr/KR-humanizer analyze <file>` and report paragraph, typo, spacing, long-sentence, and invisible-character findings before rewriting.
-3. Ask the user to choose a tone only when their request does not imply one. Otherwise infer the least-transformative suitable tone.
+3. Ask the user to choose a tone only when their request does not imply one. Otherwise infer the least-transformative suitable tone. Treat `--honorific 0-100` as listener-directed speech level: 0 is 해체, 25 해라체, 50 preserves the source, 75 is 해요체, and 100 하십시오체. Do not change subject/object honorific relationships or titles just to match the slider.
 4. For a visual review, run `npx --yes github:kuseumkkrkkr/KR-humanizer gui`. Tell the user it opens a localhost interface.
-5. For a CLI proposal, run `npx --yes github:kuseumkkrkkr/KR-humanizer rewrite <file> --engine codex --out <proposal.json>` in Codex, or use `--engine claude` in Claude Code.
+5. For a CLI proposal, run `npx --yes github:kuseumkkrkkr/KR-humanizer rewrite <file> --engine codex --mode balanced --honorific 50 --out <proposal.json>` in Codex, or use `--engine claude` in Claude Code. Choose `fluent` for minimal correction, `strict` for broader consistency review, or `concise` for meaning-preserving shortening. Read [editing principles](references/editing-principles.md) when choosing or explaining a mode.
 6. Present changes without overwriting the source. Let the user filter change types, switch between highlighted and side-by-side comparison, and select individual or currently visible sentences. Mark `order` changes clearly and apply only the sentence IDs the user accepts.
 7. Use `sanitize` only after showing the detected code points. Explain that these are verifiable text-control characters, not proof of an AI watermark.
 

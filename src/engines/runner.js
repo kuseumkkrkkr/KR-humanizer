@@ -54,8 +54,8 @@ function parseClaude(stdout) {
   return assertResult(outer);
 }
 
-export async function rewriteWithEngine({ engine = 'codex', text, tone, memories = [], timeoutMs, isolated = false }) {
-  const prompt = buildRewritePrompt({ text, tone, memories });
+export async function rewriteWithEngine({ engine = 'codex', text, tone, editMode = 'balanced', honorificLevel = 50, memories = [], timeoutMs, isolated = false }) {
+  const prompt = buildRewritePrompt({ text, tone, editMode, honorificLevel, memories });
   if (engine === 'codex') {
     return assertResult(await runCodexStructured({ prompt, schemaPath: rewriteSchemaPath, timeoutMs, isolated }));
   }

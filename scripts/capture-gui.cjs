@@ -19,14 +19,19 @@ async function main() {
       const { buildProposal } = await import('../src/core/diff.js');
       const pair = run.pairs[0];
       const fixture = { ...buildProposal(pair.baseline, pair.humanized), summary: pair.rewriteSummary, flow: pair.flow };
-      await page.route('**/api/rewrite', (route) => route.fulfill({
-        status: 200,
-        contentType: 'application/json; charset=utf-8',
-        body: JSON.stringify(fixture)
-      }));
+      await page.route('**/api/rewrite', (route) => {
+        const request = route.request().postDataJSON();
+        if (request.editMode !== 'strict' || request.honorificLevel !== 75) throw new Error('Style settings were not included in the rewrite request');
+        return route.fulfill({ status: 200, contentType: 'application/json; charset=utf-8', body: JSON.stringify(fixture) });
+      });
     }
     await page.goto(process.env.KR_HUMANIZER_GUI_URL || 'http://127.0.0.1:4317', { waitUntil: 'networkidle' });
     await page.locator('#source').fill(source);
+    await page.locator('#edit-mode').selectOption('strict');
+    await page.locator('#honorific').fill('75');
+    if ((await page.locator('#honorific-value').textContent()) !== '부드러운 경어 · 해요체') throw new Error('Honorific slider label did not update');
+    if ((await page.locator('#honorific').getAttribute('aria-valuetext')) !== '부드러운 경어 · 해요체 75') throw new Error('Honorific slider accessibility value is missing');
+    await page.locator('.editor-panel').screenshot({ path: join(outputDir, '00-style-settings.png') });
     await page.locator('#analyze').click();
     await page.locator('#diagnosis').waitFor({ state: 'visible' });
     await page.locator('#diagnosis').screenshot({ path: join(outputDir, '01-analysis.png') });

@@ -9,6 +9,7 @@
 - 문단·문장 길이, 중복 표현, 기본 오탈자, 비가시 문자 진단
 - Codex CLI 또는 Claude Code CLI를 통한 API 키 없는 윤문 제안
 - 문장/단어 단위 전후 비교, 어순 변경 표식, 선택 수락
+- 평어체부터 경어체까지 5단계 말투 높임 슬라이더와 4가지 윤문 방식
 - 글의 의미 흐름 그래프
 - 로컬 결정 메모리와 선택적 self-hosted mem0 연동
 - npm CLI와 로컬 브라우저 GUI
@@ -23,7 +24,7 @@ npm install
 npm test
 npm link
 kr-humanizer analyze draft.txt
-kr-humanizer rewrite draft.txt --engine codex --out proposal.json
+kr-humanizer rewrite draft.txt --engine codex --mode balanced --honorific 75 --out proposal.json
 kr-humanizer cv --samples 3 --folds 3
 kr-humanizer gui
 ```
@@ -34,7 +35,7 @@ kr-humanizer gui
 npm install -g github:kuseumkkrkkr/KR-humanizer
 ```
 
-GitHub Release의 `kr-humanizer-0.3.0.tgz` 파일도 동일한 npm 설치물입니다. npm registry에는 아직 게시하지 않았습니다.
+GitHub Release의 `kr-humanizer-0.4.0.tgz` 파일도 동일한 npm 설치물입니다. npm registry에는 아직 게시하지 않았습니다.
 
 Claude Code가 설치되어 있으면 `--engine claude`를 사용할 수 있습니다. 외부 모델 API를 직접 호출하지 않으며, 사용자가 로그인한 CLI 프로세스만 실행합니다.
 
@@ -113,7 +114,8 @@ flowchart LR
 | 명령 진입점 | `bin/kr-humanizer.js`, `src/cli.js` | 인자 해석, 파일·표준입력 처리, 명령 라우팅 |
 | 한국어 분석 | `src/core/analyze.js`, `data/ko-rules.json` | 문장 분리, 문단·문장 통계, 규칙 후보, 장문, 비가시 문자 검사 |
 | 변경 계산 | `src/core/diff.js` | 문장 정렬, 단어 단위 LCS, 어순 변경 표식, 선택 변경 적용 |
-| 프롬프트 | `src/core/prompt.js` | 의미 보존 규칙, 목표 문체, 이전 수락 성향, 원문 결합 |
+| 문체 제어 | `src/core/style.js` | 5단계 상대 높임 프로필과 4가지 윤문 방식 검증 |
+| 프롬프트 | `src/core/prompt.js` | 의미 보존 규칙, 목표 문체, 높임·윤문 방식, 이전 수락 성향, 원문 결합 |
 | 실행기 | `src/engines/runner.js` | Codex·Claude 자식 프로세스 실행, 시간·출력 제한, 구조화 JSON 파싱 |
 | GUI | `src/gui/index.html`, `app.js`, `styles.css`, `server.js` | 로컬 편집·검토 UI와 토큰 보호 HTTP API |
 | 메모리 | `src/memory/` | 기본 로컬 JSON 또는 localhost 전용 mem0 검색·기록 |
@@ -126,7 +128,7 @@ flowchart LR
 |---|---|---|
 | `analyze` | 파일 또는 표준입력 | 통계, 규칙 후보, 의미 흐름 JSON |
 | `sanitize` | 파일 또는 표준입력 | 확인된 비가시 문자를 제거한 UTF-8 텍스트; `--out`을 줬을 때만 파일 작성 |
-| `rewrite` | 원문, 엔진, 문체 | 구조화 윤문 응답을 문장별 proposal JSON으로 변환 |
+| `rewrite` | 원문, 엔진, 문체, `--mode`, `--honorific` | 구조화 윤문 응답을 문장별 proposal JSON으로 변환 |
 | `review` | 원문 파일 + 별도 윤문 파일 | 모델 실행 없이 두 글의 Diff proposal 생성 |
 | `accept` | proposal JSON + 문장 ID | 선택한 변경만 반영한 텍스트 생성 |
 | `cv` | 샘플·fold 수 | 합성 원문, EXEC 윤문, 지표, A/B 위치 무작위화 의견 파일 저장 |
@@ -169,7 +171,7 @@ sequenceDiagram
   U->>UI: 윤문 제안 요청
   UI->>M: 원문 앞 500자로 최대 6개 검색
   M-->>P: 이전 수락 성향
-  P->>R: 보존 규칙 + 문체 + 메모리 + 원문
+  P->>R: 보존 규칙 + 윤문 방식 + 높임 정도 + 메모리 + 원문
   R->>E: 셸 문자열이 아닌 인자 배열로 실행
   E-->>R: rewrite.schema.json 구조의 JSON
   R->>D: 원문과 rewrittenText 비교
@@ -185,10 +187,12 @@ sequenceDiagram
 
 1. 사실·고유명사·수치·주장·관점을 바꾸지 말라는 보존 조건
 2. 사용자가 고른 목표 문체
-3. 과장된 접속어와 상투 표현을 줄이고 구체적인 동사와 짧은 문장을 우선하는 편집 규칙
-4. AI 판별기 회피와 출처 위장을 하지 않는다는 경계
-5. 로컬 메모리에서 검색한 이전 수락 성향
-6. 구분선 안의 원문 전체
+3. `fluent`, `balanced`, `strict`, `concise` 중 선택한 윤문 방식
+4. 0~100 높임 정도와 이에 대응하는 상대 높임 등급
+5. 과장된 접속어와 상투 표현을 줄이고 구체적인 동사와 짧은 문장을 우선하는 편집 규칙
+6. AI 판별기 회피와 출처 위장을 하지 않는다는 경계
+7. 로컬 메모리에서 검색한 이전 수락 성향
+8. 구분선 안의 원문 전체
 
 응답은 `schemas/rewrite.schema.json`으로 제한합니다. 필수 필드는 윤문 본문 `rewrittenText`, 요약 `summary`, 의미 흐름 노드 `flow`, 관계 `edges`입니다. 스키마에 맞지 않거나 필드가 빠지면 결과를 적용하지 않고 오류로 처리합니다.
 
@@ -207,6 +211,8 @@ sequenceDiagram
 stateDiagram-v2
   [*] --> 원문입력
   원문입력 --> 사전점검: 문단·오탈자 점검
+  원문입력 --> 말투설정: 윤문 방식 + 높임 슬라이더
+  말투설정 --> 사전점검
   사전점검 --> 제안생성: Codex·Claude 윤문
   제안생성 --> 변경검토
   변경검토 --> 변경검토: 유형 필터
@@ -225,6 +231,20 @@ stateDiagram-v2
 - **원본 보존:** 제안 생성만으로 원문을 덮어쓰지 않습니다. `applyProposal()`은 선택된 문장 ID만 원문의 뒤쪽 위치부터 적용해 앞 문장의 인덱스가 밀리지 않게 합니다.
 
 문장별 Diff는 토큰 단위 최장 공통 부분 수열(LCS)을 사용합니다. 두 문장의 단어 집합 유사도가 0.6 이상인데 위치가 다르면 `order`로 표시합니다. 토큰 조합이 250,000개를 넘으면 메모리 폭증을 막기 위해 문장 전체 삭제·추가 표시로 폴백합니다.
+
+### 말투 높임 슬라이더
+
+UI의 `평어체`와 `경어체`는 이해를 돕는 넓은 범주이고, 실제 프롬프트에는 국립국어원이 설명하는 상대 높임 등급을 명시합니다. 슬라이더는 25 단위로 움직이며 기본값 50은 원문의 우세한 종결 어미를 유지합니다. 높임 조절은 청자를 향한 종결 어미에만 적용하고, 원문 속 인물·직함에 대한 주체 및 객체 높임 관계는 바꾸지 않습니다. [국립국어원은 상대 높임법을 해라체·하게체·하오체·하십시오체·해체·해요체 등으로 구분합니다.](https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=27&pageIndex=1&qna_seq=332328)
+
+| 값 | 화면 표시 | 적용 원칙 |
+|---:|---|---|
+| 0 | 평어 · 해체 | 친근한 비격식 평어. 무례한 표현은 새로 만들지 않음 |
+| 25 | 서술형 평어 · 해라체 | 설명문 중심의 `-다`, `-한다` 계열 |
+| 50 | 중립 · 원문 유지 | 원문에서 우세한 상대 높임 등급 유지 |
+| 75 | 부드러운 경어 · 해요체 | `-아요`, `-어요`, `-예요` 계열 |
+| 100 | 격식 경어 · 하십시오체 | `-습니다/-ㅂ니다`, `-습니까` 계열 |
+
+![윤문 방식과 말투 높임 슬라이더](artifacts/screenshots/00-style-settings.png)
 
 ### 검증된 GUI 화면
 
@@ -253,6 +273,19 @@ flowchart TB
 ```
 
 Codex와 Claude용 manifest는 같은 `humanize-korean-writing` Skill을 가리킵니다. Skill은 진단을 먼저 보여 주고, 원본을 덮어쓰지 않으며, 어순 변경을 표시하고, 사용자가 수락한 문장만 적용하도록 실행 순서를 정의합니다. 플러그인은 자체 모델이나 원격 서비스를 포함하지 않으며 npm CLI를 호출하는 사용 지침과 실행 래퍼를 제공합니다.
+
+### 다른 Humanizer에서 선별한 편집 원리
+
+공개된 공식 기능 설명을 비교해 다음 원리만 독립적으로 구현했습니다. 외부 제품의 코드·프롬프트·규칙 데이터는 포함하지 않습니다.
+
+| KR-humanizer 기능 | 참고한 공개 원리 | 적용 경계 |
+|---|---|---|
+| `fluent` 최소 수정 | [QuillBot Fluency는 문법과 자연스러움에 집중하고 변경과 동의어 치환을 줄임](https://help.quillbot.com/hc/en-us/articles/35854318883351-What-are-modes-in-the-QuillBot-Paraphraser-and-how-do-I-use-them) | 의미 없는 단어 교체 금지 |
+| 독자 관점 말투 점검 | [Grammarly는 글이 더 친근하고 긍정적이며 자신감 있게 들리도록 문장별 말투 제안을 제공](https://support.grammarly.com/hc/en-us/articles/10674801783309-How-do-Grammarly-s-tone-suggestions-work) | 성격 판단이 아닌 독자가 받는 인상만 검토 |
+| 격식·간결 조절 | [Wordtune은 Formal/Casual과 Shorten/Expand 제어를 제공](https://www.wordtune.com/rewrite) | 사실 추가 위험이 있는 Expand는 제외 |
+| `strict` 엄격 검토 | [LanguageTool Picky Mode는 격식 문맥에서 더 많은 문법·문체 제안을 표시](https://languagetool.org/insights/post/picky-mode/) | 자동 반영하지 않고 문장별 수락 유지 |
+
+윤문 방식은 `fluent`(최소 수정), `balanced`(균형 편집), `strict`(문체 혼용과 모호성까지 검토), `concise`(근거를 보존한 간결화) 네 가지입니다. 의미가 달라질 수 있는 창작 모드와 근거 없는 내용 확장은 넣지 않았습니다.
 
 ## 메모리 구조
 

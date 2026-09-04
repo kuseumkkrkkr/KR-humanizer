@@ -20,9 +20,15 @@ test('review UX exposes filters, comparison modes, and bulk selection', async ()
   assert.match(html, /data-view="inline"/);
   assert.match(html, /data-view="split"/);
   assert.match(html, /id="accept" class="primary" disabled/);
+  assert.match(html, /id="edit-mode"/);
+  assert.match(html, /id="honorific" type="range" min="0" max="100" step="25" value="50"/);
+  assert.match(html, /id="honorific-value"/);
   assert.match(app, /change:not\(\.filtered-out\)/);
   assert.match(app, /#accept'\)\.disabled = count === 0/);
   assert.match(app, /classList\.toggle\('applied'/);
+  assert.match(app, /honorificLevel: Number\(\$\('#honorific'\)\.value\)/);
+  assert.match(app, /setAttribute\('aria-valuetext'/);
   assert.match(css, /#changes\[data-view="split"\]/);
+  assert.match(css, /\.writing-settings/);
   assert.match(css, /min-height:44px/);
 });

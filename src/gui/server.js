@@ -59,7 +59,7 @@ export async function startGui({ port = 4317, open = true } = {}) {
       if (url.pathname === '/api/rewrite') {
         const store = createMemoryStore({ provider: body.memory === 'mem0' ? 'mem0' : 'local', baseUrl: body.mem0Url, userId: body.userId ?? 'default' });
         const memories = (await store.search((body.text ?? '').slice(0, 500), 6)).map((item) => item.text);
-        const rewritten = await rewriteWithEngine({ engine: body.engine ?? 'codex', text: body.text ?? '', tone: body.tone, memories });
+        const rewritten = await rewriteWithEngine({ engine: body.engine ?? 'codex', text: body.text ?? '', tone: body.tone, editMode: body.editMode, honorificLevel: body.honorificLevel, memories });
         const proposal = { ...buildProposal(body.text ?? '', rewritten.rewrittenText), summary: rewritten.summary, flow: { nodes: rewritten.flow, edges: rewritten.edges } };
         return send(response, 200, proposal);
       }

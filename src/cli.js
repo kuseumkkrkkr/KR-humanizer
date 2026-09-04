@@ -6,13 +6,14 @@ import { rewriteWithEngine } from './engines/runner.js';
 import { createMemoryStore } from './memory/index.js';
 import { startGui } from './gui/server.js';
 import { runCv } from './benchmark/run.js';
+import { getEditModeInstruction, normalizeHonorificLevel } from './core/style.js';
 
-const help = `KR-humanizer 0.3.0
+const help = `KR-humanizer 0.4.0
 
 사용법:
   kr-humanizer analyze <file|-> [--json]
   kr-humanizer sanitize <file|-> [--out <file>]
-  kr-humanizer rewrite <file|-> [--engine codex|claude] [--tone <문체>] [--out <file>]
+  kr-humanizer rewrite <file|-> [--engine codex|claude] [--tone <문체>] [--mode fluent|balanced|strict|concise] [--honorific 0-100] [--out <file>]
   kr-humanizer review <original> <rewritten> [--out <file>]
   kr-humanizer accept <proposal.json> --ids s1,s2 [--out <file>]
   kr-humanizer cv [--samples 3] [--folds 3] [--out-dir experiments/runs]
@@ -79,9 +80,12 @@ export async function main(args) {
   }
   if (command === 'rewrite') {
     const text = await readInput(paths[0]);
+    const editMode = option(rest, '--mode', 'balanced');
+    getEditModeInstruction(editMode);
+    const honorificLevel = normalizeHonorificLevel(option(rest, '--honorific', '50'));
     const memory = createMemoryStore({ provider: option(rest, '--memory', 'local'), baseUrl: option(rest, '--mem0-url'), userId: option(rest, '--user', 'default') });
     const memories = (await memory.search(text.slice(0, 500), 6)).map((item) => item.text);
-    const result = await rewriteWithEngine({ engine: option(rest, '--engine', 'codex'), text, tone: option(rest, '--tone'), memories });
+    const result = await rewriteWithEngine({ engine: option(rest, '--engine', 'codex'), text, tone: option(rest, '--tone'), editMode, honorificLevel, memories });
     const proposal = { ...buildProposal(text, result.rewrittenText), summary: result.summary, flow: { nodes: result.flow, edges: result.edges } };
     return emit(proposal, option(rest, '--out'));
   }

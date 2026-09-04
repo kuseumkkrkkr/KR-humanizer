@@ -27,3 +27,15 @@ test('CLI sanitizes piped text', async () => {
   assert.equal(result.code, 0);
   assert.equal(result.stdout, '가나\n');
 });
+
+test('CLI rejects an invalid honorific level before launching an engine', async () => {
+  const result = await invoke(['rewrite', '-', '--honorific', '101'], '문장을 검토한다.');
+  assert.equal(result.code, 1);
+  assert.match(result.stderr, /높임 정도는 0~100/);
+});
+
+test('CLI rejects an unsupported editing mode before launching an engine', async () => {
+  const result = await invoke(['rewrite', '-', '--mode', 'creative'], '문장을 검토한다.');
+  assert.equal(result.code, 1);
+  assert.match(result.stderr, /지원하지 않는 윤문 방식/);
+});

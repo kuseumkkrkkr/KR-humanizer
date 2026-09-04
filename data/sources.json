@@ -6,5 +6,10 @@
   {"id":"korean-writing-corpus-research","title":"글쓰기 첨삭 지원을 위한 지시문 기반 생성 말뭉치 구축 연구","url":"https://korean.go.kr/common/download.do?c_file_name=84ced1e6-7ca7-4556-862a-e62d23ceca8f.pdf&file_path=reportData","publisher":"국립국어원","usage":"taxonomy reference only"},
   {"id":"mem0-oss","title":"Mem0 Open Source Overview","url":"https://docs.mem0.ai/open-source/overview","publisher":"Mem0","usage":"integration reference only"},
   {"id":"unicode-security","title":"Unicode Security Considerations","url":"https://www.unicode.org/reports/tr36/","publisher":"Unicode Consortium","usage":"security behavior reference only"},
-  {"id":"c2pa","title":"C2PA Specifications","url":"https://spec.c2pa.org/specifications/","publisher":"C2PA","usage":"provenance concept reference only"}
+  {"id":"c2pa","title":"C2PA Specifications","url":"https://spec.c2pa.org/specifications/","publisher":"C2PA","usage":"provenance concept reference only"},
+  {"id":"korean-honorific-levels","title":"상대 높임 표현과 비격식체","url":"https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=27&pageIndex=1&qna_seq=332328","publisher":"국립국어원","usage":"speech-level taxonomy reference only"},
+  {"id":"quillbot-modes","title":"What are modes in the QuillBot Paraphraser?","url":"https://help.quillbot.com/hc/en-us/articles/35854318883351-What-are-modes-in-the-QuillBot-Paraphraser-and-how-do-I-use-them","publisher":"QuillBot","usage":"feature principle reference only"},
+  {"id":"grammarly-tone","title":"How do Grammarly's tone suggestions work?","url":"https://support.grammarly.com/hc/en-us/articles/10674801783309-How-do-Grammarly-s-tone-suggestions-work","publisher":"Grammarly","usage":"feature principle reference only"},
+  {"id":"wordtune-rewrite","title":"Free Online Rewriting Tool","url":"https://www.wordtune.com/rewrite","publisher":"Wordtune","usage":"feature principle reference only"},
+  {"id":"languagetool-picky","title":"Grammar vs Style","url":"https://languagetool.org/insights/post/picky-mode/","publisher":"LanguageTool","usage":"feature principle reference only"}
 ]

@@ -6,8 +6,21 @@ let reviewFilter = 'all';
 let reviewView = 'inline';
 let appliedIds = new Set();
 
+const honorificLabels = {
+  0: '평어 · 해체',
+  25: '서술형 평어 · 해라체',
+  50: '중립 · 원문 유지',
+  75: '부드러운 경어 · 해요체',
+  100: '격식 경어 · 하십시오체'
+};
+
 const $ = (selector) => document.querySelector(selector);
 const show = (selector) => $(selector).classList.remove('hidden');
+function updateHonorific() {
+  const level = Number($('#honorific').value);
+  $('#honorific-value').textContent = honorificLabels[level];
+  $('#honorific').setAttribute('aria-valuetext', `${honorificLabels[level]} ${level}`);
+}
 function notify(message, error = false) {
   status.textContent = message;
   status.style.background = error ? '#8f3027' : '#18201c';
@@ -148,6 +161,9 @@ $('#clear-selection').addEventListener('click', () => {
   updateSelection();
 });
 
+$('#honorific').addEventListener('input', updateHonorific);
+updateHonorific();
+
 source.addEventListener('input', () => { $('#char-count').textContent = `${source.value.length.toLocaleString()}자`; });
 $('#analyze').addEventListener('click', async (event) => {
   const button = event.currentTarget;
@@ -161,7 +177,7 @@ $('#sanitize').addEventListener('click', async (event) => {
 });
 $('#rewrite').addEventListener('click', async (event) => {
   const button = event.currentTarget;
-  try { buttonBusy(button, true); renderProposal(await api('/api/rewrite', { text: source.value, engine: $('#engine').value, tone: $('#tone').value })); notify('윤문 제안을 만들었습니다.'); }
+  try { buttonBusy(button, true); renderProposal(await api('/api/rewrite', { text: source.value, engine: $('#engine').value, tone: $('#tone').value, editMode: $('#edit-mode').value, honorificLevel: Number($('#honorific').value) })); notify('윤문 제안을 만들었습니다.'); }
   catch (error) { notify(error.message, true); } finally { buttonBusy(button, false); }
 });
 $('#accept').addEventListener('click', async () => {
