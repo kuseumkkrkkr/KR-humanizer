@@ -89,7 +89,7 @@ h1 em { color: var(--green); font-style: italic; }
 .vault-stack p { margin: 0; color: var(--muted); font-size: .89rem; }
 
 .section-intro.compact { grid-template-columns: 145px 1fr; }
-.mode-grid { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 70px; border: 1px solid var(--line); }
+.mode-grid { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 70px; border: 1px solid var(--line); }
 .mode-grid article { min-height: 210px; padding: 28px; border-right: 1px solid var(--line); background: rgba(255,255,255,.32); }
 .mode-grid article:last-child { border-right: 0; }
 .mode-grid article.selected { background: var(--green); color: white; transform: translateY(-12px); box-shadow: 0 16px 26px rgba(20,108,67,.2); }
