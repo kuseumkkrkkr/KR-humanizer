@@ -42,7 +42,8 @@ ${pair.humanized}`;
 
   const report = `# KR-humanizer A/B 글 비교
 
-실행: ${run.createdAt}  
+실행: ${run.createdAt}
+
 구성: 정치·경제·사회 각 3쌍, 총 A 9개 + B 9개
 
 ## 프롬프트 유무의 정확한 의미
