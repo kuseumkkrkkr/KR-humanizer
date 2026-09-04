@@ -1,7 +1,7 @@
 # KR-humanizer
 
 KR-humanizer is an open-source, local-first Korean writing review and rewriting tool.
-It diagnoses paragraphs and basic text issues, retrieves relevant Korean writing guidance from an Obsidian-compatible Markdown vault, invokes an authenticated Codex CLI or Claude Code CLI process, and presents sentence-level changes for explicit acceptance.
+It offers opt-in next-sentence completion through an authenticated Codex EXEC process with the model fixed to gpt-5.3-codex-spark. It also diagnoses paragraphs and basic text issues, retrieves relevant Korean writing guidance from an Obsidian-compatible Markdown vault, invokes Codex CLI or Claude Code CLI for rewrites, and presents sentence-level changes for explicit acceptance.
 
 ## Canonical resources
 

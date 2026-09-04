@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>KR-humanizer | 한국어 윤문·교정 도구</title>
-  <meta name="description" content="편집 가능한 맥락 그래프와 설명률로 한국어 초안의 과잉설명을 줄이고, Codex·Claude Code 윤문을 Git형 Diff로 검토하는 오픈소스 도구입니다.">
+  <meta name="description" content="Codex Spark의 Tab 다음 문장 자동완성, 편집 가능한 맥락 그래프와 Git형 Diff를 제공하는 로컬 우선 한국어 글쓰기 도구입니다.">
   <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
   <meta name="theme-color" content="#146c43">
   <link rel="canonical" href="https://kuseumkkrkkr.github.io/KR-humanizer/">
@@ -15,7 +15,7 @@
   <meta property="og:type" content="website">
   <meta property="og:locale" content="ko_KR">
   <meta property="og:site_name" content="KR-humanizer">
-  <meta property="og:title" content="KR-humanizer — 고친 문장을 먼저 보여주는 한국어 윤문 도구">
+  <meta property="og:title" content="KR-humanizer — Codex Spark Tab 자동완성과 한국어 윤문">
   <meta property="og:description" content="AI가 쓴 글도, 내가 쓴 글도. 뜻은 지키고 읽는 부담만 덜어냅니다.">
   <meta property="og:url" content="https://kuseumkkrkkr.github.io/KR-humanizer/">
   <meta property="og:image" content="https://kuseumkkrkkr.github.io/KR-humanizer/assets/og-card.png">
@@ -24,7 +24,7 @@
   <meta property="og:image:alt" content="KR-humanizer 한국어 윤문 도구 브랜드 카드">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="KR-humanizer — 한국어 윤문·교정 도구">
-  <meta name="twitter:description" content="맥락 그래프, 설명률, Plan 모드와 Git형 Diff를 갖춘 로컬 우선 오픈소스 한국어 윤문 도구">
+  <meta name="twitter:description" content="Codex Spark Tab 자동완성, 맥락 그래프, Plan 모드와 Git형 Diff를 갖춘 로컬 우선 한국어 글쓰기 도구">
   <meta name="twitter:image" content="https://kuseumkkrkkr.github.io/KR-humanizer/assets/og-card.png">
   <script type="application/ld+json">
   {
@@ -79,7 +79,7 @@
       <div class="hero-copy">
         <p class="kicker">LOCAL-FIRST KOREAN WRITING REVIEW</p>
         <h1>고친 문장을<br><em>먼저</em> 보여줍니다.</h1>
-      <p class="lede">KR-humanizer는 글을 쓰기 전에 맥락 노드를 고르고, 초안에서는 과잉설명 노드를 제외한 뒤 바뀐 문장만 Git형 Diff로 검토하는 로컬 우선 한국어 윤문 도구입니다.</p>
+      <p class="lede">KR-humanizer는 Codex Spark가 제안한 다음 문장을 확인하고 Tab으로 넣을 수 있습니다. 맥락 노드로 과잉설명을 덜어낸 뒤에는 바뀐 문장만 Git형 Diff로 검토합니다.</p>
         <p class="ai-disclosure">이 설명문은 순수 AI로 작성 후 해당 툴로 윤문한 것입니다.</p>
         <div class="hero-actions">
           <a class="button primary" href="guide/">3분 안에 시작하기</a>
@@ -127,9 +127,10 @@
       <ol class="steps">
         <li><span>01</span><div><h3>맥락 설계</h3><p>프롬프트에서 노드를 먼저 만들거나 초안의 문단 흐름을 가져옵니다.</p></div></li>
         <li><span>02</span><div><h3>과잉설명 제거</h3><p>노드의 내용과 순서를 고치고 필요 없는 설명은 제외합니다.</p></div></li>
-        <li><span>03</span><div><h3>먼저 점검</h3><p>문단, 문장 길이, 기본 오탈자와 비가시 문자를 로컬에서 확인합니다.</p></div></li>
-        <li><span>04</span><div><h3>EXEC 윤문</h3><p>활성 노드와 설명률을 Codex 또는 Claude Code CLI에 전달합니다.</p></div></li>
-        <li><span>05</span><div><h3>선택 수락</h3><p>Git형 Diff를 비교하고 원하는 문장만 결과에 반영합니다.</p></div></li>
+        <li><span>03</span><div><h3>Tab으로 이어쓰기</h3><p>Codex EXEC가 있으면 Spark가 제안한 다음 문장 하나를 확인한 뒤 넣습니다.</p></div></li>
+        <li><span>04</span><div><h3>먼저 점검</h3><p>문단, 문장 길이, 기본 오탈자와 비가시 문자를 로컬에서 확인합니다.</p></div></li>
+        <li><span>05</span><div><h3>EXEC 윤문</h3><p>활성 노드와 설명률을 Codex 또는 Claude Code CLI에 전달합니다.</p></div></li>
+        <li><span>06</span><div><h3>선택 수락</h3><p>Git형 Diff를 비교하고 원하는 문장만 결과에 반영합니다.</p></div></li>
       </ol>
     </section>
 
@@ -174,6 +175,10 @@
         <h2>실제로 검토하는 화면입니다.</h2>
         <p>홍보용 합성 화면이 아니라 로컬 GUI에서 캡처한 문장별 비교와 선택 상태입니다.</p>
       </div>
+      <figure>
+        <img src="assets/autocomplete-screen.png" width="1072" height="1041" loading="lazy" alt="Codex Spark가 다음 문장 하나를 제안하고 Tab으로 적용하는 KR-humanizer 실제 화면">
+        <figcaption>Codex EXEC 확인 · Spark 고정 · 한 문장 미리보기 · Tab 수락</figcaption>
+      </figure>
       <figure>
         <img src="assets/review-screen.png" width="1365" height="768" loading="lazy" alt="KR-humanizer에서 윤문 전후 문장을 나란히 비교하고 변경을 선택하는 실제 화면">
         <figcaption>변경 강조 · 전후 나란히 · 어순 변경 · 선택 수락</figcaption>
