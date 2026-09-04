@@ -1,10 +1,19 @@
 {
-  "generated": "2026-09-04T08:03:52.633Z",
+  "generated": "2026-09-04T14:30:00.000Z",
   "sections": [
     {
       "id": "mockups",
       "label": "Mockups",
-      "groups": []
+      "groups": [
+        {
+          "slug": "brand-landing",
+          "files": [
+            {"label": "Brand landing", "path": "mockups/brand-landing/index.html"},
+            {"label": "Installation guide", "path": "mockups/brand-landing/guide/index.html"},
+            {"label": "Knowledge vault", "path": "mockups/brand-landing/knowledge/index.html"}
+          ]
+        }
+      ]
     },
     {
       "id": "design-systems",
@@ -16,8 +25,10 @@
             {"label": "README", "path": "design-systems/writing-review/README.md"},
             {"label": "Skill", "path": "design-systems/writing-review/SKILL.md"},
             {"label": "Color and type tokens", "path": "design-systems/writing-review/tokens/colors_and_type.css"},
+            {"label": "Brand identity", "path": "design-systems/writing-review/brand/identity.md"},
             {"label": "Style notes", "path": "design-systems/writing-review/brand/style-notes.md"},
             {"label": "Voice and tone", "path": "design-systems/writing-review/brand/voice-and-tone.md"},
+            {"label": "Brand mark", "path": "design-systems/writing-review/assets/mark.svg"},
             {"label": "GUI UI kit", "path": "design-systems/writing-review/ui-kit-gui/index.html"}
           ]
         }

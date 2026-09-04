@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ko" class="subpage">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>한국어 윤문 지식 저장소 | 국립국어원 규범·Obsidian</title>
+  <meta name="description" content="국립국어원의 맞춤법·띄어쓰기·문장 부호·상대 높임 자료와 공개 한국어 윤문 Skill을 출처와 적용 조건이 있는 Obsidian 카드로 검색하는 구조를 설명합니다.">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <link rel="canonical" href="https://kuseumkkrkkr.github.io/KR-humanizer/knowledge/">
+  <link rel="sitemap" type="application/xml" href="https://kuseumkkrkkr.github.io/KR-humanizer/sitemap.xml">
+  <link rel="icon" href="../assets/mark.svg" type="image/svg+xml"><link rel="stylesheet" href="../styles.css">
+  <meta property="og:type" content="article"><meta property="og:locale" content="ko_KR"><meta property="og:site_name" content="KR-humanizer"><meta property="og:title" content="출처를 찾아 쓰는 한국어 윤문 지식 저장소"><meta property="og:description" content="국립국어원 규범과 공개 윤문 방법을 Obsidian Markdown 카드로 검색합니다."><meta property="og:url" content="https://kuseumkkrkkr.github.io/KR-humanizer/knowledge/"><meta property="og:image" content="https://kuseumkkrkkr.github.io/KR-humanizer/assets/og-card.png">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"KR-humanizer 한국어 윤문 지식 저장소","description":"국립국어원 규범과 공개 윤문 방법을 Obsidian Markdown 카드로 검색하는 구조","inLanguage":"ko-KR","mainEntityOfPage":"https://kuseumkkrkkr.github.io/KR-humanizer/knowledge/","author":{"@type":"Person","name":"kuseumkkrkkr"},"isPartOf":{"@id":"https://kuseumkkrkkr.github.io/KR-humanizer/#website"}}</script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+  <header class="site-header"><a class="brand" href="../"><img src="../assets/mark.svg" width="34" height="34" alt=""><span>KR-humanizer</span></a><nav aria-label="주요 메뉴"><a href="../#workflow">작동 방식</a><a href="./" aria-current="page">윤문 지식</a><a href="../guide/">설치</a><a class="nav-cta" href="https://github.com/kuseumkkrkkr/KR-humanizer/tree/main/obsidian-vault">Vault 보기</a></nav></header>
+  <main id="main">
+    <header class="sub-hero"><p class="kicker">OBSIDIAN KNOWLEDGE VAULT</p><h1>감이 아니라<br>근거를 찾습니다.</h1><p class="lede">“자연스럽게 고쳐 줘”라는 한 줄에 모든 판단을 맡기지 않습니다. 입력 문장에 해당하는 한국어 규범과 편집 원칙만 골라 윤문 프롬프트에 제공합니다.</p></header>
+    <section class="content-section"><h2>무엇이 들어 있나</h2><div><ul class="card-list"><li><strong>띄어쓰기</strong>조사·의존 명사, 보조 용언</li><li><strong>문장 부호</strong>종결 부호, 쉼표와 접속 부사</li><li><strong>문법·문체</strong>상대 높임, 종결 어미, 문장 성분 호응</li><li><strong>공공언어</strong>명료성, 행위 주체와 책임 관계</li></ul><p>현재 기본 저장소에는 국립국어원 자료를 재구성한 카드 9개와 공개 한국어 윤문 Skill의 작업 방식을 추상화한 카드 5개가 있습니다.</p></div></section>
+    <section class="content-section"><h2>카드 구조</h2><div><div class="code-block">---
+id: nikl-spacing-particle-dependent-noun
+kind: norm
+authority: 국립국어원
+source_url: https://www.korean.go.kr/...
+source_section: 한글 맞춤법 제41항·제42항
+tags: [어문규범, 띄어쓰기]
+retrieval_terms: [할수, 할 수, 의존 명사]
+---
+
+## 프롬프트 지침
+조사는 앞말에 붙이고 의존 명사는 띄어 쓴다.</div><p>출처·적용 구간·태그·검색어가 없는 노트는 검색에서 제외합니다. 원문 전체나 외부 Skill 프롬프트를 복제하지 않습니다.</p></div></section>
+    <section class="content-section"><h2>검색 과정</h2><div><ol><li>입력 글에서 한국어·영문 토큰과 정확 구문을 찾습니다.</li><li>윤문 방식과 높임 단계는 관련 카드의 순위를 미세 조정합니다.</li><li>제목·태그·검색어·지침을 점수화해 최대 6개를 선택합니다.</li><li>출처와 함께 6,000자 이내의 참고 구획으로 프롬프트에 넣습니다.</li><li>국립국어원 규범과 공개 Skill 관찰이 충돌하면 규범을 우선합니다.</li></ol><p class="callout">검색 결과는 모델에 제공된 후보입니다. 특정 변경에 실제 적용됐다는 증명이나 국립국어원의 공식 판정 결과가 아닙니다.</p></div></section>
+    <section class="content-section"><h2>내 Vault 사용</h2><div><div class="code-block">kr-humanizer knowledge draft.txt --vault D:\my-writing-vault
+kr-humanizer rewrite draft.txt --engine codex --vault D:\my-writing-vault</div><p>사용자 Vault는 명시적으로 신뢰한 로컬 입력으로 처리됩니다. 출처가 불분명한 공유 폴더나 외부에서 자동 동기화된 노트를 바로 연결하지 마세요.</p></div></section>
+    <section class="content-section"><h2>기준 자료</h2><div><p><a href="https://www.korean.go.kr/kornorms/m/m_regltn.do">국립국어원 한국어 어문 규범</a>, 상대 높임 온라인가나다, 공공언어 지침과 글쓰기 첨삭 말뭉치 연구를 사용했습니다. 각 카드에는 원문 위치를 다시 확인할 수 있는 URL과 절 이름이 있습니다.</p><p><a class="button primary" href="https://github.com/kuseumkkrkkr/KR-humanizer/tree/main/obsidian-vault">GitHub에서 지식 카드 열기</a></p></div></section>
+  </main>
+  <footer><div class="brand footer-brand"><img src="../assets/mark.svg" width="30" height="30" alt=""><span>KR-humanizer</span></div><p>뜻은 지키고, 읽는 부담만 덜어냅니다.</p><div><a href="../">홈</a><a href="../guide/">설치</a><a href="https://github.com/kuseumkkrkkr/KR-humanizer">GitHub</a></div></footer>
+</body>
+</html>

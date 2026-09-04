@@ -1,15 +1,15 @@
 {
   "name": "kr-humanizer",
-  "version": "0.5.0+codex.20260904123427",
-  "description": "Review and rewrite Korean text with explicit, user-approved changes",
+  "version": "0.6.0+codex.20260904142923",
+  "description": "Source-guided Korean writing review with explicit, user-approved changes",
   "author": {
     "name": "kuseumkkrkkr"
   },
   "skills": "./skills/",
   "interface": {
     "displayName": "KR-humanizer",
-    "shortDescription": "Review Korean writing before accepting rewrites.",
-    "longDescription": "Diagnose paragraphs and text hygiene, compare Korean rewrites sentence by sentence, mark reordered ideas, and let the writer accept each change.",
+    "shortDescription": "Source-guided Korean writing review.",
+    "longDescription": "Diagnose Korean prose, retrieve relevant National Institute of Korean Language guidance from an Obsidian-compatible vault, compare rewrites sentence by sentence, and accept only the changes the writer chooses.",
     "developerName": "kuseumkkrkkr",
     "category": "Productivity",
     "capabilities": [

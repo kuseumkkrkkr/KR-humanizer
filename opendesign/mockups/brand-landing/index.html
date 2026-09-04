@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KR-humanizer | 한국어 윤문·교정 도구</title>
+  <meta name="description" content="한국어 글의 뜻과 수치를 지키면서 문장·오탈자·어순을 점검하고, Codex·Claude Code로 만든 윤문 제안을 직접 비교하고 선택하는 오픈소스 도구입니다.">
+  <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
+  <meta name="theme-color" content="#146c43">
+  <link rel="canonical" href="https://kuseumkkrkkr.github.io/KR-humanizer/">
+  <link rel="sitemap" type="application/xml" href="https://kuseumkkrkkr.github.io/KR-humanizer/sitemap.xml">
+  <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="ko_KR">
+  <meta property="og:site_name" content="KR-humanizer">
+  <meta property="og:title" content="KR-humanizer — 고친 문장을 먼저 보여주는 한국어 윤문 도구">
+  <meta property="og:description" content="AI가 쓴 글도, 내가 쓴 글도. 뜻은 지키고 읽는 부담만 덜어냅니다.">
+  <meta property="og:url" content="https://kuseumkkrkkr.github.io/KR-humanizer/">
+  <meta property="og:image" content="https://kuseumkkrkkr.github.io/KR-humanizer/assets/og-card.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="KR-humanizer 한국어 윤문 도구 브랜드 카드">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="KR-humanizer — 한국어 윤문·교정 도구">
+  <meta name="twitter:description" content="문단 진단부터 문장별 비교와 선택 수락까지, 로컬 우선 오픈소스 한국어 윤문 도구">
+  <meta name="twitter:image" content="https://kuseumkkrkkr.github.io/KR-humanizer/assets/og-card.png">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://kuseumkkrkkr.github.io/KR-humanizer/#website",
+        "url": "https://kuseumkkrkkr.github.io/KR-humanizer/",
+        "name": "KR-humanizer",
+        "alternateName": ["KR Humanizer", "한국어 휴머나이저"],
+        "inLanguage": "ko-KR"
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://kuseumkkrkkr.github.io/KR-humanizer/#software",
+        "name": "KR-humanizer",
+        "description": "문단과 오탈자를 진단하고 한국어 윤문 전후를 문장별로 비교해 사용자가 변경을 선택하는 로컬 우선 오픈소스 도구",
+        "url": "https://kuseumkkrkkr.github.io/KR-humanizer/",
+        "downloadUrl": "https://github.com/kuseumkkrkkr/KR-humanizer/releases/latest",
+        "applicationCategory": "UtilitiesApplication",
+        "applicationSubCategory": "WritingApplication",
+        "operatingSystem": "Windows, macOS, Linux",
+        "softwareVersion": "0.6.0",
+        "license": "https://opensource.org/license/mit",
+        "isAccessibleForFree": true,
+        "offers": {"@type": "Offer", "price": "0", "priceCurrency": "KRW"},
+        "codeRepository": "https://github.com/kuseumkkrkkr/KR-humanizer",
+        "inLanguage": "ko-KR"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="KR-humanizer 홈">
+      <img src="assets/mark.svg" width="34" height="34" alt="">
+      <span>KR-humanizer</span>
+    </a>
+    <nav aria-label="주요 메뉴">
+      <a href="#workflow">작동 방식</a>
+      <a href="knowledge/">윤문 지식</a>
+      <a href="guide/">설치</a>
+      <a class="nav-cta" href="https://github.com/kuseumkkrkkr/KR-humanizer">GitHub</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="kicker">LOCAL-FIRST KOREAN WRITING REVIEW</p>
+        <h1>고친 문장을<br><em>먼저</em> 보여줍니다.</h1>
+        <p class="lede">AI가 쓴 글도, 내가 쓴 글도. 뜻과 수치는 지키고 문장의 걸림만 찾아냅니다. 바뀐 단어와 어순을 확인한 뒤 원하는 문장만 수락하세요.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="guide/">3분 안에 시작하기</a>
+          <a class="button secondary" href="https://github.com/kuseumkkrkkr/KR-humanizer">소스 코드 보기</a>
+        </div>
+        <ul class="trust-list" aria-label="제품 특성">
+          <li>MIT 오픈소스</li>
+          <li>별도 모델 API 키 없음</li>
+          <li>원문 자동 덮어쓰기 없음</li>
+        </ul>
+      </div>
+
+      <div class="proof-sheet" aria-label="윤문 전후 예시">
+        <div class="sheet-head">
+          <span>문장 03</span>
+          <span class="status-dot">검토 전</span>
+        </div>
+        <div class="sentence before">
+          <span class="label">원문</span>
+          <p>이 기능은 사용자들이 글을 읽는 것에 있어서 <del>보다 더 편하게 느낄 수 있도록</del> 도와줍니다.</p>
+        </div>
+        <div class="proof-arrow" aria-hidden="true">↓</div>
+        <div class="sentence after">
+          <span class="label">제안</span>
+          <p>이 기능은 사용자가 글을 <ins>더 편하게 읽도록</ins> 돕습니다.</p>
+        </div>
+        <div class="sheet-foot">
+          <span>의미 보존</span>
+          <button type="button" id="demo-accept" aria-pressed="false">이 문장 수락</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="principle-strip" aria-label="브랜드 원칙">
+      <p>사람처럼 <strong>보이게</strong>가 아니라</p>
+      <p>사람이 <strong>읽기 좋게</strong>.</p>
+    </section>
+
+    <section class="section" id="workflow">
+      <div class="section-intro">
+        <p class="section-number">01 / WORKFLOW</p>
+        <h2>진단하고, 비교하고,<br>직접 결정합니다.</h2>
+        <p>윤문 결과를 통째로 교체하지 않습니다. 각 단계가 눈에 보이고 되돌릴 수 있습니다.</p>
+      </div>
+      <ol class="steps">
+        <li><span>01</span><div><h3>먼저 점검</h3><p>문단, 문장 길이, 기본 오탈자와 비가시 문자를 로컬에서 확인합니다.</p></div></li>
+        <li><span>02</span><div><h3>근거 검색</h3><p>국립국어원 규범과 공개 윤문 연구를 정리한 Obsidian 카드 중 관련 항목을 찾습니다.</p></div></li>
+        <li><span>03</span><div><h3>EXEC 윤문</h3><p>로그인된 Codex CLI 또는 Claude Code CLI를 실행해 구조화된 제안을 받습니다.</p></div></li>
+        <li><span>04</span><div><h3>선택 수락</h3><p>단어 변화와 어순 이동을 비교하고 원하는 문장만 결과에 반영합니다.</p></div></li>
+      </ol>
+    </section>
+
+    <section class="section knowledge-preview">
+      <div class="knowledge-copy">
+        <p class="section-number">02 / KOREAN KNOWLEDGE</p>
+        <h2>막연한 “자연스럽게” 대신<br>찾아볼 수 있는 근거.</h2>
+        <p>띄어쓰기, 문장 부호, 상대 높임, 문장 성분 호응과 공공언어 지침을 출처·적용 조건·경계와 함께 Markdown 카드로 관리합니다.</p>
+        <a class="text-link" href="knowledge/">Obsidian 지식 저장소 살펴보기 →</a>
+      </div>
+      <div class="vault-stack" aria-label="윤문 지식 카드 예시">
+        <article><span>한글 맞춤법 제41·42항</span><h3>조사와 의존 명사</h3><p>표면형을 일괄 치환하지 않고 문맥에서 품사를 먼저 확인합니다.</p></article>
+        <article><span>상대 높임 표현</span><h3>종결 어미의 강도</h3><p>청자 높임과 문장 속 인물의 높임 관계를 구분합니다.</p></article>
+        <article><span>공공언어 지침</span><h3>주어와 서술어 호응</h3><p>행위 주체가 원문에 있을 때만 문장을 명확하게 풉니다.</p></article>
+      </div>
+    </section>
+
+    <section class="section modes">
+      <div class="section-intro compact">
+        <p class="section-number">03 / CONTROL</p>
+        <h2>글의 목소리는<br>글쓴이에게 남겨둡니다.</h2>
+      </div>
+      <div class="mode-grid">
+        <article><span>FLUENT</span><h3>최소 수정</h3><p>어색한 표현과 기본 오류만 가장 적게 바꿉니다.</p></article>
+        <article class="selected"><span>BALANCED</span><h3>균형 편집</h3><p>명료성, 흐름과 문장 길이를 함께 다듬습니다.</p></article>
+        <article><span>STRICT</span><h3>엄격 검토</h3><p>문체 혼용과 모호한 지시어까지 넓게 살핍니다.</p></article>
+        <article><span>CONCISE</span><h3>간결화</h3><p>주장과 조건을 남기고 중복만 덜어냅니다.</p></article>
+      </div>
+      <div class="tone-scale" aria-label="말투 높임 단계">
+        <div class="scale-line"><i></i><i></i><i class="active"></i><i></i><i></i></div>
+        <div class="scale-labels"><span>해체</span><span>해라체</span><strong>원문 유지</strong><span>해요체</span><span>하십시오체</span></div>
+      </div>
+    </section>
+
+    <section class="screenshot-section">
+      <div class="section-intro light">
+        <p class="section-number">04 / REAL INTERFACE</p>
+        <h2>실제로 검토하는 화면입니다.</h2>
+        <p>홍보용 합성 화면이 아니라 로컬 GUI에서 캡처한 문장별 비교와 선택 상태입니다.</p>
+      </div>
+      <figure>
+        <img src="assets/review-screen.png" width="1365" height="768" loading="lazy" alt="KR-humanizer에서 윤문 전후 문장을 나란히 비교하고 변경을 선택하는 실제 화면">
+        <figcaption>변경 강조 · 전후 나란히 · 어순 변경 · 선택 수락</figcaption>
+      </figure>
+    </section>
+
+    <section class="section install-cta">
+      <div>
+        <p class="section-number">05 / START</p>
+        <h2>글 한 편으로<br>바로 시작하세요.</h2>
+      </div>
+      <div class="terminal" aria-label="설치 명령">
+        <div><span>$</span><code>npm install -g github:kuseumkkrkkr/KR-humanizer</code><button type="button" data-copy="npm install -g github:kuseumkkrkkr/KR-humanizer">복사</button></div>
+        <div><span>$</span><code>kr-humanizer gui</code><button type="button" data-copy="kr-humanizer gui">복사</button></div>
+      </div>
+      <div class="cta-links">
+        <a class="button primary" href="guide/">설치 가이드</a>
+        <a class="button secondary" href="https://github.com/kuseumkkrkkr/KR-humanizer/releases/latest">최신 릴리스</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="brand footer-brand"><img src="assets/mark.svg" width="30" height="30" alt=""><span>KR-humanizer</span></div>
+    <p>뜻은 지키고, 읽는 부담만 덜어냅니다.</p>
+    <div><a href="guide/">설치</a><a href="knowledge/">지식 저장소</a><a href="https://github.com/kuseumkkrkkr/KR-humanizer">GitHub</a><a href="https://github.com/kuseumkkrkkr/KR-humanizer/blob/main/LICENSE">MIT License</a></div>
+  </footer>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script src="app.js" defer></script>
+</body>
+</html>
