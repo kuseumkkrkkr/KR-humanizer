@@ -69,3 +69,5 @@ claude plugin install kr-humanizer@kr-humanizer
 `cv` 명령은 정치·경제·사회 주제별 최소 프롬프트 원문과 윤문문을 pair 단위 3-fold로 나눕니다. 설명 가능한 문체 지표, 블라인드 A/B 평가, 원문/윤문 문체 구분 실험을 함께 저장합니다. 사람이 쓴 기준 글이나 실제 독자 평가는 포함하지 않으므로 사람다움 정확도로 해석하면 안 됩니다.
 
 최종 실행은 `experiments/runs/2026-09-04T06-22-37-885Z/`에 기준문 9개, EXEC 윤문 9개, 평가 의견 9개로 분리 저장했습니다. 실제 GUI 동작 캡처는 `artifacts/screenshots/`에서 확인할 수 있습니다.
+
+프롬프트 조건과 9개 원문·윤문을 글별로 연속 비교하려면 [A/B 글 비교 보고서](experiments/runs/2026-09-04T06-22-37-885Z/ab-comparison.md)를 확인하세요.

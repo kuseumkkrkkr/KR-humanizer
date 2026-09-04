@@ -9,10 +9,11 @@
     "test": "node --test",
     "check": "node --check ./bin/kr-humanizer.js && node --check ./src/cli.js && node --check ./src/gui/server.js && node --check ./src/benchmark/run.js && node --check ./scripts/capture-gui.cjs",
     "pack:dry": "npm pack --dry-run",
-    "capture:gui": "node ./scripts/capture-gui.cjs"
+    "capture:gui": "node ./scripts/capture-gui.cjs",
+    "report:ab": "node ./scripts/build-ab-report.cjs"
   },
   "engines": {"node": ">=20"},
-  "files": ["bin", "src", "data", "schemas", "plugins", "README.md", "LICENSE"],
+  "files": ["bin", "src", "data", "schemas", "plugins", "scripts", "README.md", "LICENSE"],
   "keywords": ["korean", "writing", "proofreading", "codex", "claude-code", "cli"],
   "license": "MIT",
   "repository": {"type": "git", "url": "git+https://github.com/kuseumkkrkkr/KR-humanizer.git"}
