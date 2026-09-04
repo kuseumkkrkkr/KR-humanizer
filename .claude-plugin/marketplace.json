@@ -1,5 +1,6 @@
 {
   "name": "kr-humanizer",
+  "description": "Local-first Korean writing review tools for Claude Code",
   "owner": {"name": "kuseumkkrkkr"},
   "plugins": [
     {
