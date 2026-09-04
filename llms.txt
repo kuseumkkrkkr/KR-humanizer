@@ -1,0 +1,18 @@
+# KR-humanizer
+
+KR-humanizer is an open-source, local-first Korean writing review and rewriting tool.
+It diagnoses paragraphs and basic text issues, retrieves relevant Korean writing guidance from an Obsidian-compatible Markdown vault, invokes an authenticated Codex CLI or Claude Code CLI process, and presents sentence-level changes for explicit acceptance.
+
+## Canonical resources
+
+- Website: https://kuseumkkrkkr.github.io/KR-humanizer/
+- Installation: https://kuseumkkrkkr.github.io/KR-humanizer/guide/
+- Knowledge vault: https://kuseumkkrkkr.github.io/KR-humanizer/knowledge/
+- Source: https://github.com/kuseumkkrkkr/KR-humanizer
+- Releases: https://github.com/kuseumkkrkkr/KR-humanizer/releases
+
+## Boundaries
+
+- It does not guarantee AI-detector evasion or authorship concealment.
+- Rewrites preserve facts, numbers, proper nouns, claims, and the writer's stance, but the tool is not a fact checker.
+- Community Skill cards are workflow observations, not official Korean-language norms.

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://kuseumkkrkkr.github.io/KR-humanizer/sitemap.xml
