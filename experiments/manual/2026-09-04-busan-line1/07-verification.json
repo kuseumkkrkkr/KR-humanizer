@@ -1,0 +1,22 @@
+{
+  "generationInstruction": "부산 도시철도 1호선에 대한 글을 작성하세요.",
+  "additionalGenerationInstructions": [],
+  "rewrite": {
+    "engine": "codex",
+    "mode": "balanced",
+    "honorificLevel": 50
+  },
+  "preservation": {
+    "numbersEqual": true,
+    "urlsEqual": true,
+    "originalCharacters": 959,
+    "humanizedCharacters": 961
+  },
+  "knownIssue": "문장별 수락기가 Markdown URL의 물음표를 문장 경계로 나눔",
+  "factCheck": {
+    "status": "one discrepancy found",
+    "claim": "1985년 노포–범내골 구간이 처음 개통",
+    "officialRecord": "1985.07.19 1호선 1단계 개통(범내골~범어사 16.1km)",
+    "source": "https://www2.humetro.busan.kr/homepage/history/page/subLocation.do?menu_no=10020105"
+  }
+}
