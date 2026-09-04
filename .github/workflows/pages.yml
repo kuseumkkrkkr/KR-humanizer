@@ -1,11 +1,9 @@
 name: Deploy branded site to Pages
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "site/**"
-      - ".github/workflows/pages.yml"
+  # GitHub Actions is currently unavailable for this account. The public site
+  # is published from the gh-pages branch; keep this workflow as the verified
+  # deployment path to re-enable after the account restriction is cleared.
   workflow_dispatch:
 
 permissions:
