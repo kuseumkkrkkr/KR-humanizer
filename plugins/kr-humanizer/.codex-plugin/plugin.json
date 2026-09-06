@@ -1,6 +1,6 @@
 {
   "name": "kr-humanizer",
-  "version": "0.11.3+codex.20260907110000",
+  "version": "0.11.4+codex.20260907113000",
   "description": "Source-grounded Korean proofreading with a controlled NIKL reference agent",
   "author": {
     "name": "kuseumkkrkkr"

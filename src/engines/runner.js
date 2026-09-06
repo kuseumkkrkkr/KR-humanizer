@@ -119,11 +119,11 @@ export async function draftWithEngine({ engine = 'codex', brief, contextGraph, t
   return { ...result, knowledge, knowledgeAgent: buildKnowledgeAgentReport(knowledge) };
 }
 
-export async function rewriteWithEngine({ engine = 'codex', text, brief = '', contextGraph, tone, editMode = 'medium', honorificLevel = 50, explanationLevel = 'balanced', memories = [], vaultPath, timeoutMs, isolated = false }) {
+export async function rewriteWithEngine({ engine = 'codex', text, brief = '', contextGraph, tone, editMode = 'medium', honorificLevel = 50, explanationLevel = 'balanced', memories = [], vaultPath, model, timeoutMs, isolated = false }) {
   const mode = normalizeEditMode(editMode);
   const knowledge = knowledgeForEditMode(await searchVault({ text, editMode: mode, honorificLevel, vaultPath }), mode);
   const prompt = buildRewritePrompt({ text, brief, contextGraph: activeContextGraph(contextGraph), tone, editMode: mode, honorificLevel, explanationLevel, memories, knowledge });
-  const result = await structuredWithEngine({ engine, prompt, schemaPath: rewriteSchemaPath, validate: assertResult, timeoutMs, isolated });
+  const result = await structuredWithEngine({ engine, prompt, schemaPath: rewriteSchemaPath, validate: assertResult, timeoutMs, isolated, model });
   return { ...result, knowledge, knowledgeAgent: buildKnowledgeAgentReport(knowledge) };
 }
 

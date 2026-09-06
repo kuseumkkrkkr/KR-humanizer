@@ -1,7 +1,7 @@
 {
   "name": "kr-humanizer",
   "description": "Graph-guided Korean drafting, Codex Spark sentence completion, and explicit review",
-  "version": "0.11.3",
+  "version": "0.11.4",
   "author": {"name": "kuseumkkrkkr"},
   "homepage": "https://kuseumkkrkkr.github.io/KR-humanizer/",
   "repository": "https://github.com/kuseumkkrkkr/KR-humanizer"

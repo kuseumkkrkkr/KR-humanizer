@@ -1,6 +1,6 @@
 {
   "name": "kr-humanizer",
-  "version": "0.11.3",
+  "version": "0.11.4",
   "description": "Source-grounded Korean proofreading and rewriting with an Obsidian rule vault and Codex/Claude adapters",
   "type": "module",
   "bin": {"kr-humanizer": "./bin/kr-humanizer.js"},
