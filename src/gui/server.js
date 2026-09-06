@@ -71,7 +71,7 @@ export async function startGui({ port = 4317, open = true } = {}) {
         if (autocompleteBusy) throw Object.assign(new Error('이전 자동완성을 처리 중입니다.'), { status: 429 });
         autocompleteBusy = true;
         try {
-          return send(response, 200, { ...(await autocompleteWithCodex({ text: body.text, contextGraph: body.contextGraph, tone: body.tone, editMode: body.editMode, honorificLevel: body.honorificLevel, explanationLevel: body.explanationLevel })) });
+          return send(response, 200, { ...(await autocompleteWithCodex({ text: body.text, contextGraph: body.contextGraph, tone: body.tone, editMode: body.editMode, honorificLevel: body.honorificLevel, explanationLevel: body.explanationLevel, model: body.model })) });
         } finally { autocompleteBusy = false; }
       }
       if (url.pathname === '/api/analyze') return send(response, 200, analyzeText(body.text ?? ''));

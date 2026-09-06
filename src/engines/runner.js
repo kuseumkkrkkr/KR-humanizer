@@ -15,6 +15,17 @@ const planSchemaPath = fileURLToPath(new URL('../../schemas/plan.schema.json', i
 const autocompleteSchemaPath = fileURLToPath(new URL('../../schemas/autocomplete.schema.json', import.meta.url));
 const MAX_OUTPUT = 2 * 1024 * 1024;
 export const AUTOCOMPLETE_MODEL = 'gpt-5.3-codex-spark';
+export const AUTOCOMPLETE_MODELS = Object.freeze([
+  { id: 'gpt-5.3-codex-spark', label: 'GPT-5.3 Codex Spark' },
+  { id: 'gpt-5.3-codex', label: 'GPT-5.3 Codex' },
+  { id: 'codex-mini-latest', label: 'Codex Mini' }
+]);
+
+export function normalizeAutocompleteModel(value = AUTOCOMPLETE_MODEL) {
+  const model = String(value || AUTOCOMPLETE_MODEL);
+  if (!AUTOCOMPLETE_MODELS.some((item) => item.id === model)) throw Object.assign(new Error(`지원하지 않는 자동완성 모델: ${model}`), { status: 400 });
+  return model;
+}
 
 function run(command, args, input, timeoutMs = 180_000) {
   return new Promise((resolve, reject) => {
@@ -116,20 +127,20 @@ export async function rewriteWithEngine({ engine = 'codex', text, brief = '', co
   return { ...result, knowledge, knowledgeAgent: buildKnowledgeAgentReport(knowledge) };
 }
 
-export async function autocompleteWithCodex({ text, contextGraph, tone, editMode = 'medium', honorificLevel = 50, explanationLevel = 'balanced', timeoutMs = 60_000 }) {
+export async function autocompleteWithCodex({ text, contextGraph, tone, editMode = 'medium', honorificLevel = 50, explanationLevel = 'balanced', model = AUTOCOMPLETE_MODEL, timeoutMs = 60_000 }) {
   const value = String(text ?? '').trim();
   if (value.length < 20) throw Object.assign(new Error('자동완성에는 20자 이상의 문맥이 필요합니다.'), { status: 400 });
   if (value.length > 200_000) throw Object.assign(new Error('자동완성 문맥은 200,000자를 넘을 수 없습니다.'), { status: 400 });
   const prompt = buildAutocompletePrompt({ text: value, contextGraph: activeContextGraph(contextGraph), tone, editMode, honorificLevel, explanationLevel });
-  return assertCompletion(await runCodexStructured({ prompt, schemaPath: autocompleteSchemaPath, timeoutMs, model: AUTOCOMPLETE_MODEL, isolated: true }));
+  return assertCompletion(await runCodexStructured({ prompt, schemaPath: autocompleteSchemaPath, timeoutMs, model: normalizeAutocompleteModel(model), isolated: true }));
 }
 
 export async function checkCodexAvailable(timeoutMs = 5_000) {
   try {
     const { stdout } = await run('codex', ['--version'], '', timeoutMs);
-    return { available: true, version: stdout.trim(), model: AUTOCOMPLETE_MODEL };
+    return { available: true, version: stdout.trim(), model: AUTOCOMPLETE_MODEL, models: AUTOCOMPLETE_MODELS };
   } catch {
-    return { available: false, version: '', model: AUTOCOMPLETE_MODEL };
+    return { available: false, version: '', model: AUTOCOMPLETE_MODEL, models: AUTOCOMPLETE_MODELS };
   }
 }
 

@@ -3,7 +3,7 @@
 <p align="center"><strong>고친 문장을 먼저 보여줍니다.</strong><br>뜻은 지키고, 읽는 부담만 덜어내는 로컬 우선 한국어 윤문 도구</p>
 <p align="center"><a href="https://kuseumkkrkkr.github.io/KR-humanizer/">웹사이트</a> · <a href="https://kuseumkkrkkr.github.io/KR-humanizer/guide/">설치 가이드</a> · <a href="https://kuseumkkrkkr.github.io/KR-humanizer/knowledge/">윤문 지식 저장소</a> · <a href="https://github.com/kuseumkkrkkr/KR-humanizer/releases/latest">최신 릴리스</a></p>
 
-KR-humanizer는 한국어 글을 더 자연스럽고 편안하게 읽도록 돕는 로컬 우선 윤문 도구입니다. 글을 쓰기 전에는 프롬프트에서 맥락 노드를 먼저 만들고, 초안이 있으면 문단 흐름을 편집 가능한 그래프로 바꿉니다. 필요 없는 노드를 제외해 과잉설명을 걷어낸 뒤 국립국어원의 근거 자료를 검색하고, 바뀐 문장만 Git형 Diff로 검토합니다. Codex EXEC 사용자는 작성 중인 글 끝에서 `gpt-5.3-codex-spark`가 제안한 다음 문장 하나를 확인하고 Tab으로 넣을 수 있습니다. 별도의 모델 API 대신 로그인된 Codex 또는 Claude Code를 실행하며 npm CLI, 로컬 GUI, 플러그인으로 사용할 수 있습니다.
+KR-humanizer는 한국어 글을 더 자연스럽고 편안하게 읽도록 돕는 로컬 우선 윤문 도구입니다. 글을 쓰기 전에는 프롬프트에서 맥락 노드를 먼저 만들고, 초안이 있으면 문단 흐름을 편집 가능한 그래프로 바꿉니다. 필요 없는 노드를 제외해 과잉설명을 걷어낸 뒤 국립국어원의 근거 자료를 검색하고, 바뀐 문장만 Git형 Diff로 검토합니다. Codex EXEC 사용자는 작성 중인 글 끝에서 자동완성 모델을 선택해 다음 문장 하나를 확인하고 Tab으로 넣을 수 있습니다. 별도의 모델 API 대신 로그인된 Codex 또는 Claude Code를 실행하며 npm CLI, 로컬 GUI, 플러그인으로 사용할 수 있습니다.
 
 > 이 도구는 AI 판별기 회피나 출처 위장을 보장하지 않습니다. `sanitize`는 비가시 Unicode, BOM, 제어문자처럼 실제로 확인 가능한 텍스트 이상만 보여 주고 정리합니다.
 
@@ -11,7 +11,7 @@ KR-humanizer는 한국어 글을 더 자연스럽고 편안하게 읽도록 돕�
 
 - 문단·문장 길이, 중복 표현, 기본 오탈자, 비가시 문자 진단
 - Codex CLI 또는 Claude Code CLI를 통한 API 키 없는 윤문 제안
-- Codex EXEC 전용, `gpt-5.3-codex-spark` 고정 다음 문장 자동완성(Tab 수락·Escape 취소)
+- Codex EXEC 전용 다음 문장 자동완성(모델 선택·Tab 수락·Escape 취소, 기본값 `gpt-5.3-codex-spark`)
 - 문장/단어 단위 전후 비교, 어순 변경 표식, 선택 수락
 - 평어체부터 경어체까지 5단계 말투 높임 슬라이더와 4가지 윤문 방식
 - 최저·중간·최대 3단계 설명률
@@ -105,7 +105,7 @@ flowchart LR
   GUI -->|세션 토큰 포함 요청| Server
   GUI -->|1.2초 멈춤, 글 끝| Server
   Server --> Complete[다음 문장 제안]
-  Complete -->|고정 모델| Spark[gpt-5.3-codex-spark]
+  Complete -->|선택 모델| Spark[gpt-5.3-codex-spark / gpt-5.3-codex / codex-mini-latest]
   Spark -->|미리보기| GUI
 
   Server --> Analyze
@@ -153,7 +153,7 @@ flowchart LR
 |---|---|---|
 | `analyze` | 파일 또는 표준입력 | 통계, 규칙 후보, 의미 흐름 JSON |
 | `sanitize` | 파일 또는 표준입력 | 확인된 비가시 문자를 제거한 UTF-8 텍스트. `--out`을 지정한 경우에만 파일 작성 |
-| `complete` | 20자 이상 파일 또는 표준입력, 문체 설정, 선택 사항인 `--graph` | Codex EXEC의 고정 Spark 모델이 제안한 다음 문장 하나 |
+| `complete` | 20자 이상 파일 또는 표준입력, 문체 설정, 선택 사항인 `--graph` | Codex EXEC의 선택 모델이 제안한 다음 문장 하나 |
 | `knowledge` | 원문, `--mode`, `--honorific`, 선택 사항인 `--vault` | 모델 실행 없이 관련 지식 카드와 출처를 JSON으로 반환 |
 | `plan` | 글쓰기 프롬프트, 엔진, `--explanation` | 초안 없이 편집 가능한 노드·관계 JSON 생성 |
 | `draft` | 글쓰기 프롬프트, `--graph`, 문체 설정 | 활성 노드만 사용한 초안과 의미 흐름 JSON 생성 |
@@ -198,7 +198,7 @@ sequenceDiagram
   G->>S: 최근 문맥, 활성 그래프, 문체 설정
   S->>S: 자동완성 동시 실행 1건 제한
   S->>R: 한 문장 전용 프롬프트와 JSON Schema
-  R->>C: codex exec --model gpt-5.3-codex-spark
+  R->>C: codex exec --model 선택한 모델
   C-->>G: 최대 300자의 다음 문장 미리보기
   alt 작성자가 Tab 또는 Tab으로 넣기 선택
     G->>G: 원문 끝에 제안 삽입
@@ -207,9 +207,9 @@ sequenceDiagram
   end
 ```
 
-자동완성은 모델 선택 메뉴를 사용하지 않습니다. `src/engines/runner.js`의 `AUTOCOMPLETE_MODEL` 상수와 실제 `--model` 인자가 모두 `gpt-5.3-codex-spark`로 고정됩니다. 프롬프트는 다음 문장 하나, 제공되지 않은 사실 금지, 안전한 전개가 없을 때 빈 문자열을 요구합니다. 응답은 별도 Schema로 제한한 뒤 첫 문장과 300자까지만 남깁니다. 입력 중 새 요청이 생기면 이전 응답은 화면에 반영하지 않으며, 서버는 Codex 프로세스를 동시에 하나만 실행합니다.
+자동완성은 GUI의 모델 선택 메뉴를 통해 허용 목록(`gpt-5.3-codex-spark`, `gpt-5.3-codex`, `codex-mini-latest`) 중 하나를 고릅니다. 선택값은 서버에서 검증한 뒤 실제 `codex exec --model` 인자로 전달되며, 기본값은 Spark입니다. 프롬프트는 다음 문장 하나, 제공되지 않은 사실 금지, 안전한 전개가 없을 때 빈 문자열을 요구합니다. 응답은 별도 Schema로 제한한 뒤 첫 문장과 300자까지만 남깁니다. 입력 중 새 요청이 생기면 이전 응답은 화면에 반영하지 않으며, 서버는 Codex 프로세스를 동시에 하나만 실행합니다. 모델별 한도와 사용 가능 여부는 로그인한 Codex 계정 상태에 따릅니다.
 
-OpenAI의 공개 Codex 활용 문서는 Codex-Spark를 빠르고 범위가 좁은 UI 수정에 쓰는 예를 들지만, 한국어 문장 자동완성 전용 모델이라고 규정하지는 않습니다. 이 프로젝트는 빠른 단일 문장 작업에 맞춰 Spark를 고정한 구현입니다. 근거: [OpenAI Codex use cases](https://developers.openai.com/codex/use-cases/).
+OpenAI의 공개 모델 문서는 GPT-5.3-Codex를 Codex 환경의 에이전트형 코딩 모델로 설명합니다. 이 프로젝트는 기본값을 Spark로 두되, GUI에서 허용 목록 모델을 선택할 수 있게 했습니다. 모델별 한도와 사용 가능 여부는 로그인한 Codex 계정 상태에 따릅니다. 근거: [GPT-5.3-Codex 모델 문서](https://developers.openai.com/api/docs/models/gpt-5.3-codex).
 
 ## 윤문 요청의 내부 흐름
 

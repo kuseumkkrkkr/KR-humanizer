@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildAutocompletePrompt, buildDraftPrompt, buildPlanPrompt, buildRewritePrompt } from '../src/core/prompt.js';
-import { AUTOCOMPLETE_MODEL, assertCompletion, knowledgeForEditMode } from '../src/engines/runner.js';
+import { AUTOCOMPLETE_MODEL, AUTOCOMPLETE_MODELS, assertCompletion, knowledgeForEditMode, normalizeAutocompleteModel } from '../src/engines/runner.js';
 import { EDIT_MODES, getEditModeInstruction, getHonorificProfile, normalizeEditMode, normalizeHonorificLevel } from '../src/core/style.js';
 
 test('honorific intensity maps to explicit Korean speech levels', () => {
@@ -13,8 +13,11 @@ test('honorific intensity maps to explicit Korean speech levels', () => {
   assert.throws(() => normalizeHonorificLevel(101), /0~100/);
 });
 
-test('autocomplete is fixed to Spark and returns only the first bounded sentence', () => {
+test('autocomplete defaults to Spark, validates selectable models, and returns one bounded sentence', () => {
   assert.equal(AUTOCOMPLETE_MODEL, 'gpt-5.3-codex-spark');
+  assert.deepEqual(AUTOCOMPLETE_MODELS.map(({ id }) => id), ['gpt-5.3-codex-spark', 'gpt-5.3-codex', 'codex-mini-latest']);
+  assert.equal(normalizeAutocompleteModel('gpt-5.3-codex'), 'gpt-5.3-codex');
+  assert.throws(() => normalizeAutocompleteModel('--bad-model'), /지원하지 않는/);
   const prompt = buildAutocompletePrompt({ text: '독자가 이해할 핵심을 먼저 적었습니다.', explanationLevel: 'minimal' });
   assert.match(prompt, /문장 하나만/);
   assert.match(prompt, /없는 사실, 수치, 출처, 고유명사를 만들지/);

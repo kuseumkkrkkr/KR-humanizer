@@ -1,6 +1,6 @@
 {
   "name": "kr-humanizer",
-  "version": "0.11.1+codex.20260906145509",
+  "version": "0.11.2+codex.20260906150805",
   "description": "Source-grounded Korean proofreading with a controlled NIKL reference agent",
   "author": {
     "name": "kuseumkkrkkr"
@@ -25,7 +25,7 @@
       "Obsidian knowledge retrieval",
       "NIKL full-text source agent",
       "local GUI",
-      "Codex Spark Tab completion"
+      "Codex model-selectable Tab completion"
     ],
     "defaultPrompt": [
       "\uc774 \ud55c\uad6d\uc5b4 \uae00\uc744 \uad6d\ub9bd\uad6d\uc5b4\uc6d0 \uadfc\uac70\ub85c \uc9c4\ub2e8\ud558\uace0 \ubcc0\uacbd\uc548\uc744 \ubcf4\uc5ec \uc8fc\uc138\uc694.",

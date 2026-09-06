@@ -31,6 +31,9 @@ test('review UX exposes filters, comparison modes, and bulk selection', async ()
   assert.match(html, /id="honorific-value"/);
   for (const id of ['brief', 'plan-mode', 'plan', 'graph-nodes', 'add-node', 'draft']) assert.match(html, new RegExp(`id="${id}"`));
   for (const id of ['autocomplete-enabled', 'autocomplete-capability', 'completion-panel', 'completion-text', 'accept-completion', 'dismiss-completion']) assert.match(html, new RegExp(`id="${id}"`));
+  assert.match(html, /id="autocomplete-model"/);
+  assert.match(html, /value="gpt-5\.3-codex"/);
+  assert.match(html, /value="codex-mini-latest"/);
   assert.match(html, /gpt-5\.3-codex-spark/);
   assert.match(html, /class="writing-editor"/);
   assert.match(html, /<details class="brief-panel">/);
@@ -60,6 +63,7 @@ test('review UX exposes filters, comparison modes, and bulk selection', async ()
   assert.match(app, /accept-completion'\)\.disabled = !hasCompletion/);
   assert.match(app, /\/api\/capabilities/);
   assert.match(app, /\/api\/autocomplete/);
+  assert.match(app, /model: \$\('#autocomplete-model'\)\.value/);
   assert.match(app, /function updateSettingsSummary\(\)/);
   assert.match(app, /국립국어원 규범과 문법·호응 추론/);
   assert.match(css, /#changes\[data-view="split"\]/);

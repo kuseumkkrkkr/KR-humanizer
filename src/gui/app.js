@@ -87,7 +87,7 @@ async function requestCompletion(sequence) {
   if (!$('#autocomplete-enabled').checked || source.selectionStart !== source.value.length || source.selectionEnd !== source.value.length || source.value.trim().length < 20) return;
   $('#autocomplete-capability').textContent = '다음 문장 생성 중…';
   try {
-    const result = await api('/api/autocomplete', { text: source.value, contextGraph, ...settingsPayload() });
+    const result = await api('/api/autocomplete', { text: source.value, contextGraph, ...settingsPayload(), model: $('#autocomplete-model').value });
     if (sequence !== completionRequest || !$('#autocomplete-enabled').checked) return;
     completion = result.completion;
     const hasCompletion = Boolean(completion);
@@ -95,7 +95,8 @@ async function requestCompletion(sequence) {
     $('#completion-panel').classList.remove('hidden');
     $('#completion-panel').classList.toggle('empty', !hasCompletion);
     $('#accept-completion').disabled = !hasCompletion;
-    $('#autocomplete-capability').textContent = hasCompletion ? 'Codex EXEC 준비됨' : '추가 제안 없음 · 계속 입력하면 재시도';
+    const modelLabel = $('#autocomplete-model').selectedOptions[0]?.textContent ?? $('#autocomplete-model').value;
+    $('#autocomplete-capability').textContent = hasCompletion ? `${modelLabel} · Codex EXEC 준비됨` : '추가 제안 없음 · 계속 입력하면 재시도';
   } catch (error) {
     if (sequence !== completionRequest) return;
     if (error.message.includes('처리 중')) {
@@ -357,6 +358,10 @@ $('#dismiss-completion').addEventListener('click', dismissCompletion);
 $('#autocomplete-enabled').addEventListener('change', () => {
   dismissCompletion();
   $('#autocomplete-capability').textContent = $('#autocomplete-enabled').checked ? '입력 끝에서 잠시 멈추면 제안합니다.' : '자동완성 꺼짐';
+  if ($('#autocomplete-enabled').checked) scheduleCompletion();
+});
+$('#autocomplete-model').addEventListener('change', () => {
+  dismissCompletion();
   if ($('#autocomplete-enabled').checked) scheduleCompletion();
 });
 

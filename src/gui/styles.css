@@ -28,7 +28,7 @@ textarea:focus,select:focus,button:focus,summary:focus-visible{outline:3px solid
 .autocomplete-toggle input:checked+.switch i{transform:translateX(12px)}
 .autocomplete-toggle input:focus-visible+.switch{outline:3px solid rgba(20,108,67,.16);outline-offset:2px}
 .capability{font-size:11px}
-.fixed-model{margin-left:auto;padding:2px 7px;border:1px solid var(--line);border-radius:999px;font:11px ui-monospace,SFMono-Regular,Consolas,monospace}
+.model-control{display:flex;align-items:center;gap:6px;margin-left:auto;color:var(--muted);white-space:nowrap}.model-control select{max-width:190px;padding:4px 24px 4px 7px;border:1px solid var(--line);border-radius:999px;background:var(--paper);color:var(--ink);font-size:11px}
 .completion-panel{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;padding:9px 12px;border-top:1px solid var(--line);background:#f3f7f4}
 .completion-panel.empty{background:#f7f8f6}
 .completion-panel.empty p{color:var(--muted);font-size:12px}
@@ -173,8 +173,8 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .controls>*{flex:1 1 45%}
 .controls .primary{flex-basis:100%}
 .autocomplete-bar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 8px;padding:3px 12px 6px}
-.autocomplete-toggle>span:last-child,.fixed-model{white-space:nowrap}
-.capability{grid-column:1/-1;margin:-4px 0 0 37px}.fixed-model{grid-column:2;grid-row:1;margin-left:0}
+.autocomplete-toggle>span:last-child,.model-control{white-space:nowrap}
+.capability{grid-column:1/-1;margin:-4px 0 0 37px}.model-control{grid-column:2;grid-row:1;margin-left:0}
 .completion-panel{grid-template-columns:1fr}
 .completion-label{margin-bottom:-6px}
 .completion-actions{display:grid;grid-template-columns:1fr 1fr}
