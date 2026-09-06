@@ -69,6 +69,8 @@ function dismissCompletion() {
   completion = '';
   $('#completion-text').textContent = '';
   $('#completion-panel').classList.add('hidden');
+  $('#completion-panel').classList.remove('empty');
+  $('#accept-completion').disabled = true;
 }
 
 function acceptCompletion() {
@@ -88,9 +90,12 @@ async function requestCompletion(sequence) {
     const result = await api('/api/autocomplete', { text: source.value, contextGraph, ...settingsPayload() });
     if (sequence !== completionRequest || !$('#autocomplete-enabled').checked) return;
     completion = result.completion;
-    $('#completion-text').textContent = completion || '안전하게 이어 쓸 문장을 찾지 못했습니다.';
-    $('#completion-panel').classList.toggle('hidden', !completion);
-    $('#autocomplete-capability').textContent = 'Codex EXEC 준비됨';
+    const hasCompletion = Boolean(completion);
+    $('#completion-text').textContent = completion || '안전하게 이어 쓸 문장을 찾지 못했습니다. 문장을 조금 더 이어 쓰거나 맥락 그래프를 추가하면 다시 제안합니다.';
+    $('#completion-panel').classList.remove('hidden');
+    $('#completion-panel').classList.toggle('empty', !hasCompletion);
+    $('#accept-completion').disabled = !hasCompletion;
+    $('#autocomplete-capability').textContent = hasCompletion ? 'Codex EXEC 준비됨' : '추가 제안 없음 · 계속 입력하면 재시도';
   } catch (error) {
     if (sequence !== completionRequest) return;
     if (error.message.includes('처리 중')) {

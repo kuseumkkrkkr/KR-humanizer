@@ -19,6 +19,7 @@ test('autocomplete is fixed to Spark and returns only the first bounded sentence
   assert.match(prompt, /문장 하나만/);
   assert.match(prompt, /없는 사실, 수치, 출처, 고유명사를 만들지/);
   assert.match(prompt, /<writing-context>/);
+  assert.match(prompt, /마침표로 끝나도 앞 글에서 직접 이어지는 내용/);
   assert.equal(assertCompletion({ completion: '다음에는 적용 방법을 설명합니다. 그 뒤에는 결론입니다.' }).completion, '다음에는 적용 방법을 설명합니다.');
   assert.equal(assertCompletion({ completion: '“이어지는 문장입니다.”' }).completion, '이어지는 문장입니다.');
 });

@@ -56,6 +56,8 @@ test('review UX exposes filters, comparison modes, and bulk selection', async ()
   assert.match(app, /event\.key === 'Tab'/);
   assert.match(app, /event\.key === 'Escape'/);
   assert.match(app, /setTimeout\(\(\) => requestCompletion\(sequence\), 1200\)/);
+  assert.match(app, /추가 제안 없음 · 계속 입력하면 재시도/);
+  assert.match(app, /accept-completion'\)\.disabled = !hasCompletion/);
   assert.match(app, /\/api\/capabilities/);
   assert.match(app, /\/api\/autocomplete/);
   assert.match(app, /function updateSettingsSummary\(\)/);
@@ -70,6 +72,7 @@ test('review UX exposes filters, comparison modes, and bulk selection', async ()
   assert.match(css, /\.graph-node-row/);
   assert.match(css, /\.segmented/);
   assert.match(css, /\.completion-panel/);
+  assert.match(css, /\.completion-panel\.empty/);
   assert.match(css, /\.writing-editor:focus-within/);
   assert.match(css, /\.settings-grid/);
   assert.match(css, /min-height:44px/);

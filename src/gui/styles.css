@@ -30,6 +30,9 @@ textarea:focus,select:focus,button:focus,summary:focus-visible{outline:3px solid
 .capability{font-size:11px}
 .fixed-model{margin-left:auto;padding:2px 7px;border:1px solid var(--line);border-radius:999px;font:11px ui-monospace,SFMono-Regular,Consolas,monospace}
 .completion-panel{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;padding:9px 12px;border-top:1px solid var(--line);background:#f3f7f4}
+.completion-panel.empty{background:#f7f8f6}
+.completion-panel.empty p{color:var(--muted);font-size:12px}
+.completion-actions button:disabled{opacity:.5;cursor:not-allowed}
 .completion-label{color:var(--green);font-size:11px;font-weight:800;white-space:nowrap}
 .completion-panel p{margin:0;color:#435049;white-space:pre-wrap;overflow-wrap:anywhere}
 .completion-actions{display:flex;gap:7px;flex:0 0 auto}
