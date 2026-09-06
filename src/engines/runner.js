@@ -93,8 +93,8 @@ function parseClaude(stdout, validate) {
   return validate(outer);
 }
 
-async function structuredWithEngine({ engine, prompt, schemaPath, validate, timeoutMs, isolated }) {
-  if (engine === 'codex') return validate(await runCodexStructured({ prompt, schemaPath, timeoutMs, isolated }));
+async function structuredWithEngine({ engine, prompt, schemaPath, validate, timeoutMs, isolated, model }) {
+  if (engine === 'codex') return validate(await runCodexStructured({ prompt, schemaPath, timeoutMs, isolated, model: model ? normalizeAutocompleteModel(model) : undefined }));
   if (engine === 'claude') {
     const schema = await readFile(schemaPath, 'utf8');
     const { stdout } = await run('claude', ['-p', '--output-format', 'json', '--json-schema', schema, '--permission-mode', 'plan', '--no-session-persistence'], prompt, timeoutMs);
@@ -103,19 +103,19 @@ async function structuredWithEngine({ engine, prompt, schemaPath, validate, time
   throw new Error(`지원하지 않는 엔진: ${engine}`);
 }
 
-export async function planWithEngine({ engine = 'codex', brief, tone, explanationLevel = 'balanced', timeoutMs, isolated = false }) {
+export async function planWithEngine({ engine = 'codex', brief, tone, explanationLevel = 'balanced', model, timeoutMs, isolated = false }) {
   if (!String(brief ?? '').trim()) throw new Error('Plan 모드에는 글쓰기 프롬프트가 필요합니다.');
-  return structuredWithEngine({ engine, prompt: buildPlanPrompt({ brief, tone, explanationLevel }), schemaPath: planSchemaPath, validate: assertPlan, timeoutMs, isolated });
+  return structuredWithEngine({ engine, prompt: buildPlanPrompt({ brief, tone, explanationLevel }), schemaPath: planSchemaPath, validate: assertPlan, timeoutMs, isolated, model });
 }
 
-export async function draftWithEngine({ engine = 'codex', brief, contextGraph, tone, editMode = 'medium', honorificLevel = 50, explanationLevel = 'balanced', memories = [], vaultPath, timeoutMs, isolated = false }) {
+export async function draftWithEngine({ engine = 'codex', brief, contextGraph, tone, editMode = 'medium', honorificLevel = 50, explanationLevel = 'balanced', memories = [], vaultPath, model, timeoutMs, isolated = false }) {
   if (!String(brief ?? '').trim()) throw new Error('초안 작성에는 글쓰기 프롬프트가 필요합니다.');
   const graph = activeContextGraph(contextGraph);
   if (!graph.nodes.length) throw new Error('초안에 포함할 맥락 노드가 필요합니다.');
   const mode = normalizeEditMode(editMode);
   const knowledge = knowledgeForEditMode(await searchVault({ text: brief, editMode: mode, honorificLevel, vaultPath }), mode);
   const prompt = buildDraftPrompt({ brief, contextGraph: graph, tone, editMode: mode, honorificLevel, explanationLevel, memories, knowledge });
-  const result = await structuredWithEngine({ engine, prompt, schemaPath: rewriteSchemaPath, validate: assertResult, timeoutMs, isolated });
+  const result = await structuredWithEngine({ engine, prompt, schemaPath: rewriteSchemaPath, validate: assertResult, timeoutMs, isolated, model });
   return { ...result, knowledge, knowledgeAgent: buildKnowledgeAgentReport(knowledge) };
 }
 

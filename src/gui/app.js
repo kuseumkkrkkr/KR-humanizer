@@ -25,7 +25,7 @@ const explanationLevel = () => document.querySelector('input[name="explanation"]
 const activeNodes = () => contextGraph.nodes.filter((node) => node.included !== false);
 const sequentialEdges = (nodes) => nodes.slice(1).map((node, index) => ({ from: nodes[index].id, to: node.id, relation: '다음 내용' }));
 function settingsPayload() {
-  return { engine: $('#engine').value, tone: $('#tone').value, editMode: $('#edit-mode').value, honorificLevel: Number($('#honorific').value), explanationLevel: explanationLevel() };
+  return { engine: $('#engine').value, tone: $('#tone').value, editMode: $('#edit-mode').value, honorificLevel: Number($('#honorific').value), explanationLevel: explanationLevel(), model: $('#autocomplete-model').value };
 }
 function updateHonorific() {
   const level = Number($('#honorific').value);
@@ -87,7 +87,7 @@ async function requestCompletion(sequence) {
   if (!$('#autocomplete-enabled').checked || source.selectionStart !== source.value.length || source.selectionEnd !== source.value.length || source.value.trim().length < 20) return;
   $('#autocomplete-capability').textContent = '다음 문장 생성 중…';
   try {
-    const result = await api('/api/autocomplete', { text: source.value, contextGraph, ...settingsPayload(), model: $('#autocomplete-model').value });
+    const result = await api('/api/autocomplete', { text: source.value, contextGraph, ...settingsPayload() });
     if (sequence !== completionRequest || !$('#autocomplete-enabled').checked) return;
     completion = result.completion;
     const hasCompletion = Boolean(completion);

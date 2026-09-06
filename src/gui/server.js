@@ -80,14 +80,14 @@ export async function startGui({ port = 4317, open = true } = {}) {
       if (url.pathname === '/api/plan') {
         const brief = briefValue(body.brief);
         if (!brief) throw Object.assign(new Error('Plan 모드에는 글쓰기 프롬프트가 필요합니다.'), { status: 400 });
-        return send(response, 200, await planWithEngine({ engine: body.engine ?? 'codex', brief, tone: body.tone, explanationLevel: body.explanationLevel }));
+        return send(response, 200, await planWithEngine({ engine: body.engine ?? 'codex', brief, tone: body.tone, explanationLevel: body.explanationLevel, model: body.model }));
       }
       if (url.pathname === '/api/draft') {
         const brief = briefValue(body.brief);
         if (!brief) throw Object.assign(new Error('초안 작성에는 글쓰기 프롬프트가 필요합니다.'), { status: 400 });
         const store = createMemoryStore({ provider: body.memory === 'mem0' ? 'mem0' : 'local', baseUrl: body.mem0Url, userId: body.userId ?? 'default' });
         const memories = (await store.search(brief.slice(0, 500), 6)).map((item) => item.text);
-        const drafted = await draftWithEngine({ engine: body.engine ?? 'codex', brief, contextGraph: body.contextGraph, tone: body.tone, editMode: body.editMode, honorificLevel: body.honorificLevel, explanationLevel: body.explanationLevel, memories });
+        const drafted = await draftWithEngine({ engine: body.engine ?? 'codex', brief, contextGraph: body.contextGraph, tone: body.tone, editMode: body.editMode, honorificLevel: body.honorificLevel, explanationLevel: body.explanationLevel, memories, model: body.model });
         return send(response, 200, { ...drafted, flow: { nodes: drafted.flow, edges: drafted.edges } });
       }
       if (url.pathname === '/api/rewrite') {
